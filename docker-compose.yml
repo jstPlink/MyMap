@@ -1,0 +1,16 @@
+services:
+  pocketbase:
+    image: ghcr.io/muchobien/pocketbase:latest
+    container_name: mymap-pocketbase
+    restart: unless-stopped
+    command: ["serve", "--http=0.0.0.0:8090"]
+    ports:
+      - "127.0.0.1:8090:8090"   # solo localhost: il tunnel Cloudflare punta qui
+    volumes:
+      - ./pocketbase/pb_data:/pb_data
+      - ./pocketbase/pb_migrations:/pb_migrations
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8090/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

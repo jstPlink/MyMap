@@ -1,0 +1,9 @@
+pocketbase/pb_data/
+android/build/
+android/.gradle/
+android/app/build/
+android/local.properties
+*.apk
+*.keystore
+.env
+node_modules/
