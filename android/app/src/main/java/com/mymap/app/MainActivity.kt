@@ -39,7 +39,7 @@ class MainActivity : Activity() {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             addJavascriptInterface(Bridge(), "MyMapNative")
-            loadUrl("file:///android_asset/index.html")
+            loadUrl("file:///android_asset/index.html?night=" + (if (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES) 1 else 0))
         }
         // da Android 15 l'app disegna sotto barra di stato, notch e barra di navigazione: lasciamo lo spazio
         val root = FrameLayout(this).apply {
@@ -57,7 +57,12 @@ class MainActivity : Activity() {
                 }
             }
         }
-        root.setBackgroundColor(android.graphics.Color.WHITE)
+        // dietro le barre di sistema e prima che la pagina si disegni: stesso colore di fondo dell'interfaccia (chiaro o scuro)
+        val night = resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        val bg = android.graphics.Color.parseColor(if (night) "#0B1120" else "#F3F5F9")
+        root.setBackgroundColor(bg)
+        web.setBackgroundColor(bg)
+        if (Build.VERSION.SDK_INT >= 23) window.decorView.systemUiVisibility = if (night) 0 else android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
         setContentView(root)
         root.requestApplyInsets()
     }
@@ -120,7 +125,7 @@ class MainActivity : Activity() {
             .toString()
 
         @JavascriptInterface
-        fun getPoints(): String = store.recentJson(1_000_000)
+        fun getPoints(): String = store.allPacked()
 
         /** Ultima posizione nota del telefono (la più recente tra i provider), o stringa vuota. */
         @JavascriptInterface

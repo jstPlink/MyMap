@@ -68,6 +68,18 @@ class PointStore(context: Context) : SQLiteOpenHelper(context, "points.db", null
         return out
     }
 
+    /** Tutti i punti come colonne intere (ts in secondi, lat e lon x1e6, accuratezza in metri, 0 se ignota), little-endian, in base64: 16 byte/punto. */
+    @Synchronized
+    fun allPacked(): String {
+        readableDatabase.rawQuery("SELECT ts,lat,lon,accuracy FROM points ORDER BY ts", null).use { c ->
+            val buf = java.nio.ByteBuffer.allocate(c.count * 16).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+            while (c.moveToNext()) {
+                buf.putInt((c.getLong(0) / 1000).toInt()).putInt((c.getDouble(1) * 1e6).toInt()).putInt((c.getDouble(2) * 1e6).toInt()).putInt(Math.round(c.getDouble(3)).toInt())
+            }
+            return android.util.Base64.encodeToString(buf.array(), android.util.Base64.NO_WRAP)
+        }
+    }
+
     /** Ultimi punti registrati (ordinati per tempo) per disegnare la mappa, come JSON per l'interfaccia web. */
     @Synchronized
     fun recentJson(limit: Int): String {

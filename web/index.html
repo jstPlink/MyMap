@@ -3,36 +3,53 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
 <title>MyMap</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<script>
+  // tema scuro se l'app lo chiede (?night=1) o, nel browser, se il sistema è scuro
+  document.documentElement.dataset.theme = /night=1/.test(location.search) || (!/night=0/.test(location.search) && matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+</script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div id="app">
   <header>
-    <h1>MyMap <span id="version"></span></h1>
+    <h1><span class="logo"></span>MyMap</h1>
+    <span id="version"></span>
     <span id="badge" class="badge">fermo</span>
   </header>
 
   <section id="view-map" class="view active">
-    <div class="strip">
-      <div class="stat"><span id="s-points">–</span><label>Punti</label></div>
-      <div class="stat"><span id="s-km">–</span><label>km</label></div>
-      <div class="stat"><span id="s-last">–</span><label>Ultimo</label></div>
+    <div id="mapwrap">
+      <div id="map"></div>
+
+      <div class="float top">
+        <div class="seg" id="modes">
+          <button data-mode="scratch" class="active">Scratch</button>
+          <button data-mode="heat">Heatmap</button>
+          <button data-mode="routes">Percorsi</button>
+        </div>
+        <div class="filters">
+          <select id="f-year"></select>
+          <select id="f-month"></select>
+          <select id="f-day"></select>
+        </div>
+      </div>
+
+      <button id="locate" title="Dove sono" aria-label="Dove sono">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="7.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+      </button>
+
+      <div class="float bottom">
+        <p class="modeinfo" id="modeinfo"></p>
+        <div class="chips">
+          <div><b id="s-points">–</b><span>punti</span></div>
+          <div><b id="s-km">–</b><span>km</span></div>
+          <div><b id="s-last">–</b><span>ultimo</span></div>
+        </div>
+      </div>
     </div>
-    <div class="filters">
-      <select id="f-year"></select>
-      <select id="f-month"></select>
-      <select id="f-day"></select>
-    </div>
-    <div class="modes" id="modes">
-      <button data-mode="routes" class="active">Percorsi</button>
-      <button data-mode="heat">Heatmap</button>
-      <button data-mode="scratch">Scratch</button>
-      <button data-mode="stays">Soste</button>
-    </div>
-    <p class="modeinfo" id="modeinfo"></p>
-    <div id="mapwrap"><div id="map"></div><button id="locate" title="Dove sono">&#9678;</button></div>
   </section>
 
   <section id="view-stats" class="view">
@@ -40,7 +57,7 @@
   </section>
 
   <section id="view-tracker" class="view">
-    <div class="card">
+    <div class="card hero">
       <h2>Stato</h2>
       <p class="big" id="t-state">Tracking fermo</p>
       <dl>
@@ -66,10 +83,22 @@
   </section>
 
   <nav>
-    <button data-view="map" class="active">Mappa</button>
-    <button data-view="stats">Statistiche</button>
-    <button data-view="tracker">Tracker</button>
-    <button data-view="settings">Impostazioni</button>
+    <button data-view="map" class="active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M9 4 3 6.5v13L9 17l6 3 6-2.5v-13L15 7 9 4Z"/><path d="M9 4v13M15 7v13"/></svg>
+      <span>Mappa</span>
+    </button>
+    <button data-view="stats">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20V11M12 20V4M19 20v-6"/></svg>
+      <span>Statistiche</span>
+    </button>
+    <button data-view="tracker">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+      <span>Tracker</span>
+    </button>
+    <button data-view="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
+      <span>Impostazioni</span>
+    </button>
   </nav>
 </div>
 

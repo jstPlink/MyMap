@@ -14,18 +14,28 @@ function* moveSteps(pts) {
     if (dt <= 0 || dt > 20 * 60000) continue;
     const d = km(a, b);
     if (d < 0.01 || d > 30 || d / (dt / 3600000) > 250) continue;
-    yield { ts: a.ts, d };
+    yield { ts: a.ts, d, dt };
   }
 }
 
 // ---------- griglia esagonale (scratch map) ----------
-// Raggio in metri "mercatore": a 45° N sono circa 300 m reali, e sullo schermo gli esagoni risultano regolari.
-const HEX_S = 420;
+// Il livello 0 ha esagoni larghi 200 m (raggio 100 m); ogni livello raddoppia il raggio. La dimensione dipende dallo zoom,
+// così a mappa piena gli esagoni restano pochi e il disegno leggero. Le misure sono in metri "mercatore": sullo schermo
+// gli esagoni risultano regolari e a 44,5° N coincidono con quelle reali.
+const HEX_BASE_M = 100;
+const HEX_K = 1 / Math.cos(44.5 * Math.PI / 180);
 const SQ3 = Math.sqrt(3);
+const hexSize = (level) => HEX_BASE_M * HEX_K * 2 ** level;
 
-function hexOf(lat, lon) {
+// Livello giusto per lo zoom attuale: esagoni di circa 26 px di raggio sullo schermo
+function hexLevelFor(map) {
+  const mpp = 156543 * Math.cos(map.getCenter().lat * Math.PI / 180) / 2 ** map.getZoom(); // metri reali per pixel
+  return Math.max(0, Math.min(8, Math.ceil(Math.log2(Math.max(1, mpp * 26 / HEX_BASE_M)))));
+}
+
+function hexOf(lat, lon, S) {
   const p = L.CRS.EPSG3857.project(L.latLng(lat, lon));
-  const fq = (SQ3 / 3 * p.x - p.y / 3) / HEX_S, fr = (2 / 3 * p.y) / HEX_S;
+  const fq = (SQ3 / 3 * p.x - p.y / 3) / S, fr = (2 / 3 * p.y) / S;
   let x = fq, z = fr, y = -x - z;
   let rx = Math.round(x), ry = Math.round(y), rz = Math.round(z);
   const dx = Math.abs(rx - x), dy = Math.abs(ry - y), dz = Math.abs(rz - z);
@@ -33,30 +43,38 @@ function hexOf(lat, lon) {
   return [rx, rz];
 }
 
-function hexCorners(q, r) {
-  const cx = HEX_S * SQ3 * (q + r / 2), cy = HEX_S * 1.5 * r;
+function hexCenter(q, r, S) {
+  const ll = L.CRS.EPSG3857.unproject(L.point(S * SQ3 * (q + r / 2), S * 1.5 * r));
+  return [ll.lat, ll.lng];
+}
+
+function hexCorners(q, r, S) {
+  const cx = S * SQ3 * (q + r / 2), cy = S * 1.5 * r;
   const out = [];
   for (let i = 0; i < 6; i++) {
     const a = (Math.PI / 180) * (60 * i + 30);
-    const ll = L.CRS.EPSG3857.unproject(L.point(cx + HEX_S * Math.cos(a), cy + HEX_S * Math.sin(a)));
+    const ll = L.CRS.EPSG3857.unproject(L.point(cx + S * Math.cos(a), cy + S * Math.sin(a)));
     out.push([ll.lat, ll.lng]);
   }
   return out;
 }
 
-// Esagoni visitati (Map chiave -> [q, r]) e area totale in km² (raggio reale ≈ HEX_S·cos(lat))
-function hexCells(pts) {
-  const cells = new Map();
+// Esagoni visitati a un dato livello: celle [q, r, lat, lon, primoTs] e area totale in km²
+function hexCells(pts, level) {
+  const S = hexSize(level), cells = new Map();
   pts.forEach((p) => {
-    const [q, r] = hexOf(p.lat, p.lon);
-    cells.set((q + 50000) * 100000 + (r + 50000), [q, r, p.lat]);
+    const [q, r] = hexOf(p.lat, p.lon, S), k = (q + 50000) * 100000 + (r + 50000);
+    if (!cells.has(k)) cells.set(k, [q, r, p.lat, 0, p.ts]);
   });
   let area = 0;
-  cells.forEach(([, , lat]) => {
-    const s = (HEX_S * Math.cos(lat * Math.PI / 180)) / 1000;
+  const list = [...cells.values()];
+  list.forEach((c) => {
+    const ctr = hexCenter(c[0], c[1], S);
+    c[2] = ctr[0]; c[3] = ctr[1];
+    const s = (S * Math.cos(c[2] * Math.PI / 180)) / 1000;
     area += 1.5 * SQ3 * s * s;
   });
-  return { cells: [...cells.values()], area };
+  return { cells: list, area, S };
 }
 
 // ---------- soste ----------
@@ -76,4 +94,31 @@ function topStays(pts, n) {
   });
   return [...cells.values()].filter((c) => c.ms >= 20 * 60000).sort((a, b) => b.ms - a.ms).slice(0, n)
     .map((c) => ({ lat: c.lat / c.w, lon: c.lon / c.w, ms: c.ms, first: c.first, last: c.last }));
+}
+
+// Toglie i punti a meno di `meters` dall'ultimo tenuto (soste, rumore GPS): stessa forma, molti meno vertici da disegnare.
+// Un punto si tiene comunque se è passato più di `gapMs`, così le interruzioni del tracciato restano visibili.
+function thin(pts, meters, gapMs) {
+  const out = [];
+  let last = null;
+  for (const p of pts) {
+    if (!last || p.ts - last.ts > gapMs || km(last, p) * 1000 >= meters) { out.push(p); last = p; }
+  }
+  return out;
+}
+
+// Toglie i fix inutilizzabili: accuratezza peggiore di 120 m (Wi-Fi, celle) e salti impossibili (>180 km/h per più di 300 m),
+// che altrimenti disegnano righe lunghe chilometri e gonfiano i km. Dopo 3 scarti di fila il nuovo punto viene accettato.
+function clean(pts) {
+  const out = [];
+  let last = null, bad = 0;
+  for (const p of pts) {
+    if (p.acc > 120) continue;
+    if (last) {
+      const h = (p.ts - last.ts) / 36e5, d = km(last, p);
+      if (h > 0 && d > 0.3 && d / h > 180 && bad < 3) { bad++; continue; }
+    }
+    bad = 0; out.push(p); last = p;
+  }
+  return out;
 }

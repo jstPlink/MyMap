@@ -4,6 +4,18 @@ Versione app in `android/app/build.gradle.kts` (`versionName` e `versionCode`).
 Ad ogni rilascio: alzare `versionCode` di 1, aggiornare `versionName` e aggiungere una voce qui.
 La versione è mostrata in cima alla schermata dell'app.
 
+## 0.7.0 (build 9) - 2026-10-01
+- Scratch map con esagoni adattivi: il più piccolo è largo 200 m e le dimensioni crescono allontanando lo zoom, così il disegno resta leggero. L'area grattata si calcola sempre sugli esagoni piccoli.
+- Viste della mappa riordinate: Scratch (principale), Heatmap, Percorsi. Tolta la vista Soste, che resta nelle statistiche.
+- Nuova grafica: tema chiaro o scuro secondo il telefono, barra di navigazione fluttuante con icone, controlli trasparenti sopra la mappa, card arrotondate, mappa ammorbidita.
+- Statistiche ampliate: giri della Terra, velocità media, tempo in movimento, giorni più lunghi, giorni a casa o lontani, estremi nord/sud/est/ovest, zone nuove scoperte per mese, km per anno, ora di punta, stagione più viaggiata, km nel weekend.
+
+## 0.6.1 (build 8) - 2026-10-01
+- Avvio molto più leggero: l'interfaccia restava bloccata circa 2 secondi per colpa del disegno su canvas nella WebView; ora si usa SVG.
+- La mappa disegna solo ciò che si vede, semplificato in base allo zoom, e si ridisegna quando la sposti.
+- I punti passano dall'app alla pagina in formato binario compatto (1 MB invece di 6,5 MB di testo) e si caricano una volta sola.
+- Le statistiche si ricalcolano solo se ci sono punti nuovi; lo stato del tracker si aggiorna solo quando la scheda è aperta.
+
 ## 0.6.0 (build 7) - 2026-10-01
 - All'apertura la mappa si centra su dove ti trovi (con pulsante per tornarci).
 - Scratch map con esagoni azzurri.

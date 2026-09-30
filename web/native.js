@@ -16,7 +16,14 @@ const Native = (() => {
       isApp: true,
       status: () => JSON.parse(real.getStatus()),
       config: () => JSON.parse(real.getConfig()),
-      points: async () => JSON.parse(real.getPoints()),
+      points: async () => {
+        const bin = atob(real.getPoints());
+        const u8 = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+        const v = new Int32Array(u8.buffer), out = new Array(v.length / 4);
+        for (let i = 0; i < out.length; i++) out[i] = { ts: v[i * 4] * 1000, lat: v[i * 4 + 1] / 1e6, lon: v[i * 4 + 2] / 1e6, acc: v[i * 4 + 3] };
+        return out;
+      },
       start: () => real.startTracking(),
       stop: () => real.stopTracking(),
       sync: () => real.syncNow(),
