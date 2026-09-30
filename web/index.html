@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MyMap</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>MyMap <span id="version">v0.1.0</span></h1>
+  <span id="mode" class="badge">demo</span>
+</header>
+
+<main>
+  <aside>
+    <section id="login">
+      <h2>Server</h2>
+      <input id="url" type="url" placeholder="URL server (es. https://mymap.tuodominio.it)">
+      <input id="email" type="email" placeholder="Email" autocomplete="username">
+      <input id="pw" type="password" placeholder="Password" autocomplete="current-password">
+      <button id="connect">Accedi</button>
+      <button id="demo" class="secondary">Usa dati demo</button>
+      <p id="msg" class="msg"></p>
+    </section>
+
+    <section id="stats">
+      <div class="stat"><span id="s-points">–</span><label>Punti registrati</label></div>
+      <div class="stat"><span id="s-km">–</span><label>Distanza (km)</label></div>
+      <div class="stat"><span id="s-last">–</span><label>Ultimo punto</label></div>
+      <div class="stat"><span id="s-batt">–</span><label>Batteria</label></div>
+    </section>
+
+    <section>
+      <h2>Giorno</h2>
+      <select id="day"></select>
+    </section>
+  </aside>
+  <div id="map"></div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
