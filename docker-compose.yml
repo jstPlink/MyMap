@@ -1,11 +1,17 @@
+# PocketBase di MyMap, pensato per il NAS.
+#   docker compose up -d                      solo PocketBase, sulla porta 9090 (LAN)
+#   docker compose --profile tunnel up -d     in più il tunnel Cloudflare, per raggiungerlo da fuori casa
+#
+# Sul NAS servono questa cartella con dentro pocketbase/pb_migrations (crea la collection `points`
+# e abilita /api/batch). pb_data viene creata al primo avvio.
 services:
   pocketbase:
     image: ghcr.io/muchobien/pocketbase:latest
     container_name: mymap-pocketbase
     restart: unless-stopped
-    command: ["serve", "--http=0.0.0.0:8090"]
+    command: ["serve", "--http=0.0.0.0:8090", "--dir=/pb_data", "--migrationsDir=/pb_migrations"]
     ports:
-      - "127.0.0.1:8090:8090"   # solo localhost: il tunnel Cloudflare punta qui
+      - "9090:8090"   # porta 9090 del NAS -> 8090 del container
     volumes:
       - ./pocketbase/pb_data:/pb_data
       - ./pocketbase/pb_migrations:/pb_migrations
@@ -14,3 +20,17 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+
+  # Accesso da fuori casa senza aprire porte sul router.
+  # Serve un tunnel creato su Cloudflare Zero Trust (Networks > Tunnels) con hostname pubblico
+  # che punta a http://pocketbase:8090; il token va in un file .env accanto a questo: CLOUDFLARE_TUNNEL_TOKEN=...
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: mymap-tunnel
+    restart: unless-stopped
+    profiles: ["tunnel"]
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      - pocketbase

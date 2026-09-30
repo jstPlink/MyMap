@@ -30,6 +30,16 @@ class SyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, 
                 if (done.isEmpty()) return Result.retry()
                 store.markSynced(done)
             }
+            if (!prefs.historyPulled) {
+                var page = 1
+                while (true) {
+                    val (items, pages) = api.fetchPage(page)
+                    store.insertSynced(items)
+                    if (page >= pages) break
+                    page++
+                }
+                prefs.historyPulled = true
+            }
             prefs.lastSync = SimpleDateFormat("dd/MM HH:mm:ss", Locale.ITALY).format(Date())
             Result.success()
         } catch (e: Exception) {

@@ -1,114 +1,64 @@
 package com.mymap.app
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
-import android.text.InputType
-import android.view.ViewGroup
-import android.widget.Button
-import android.widget.EditText
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
+import android.view.WindowInsets
+import android.webkit.JavascriptInterface
+import android.webkit.WebView
+import android.widget.FrameLayout
 import android.widget.Toast
+import org.json.JSONObject
 
-/** Schermata unica: configurazione server, permessi, start/stop e stato del buffer. UI costruita a codice. */
+/**
+ * Contenitore dell'interfaccia web (cartella web/ del repository, inclusa negli asset).
+ * Qui restano solo i permessi Android e il ponte verso il motore nativo: tracking, buffer e sync.
+ */
 class MainActivity : Activity() {
 
     private lateinit var prefs: Prefs
     private lateinit var store: PointStore
-    private lateinit var status: TextView
-    private lateinit var toggle: Button
-    private val ui = Handler(Looper.getMainLooper())
+    private lateinit var web: WebView
 
-    private val refresh = object : Runnable {
-        override fun run() {
-            val (total, pending) = store.counts()
-            status.text = "Punti registrati: $total\nDa sincronizzare: $pending\n" +
-                "Ultima sync: ${prefs.lastSync}\nTracking: ${if (prefs.tracking) "ATTIVO" else "fermo"}"
-            toggle.text = if (prefs.tracking) "Ferma tracking" else "Avvia tracking"
-            ui.postDelayed(this, 3000)
-        }
-    }
-
+    @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = Prefs(this)
         store = PointStore(this)
+        SyncWorker.enqueue(this) // invia il buffer e, la prima volta, scarica lo storico dal server
 
-        val info = packageManager.getPackageInfo(packageName, 0)
-        val version = TextView(this).apply {
-            text = "MyMap v${info.versionName} (build ${info.longVersionCode})"
-            textSize = 18f
-            setPadding(0, 0, 0, 24)
+        web = WebView(this).apply {
+            settings.javaScriptEnabled = true
+            settings.domStorageEnabled = true
+            addJavascriptInterface(Bridge(), "MyMapNative")
+            loadUrl("file:///android_asset/index.html")
         }
-
-        val url = field("URL server (es. https://mymap.tuodominio.it)", prefs.serverUrl, InputType.TYPE_TEXT_VARIATION_URI)
-        val email = field("Email", prefs.email, InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS)
-        val pw = field("Password", prefs.password, InputType.TYPE_TEXT_VARIATION_PASSWORD)
-        status = TextView(this).apply { textSize = 16f; setPadding(0, 24, 0, 24) }
-
-        val save = Button(this).apply {
-            text = "Salva e prova login"
-            setOnClickListener {
-                prefs.serverUrl = url.text.toString()
-                prefs.email = email.text.toString()
-                prefs.password = pw.text.toString()
-                prefs.token = ""
-                Thread {
-                    val ok = try { Api(prefs).login() } catch (e: Exception) { false }
-                    runOnUiThread {
-                        Toast.makeText(this@MainActivity, if (ok) "Login riuscito" else "Login fallito", Toast.LENGTH_LONG).show()
-                    }
-                }.start()
+        // da Android 15 l'app disegna sotto barra di stato, notch e barra di navigazione: lasciamo lo spazio
+        val root = FrameLayout(this).apply {
+            addView(web)
+            setOnApplyWindowInsetsListener { v, insets ->
+                if (Build.VERSION.SDK_INT >= 30) {
+                    val b = insets.getInsets(
+                        WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout() or WindowInsets.Type.ime()
+                    )
+                    v.setPadding(b.left, b.top, b.right, b.bottom)
+                    WindowInsets.CONSUMED
+                } else {
+                    v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
+                    insets.consumeSystemWindowInsets()
+                }
             }
         }
-        toggle = Button(this).apply {
-            setOnClickListener {
-                if (prefs.tracking) LocationService.stop(this@MainActivity) else startTracking()
-            }
-        }
-        val syncNow = Button(this).apply {
-            text = "Sincronizza ora"
-            setOnClickListener { SyncWorker.enqueue(this@MainActivity) }
-        }
-        val battery = Button(this).apply {
-            text = "Escludi da risparmio batteria"
-            setOnClickListener { requestIgnoreBattery() }
-        }
-
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(40, 60, 40, 40)
-            listOf(version, url, email, pw, save, status, toggle, syncNow, battery).forEach {
-                addView(it, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-            }
-        }
-        setContentView(ScrollView(this).apply { addView(root) })
-    }
-
-    override fun onResume() {
-        super.onResume()
-        ui.post(refresh)
-    }
-
-    override fun onPause() {
-        ui.removeCallbacks(refresh)
-        super.onPause()
-    }
-
-    private fun field(hint: String, value: String, type: Int) = EditText(this).apply {
-        this.hint = hint
-        setText(value)
-        inputType = InputType.TYPE_CLASS_TEXT or type
+        root.setBackgroundColor(android.graphics.Color.WHITE)
+        setContentView(root)
+        root.requestApplyInsets()
     }
 
     /** Android impone i permessi a gradini: prima posizione precisa, poi "sempre", poi notifiche. */
@@ -148,6 +98,56 @@ class MainActivity : Activity() {
         startActivity(
             Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName"))
         )
+    }
+
+    /** API esposta all'interfaccia web come window.MyMapNative (vedi web/native.js). */
+    private inner class Bridge {
+        @JavascriptInterface
+        fun getStatus(): String {
+            val (total, pending) = store.counts()
+            val info = packageManager.getPackageInfo(packageName, 0)
+            return JSONObject()
+                .put("version", info.versionName).put("build", info.longVersionCode)
+                .put("total", total).put("pending", pending)
+                .put("lastSync", prefs.lastSync).put("tracking", prefs.tracking)
+                .toString()
+        }
+
+        @JavascriptInterface
+        fun getConfig(): String = JSONObject()
+            .put("url", prefs.serverUrl).put("email", prefs.email).put("hasPassword", prefs.password.isNotEmpty())
+            .toString()
+
+        @JavascriptInterface
+        fun getPoints(): String = store.recentJson(1_000_000)
+
+        @JavascriptInterface
+        fun startTracking() { runOnUiThread { this@MainActivity.startTracking() } }
+
+        @JavascriptInterface
+        fun stopTracking() { runOnUiThread { LocationService.stop(this@MainActivity) } }
+
+        @JavascriptInterface
+        fun syncNow() { SyncWorker.enqueue(this@MainActivity) }
+
+        @JavascriptInterface
+        fun requestIgnoreBattery() { runOnUiThread { this@MainActivity.requestIgnoreBattery() } }
+
+        /** Salva la configurazione e prova il login; il risultato torna all'interfaccia con window.__nativeResult. */
+        @JavascriptInterface
+        fun saveConfigAndLogin(json: String) {
+            val c = JSONObject(json)
+            prefs.serverUrl = c.getString("url")
+            prefs.email = c.getString("email")
+            if (c.getString("password").isNotEmpty()) prefs.password = c.getString("password")
+            prefs.token = ""
+            prefs.historyPulled = false
+            Thread {
+                val ok = try { Api(prefs).login() } catch (e: Exception) { false }
+                if (ok) SyncWorker.enqueue(this@MainActivity)
+                runOnUiThread { web.evaluateJavascript("window.__nativeResult($ok)", null) }
+            }.start()
+        }
     }
 
     companion object {

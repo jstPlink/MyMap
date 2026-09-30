@@ -5,10 +5,10 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-/** Client minimale per PocketBase: login e invio batch di punti. Nessuna libreria esterna. */
+/** Client minimale per PocketBase: invio batch di punti e scarico dello storico, con login utente. Nessuna libreria esterna. */
 class Api(private val prefs: Prefs) {
 
-    private fun call(method: String, path: String, body: JSONObject?, auth: Boolean): Pair<Int, String> {
+    private fun call(method: String, path: String, body: JSONObject?, auth: Boolean = true): Pair<Int, String> {
         val conn = URL(prefs.serverUrl + path).openConnection() as HttpURLConnection
         conn.requestMethod = method
         conn.connectTimeout = 15000
@@ -45,6 +45,29 @@ class Api(private val prefs: Prefs) {
         return ok ?: error("invio fallito")
     }
 
+    /** Una pagina dello storico dal server (ordinato per tempo). Ritorna i punti e il numero di pagine totali. */
+    fun fetchPage(page: Int): Pair<List<TrackPoint>, Int> {
+        if (prefs.token.isEmpty() && !login()) error("login fallito")
+        val path = "/api/collections/points/records?perPage=500&page=$page&sort=ts" +
+            "&fields=client_id,ts,lat,lon,accuracy,speed,bearing,altitude,provider,battery"
+        var (code, text) = call("GET", path, null)
+        if ((code == 401 || code == 403) && login()) { val r = call("GET", path, null); code = r.first; text = r.second }
+        if (code != 200) error("scarico fallito: $code")
+        val j = JSONObject(text)
+        val items = j.getJSONArray("items")
+        fun JSONObject.f(k: String): Float? = if (isNull(k)) null else getDouble(k).toFloat()
+        val out = (0 until items.length()).map { i ->
+            val o = items.getJSONObject(i)
+            TrackPoint(
+                0, o.getString("client_id"), o.getLong("ts"), o.getDouble("lat"), o.getDouble("lon"),
+                o.f("accuracy"), o.f("speed"), o.f("bearing"),
+                if (o.isNull("altitude")) null else o.getDouble("altitude"),
+                o.optString("provider", ""), o.optInt("battery", 0),
+            )
+        }
+        return out to j.getInt("totalPages")
+    }
+
     private fun body(p: TrackPoint) = JSONObject()
         .put("user", prefs.userId).put("client_id", p.clientId).put("ts", p.ts)
         .put("lat", p.lat).put("lon", p.lon)
@@ -60,7 +83,7 @@ class Api(private val prefs: Prefs) {
                     .put("body", body(p))
             )
         }
-        val (code, _) = call("POST", "/api/batch", JSONObject().put("requests", requests), true)
+        val (code, _) = call("POST", "/api/batch", JSONObject().put("requests", requests))
         if (code == 401 || code == 403) return null
         if (code == 200) return points.map { it.id }
         // il batch è transazionale: un duplicato lo fa fallire, quindi reinvio punto per punto
@@ -68,7 +91,7 @@ class Api(private val prefs: Prefs) {
     }
 
     private fun sendOne(p: TrackPoint): Boolean {
-        val (code, text) = call("POST", "/api/collections/points/records", body(p), true)
+        val (code, text) = call("POST", "/api/collections/points/records", body(p))
         // 400 su client_id = già presente sul server, conta come sincronizzato
         return code in 200..299 || (code == 400 && text.contains("client_id"))
     }

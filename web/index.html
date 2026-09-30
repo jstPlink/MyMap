@@ -2,45 +2,71 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>MyMap</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header>
-  <h1>MyMap <span id="version">v0.1.0</span></h1>
-  <span id="mode" class="badge">demo</span>
-</header>
+<div id="app">
+  <header>
+    <h1>MyMap <span id="version"></span></h1>
+    <span id="badge" class="badge">fermo</span>
+  </header>
 
-<main>
-  <aside>
-    <section id="login">
+  <section id="view-map" class="view active">
+    <div class="strip">
+      <div class="stat"><span id="s-points">–</span><label>Punti</label></div>
+      <div class="stat"><span id="s-km">–</span><label>km</label></div>
+      <div class="stat"><span id="s-last">–</span><label>Ultimo</label></div>
+      <select id="day"></select>
+    </div>
+    <div class="modes" id="modes">
+      <button data-mode="routes" class="active">Percorsi</button>
+      <button data-mode="heat">Heatmap</button>
+      <button data-mode="scratch">Scratch</button>
+      <button data-mode="stays">Soste</button>
+    </div>
+    <p class="modeinfo" id="modeinfo"></p>
+    <div id="map"></div>
+  </section>
+
+  <section id="view-tracker" class="view">
+    <div class="card">
+      <h2>Stato</h2>
+      <p class="big" id="t-state">Tracking fermo</p>
+      <dl>
+        <dt>Punti registrati</dt><dd id="t-total">–</dd>
+        <dt>Da sincronizzare</dt><dd id="t-pending">–</dd>
+        <dt>Ultima sync</dt><dd id="t-sync">–</dd>
+      </dl>
+    </div>
+    <button id="toggle">Avvia tracking</button>
+    <button id="sync" class="secondary">Sincronizza ora</button>
+    <button id="battery" class="secondary">Escludi da risparmio batteria</button>
+  </section>
+
+  <section id="view-settings" class="view">
+    <div class="card">
       <h2>Server</h2>
       <input id="url" type="url" placeholder="URL server (es. https://mymap.tuodominio.it)">
       <input id="email" type="email" placeholder="Email" autocomplete="username">
       <input id="pw" type="password" placeholder="Password" autocomplete="current-password">
-      <button id="connect">Accedi</button>
-      <button id="demo" class="secondary">Usa dati demo</button>
+      <button id="save">Salva e prova login</button>
       <p id="msg" class="msg"></p>
-    </section>
+    </div>
+  </section>
 
-    <section id="stats">
-      <div class="stat"><span id="s-points">–</span><label>Punti registrati</label></div>
-      <div class="stat"><span id="s-km">–</span><label>Distanza (km)</label></div>
-      <div class="stat"><span id="s-last">–</span><label>Ultimo punto</label></div>
-      <div class="stat"><span id="s-batt">–</span><label>Batteria</label></div>
-    </section>
-
-    <section>
-      <h2>Giorno</h2>
-      <select id="day"></select>
-    </section>
-  </aside>
-  <div id="map"></div>
-</main>
+  <nav>
+    <button data-view="map" class="active">Mappa</button>
+    <button data-view="tracker">Tracker</button>
+    <button data-view="settings">Impostazioni</button>
+  </nav>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+<script src="native.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

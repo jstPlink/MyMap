@@ -68,6 +68,44 @@ class PointStore(context: Context) : SQLiteOpenHelper(context, "points.db", null
         return out
     }
 
+    /** Ultimi punti registrati (ordinati per tempo) per disegnare la mappa, come JSON per l'interfaccia web. */
+    @Synchronized
+    fun recentJson(limit: Int): String {
+        val sb = StringBuilder("[")
+        readableDatabase.rawQuery(
+            "SELECT ts,lat,lon,battery FROM (SELECT ts,lat,lon,battery FROM points ORDER BY ts DESC LIMIT ?) ORDER BY ts",
+            arrayOf(limit.toString())
+        ).use { c ->
+            while (c.moveToNext()) {
+                if (sb.length > 1) sb.append(',')
+                sb.append("{\"ts\":").append(c.getLong(0)).append(",\"lat\":").append(c.getDouble(1))
+                    .append(",\"lon\":").append(c.getDouble(2)).append(",\"battery\":").append(c.getInt(3)).append('}')
+            }
+        }
+        return sb.append(']').toString()
+    }
+
+    /** Punti scaricati dal server: già sincronizzati, quindi synced=1. Gli esistenti restano invariati. */
+    @Synchronized
+    fun insertSynced(points: List<TrackPoint>) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            for (p in points) {
+                val v = ContentValues().apply {
+                    put("client_id", p.clientId); put("ts", p.ts); put("lat", p.lat); put("lon", p.lon)
+                    put("accuracy", p.accuracy); put("speed", p.speed); put("bearing", p.bearing)
+                    put("altitude", p.altitude); put("provider", p.provider); put("battery", p.battery)
+                    put("synced", 1)
+                }
+                db.insertWithOnConflict("points", null, v, SQLiteDatabase.CONFLICT_IGNORE)
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
     @Synchronized
     fun markSynced(ids: List<Long>) {
         if (ids.isEmpty()) return

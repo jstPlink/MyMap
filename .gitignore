@@ -9,3 +9,7 @@ android/local.properties
 node_modules/
 pocketbase/bin/
 pocketbase/local-credentials.txt
+
+# dati personali esportati (posizioni, Google Takeout)
+takeout/
+TAKEOUT/

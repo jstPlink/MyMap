@@ -11,9 +11,15 @@ android {
         applicationId = "com.mymap.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 6
+        versionName = "0.5.0"
+        buildConfigField("String", "SERVER_URL", "\"https://pocketbase.fplinio.it\"")
     }
+
+    buildFeatures { buildConfig = true }
+
+    // l'interfaccia è la cartella web/ del repository, inclusa così com'è nell'APK
+    sourceSets.getByName("main").assets.srcDir("../../web")
 
     buildTypes {
         release {
