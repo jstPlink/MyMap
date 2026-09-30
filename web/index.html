@@ -19,7 +19,11 @@
       <div class="stat"><span id="s-points">–</span><label>Punti</label></div>
       <div class="stat"><span id="s-km">–</span><label>km</label></div>
       <div class="stat"><span id="s-last">–</span><label>Ultimo</label></div>
-      <select id="day"></select>
+    </div>
+    <div class="filters">
+      <select id="f-year"></select>
+      <select id="f-month"></select>
+      <select id="f-day"></select>
     </div>
     <div class="modes" id="modes">
       <button data-mode="routes" class="active">Percorsi</button>
@@ -28,7 +32,11 @@
       <button data-mode="stays">Soste</button>
     </div>
     <p class="modeinfo" id="modeinfo"></p>
-    <div id="map"></div>
+    <div id="mapwrap"><div id="map"></div><button id="locate" title="Dove sono">&#9678;</button></div>
+  </section>
+
+  <section id="view-stats" class="view">
+    <div id="stats"></div>
   </section>
 
   <section id="view-tracker" class="view">
@@ -59,6 +67,7 @@
 
   <nav>
     <button data-view="map" class="active">Mappa</button>
+    <button data-view="stats">Statistiche</button>
     <button data-view="tracker">Tracker</button>
     <button data-view="settings">Impostazioni</button>
   </nav>
@@ -66,6 +75,8 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+<script src="geo.js"></script>
+<script src="stats.js"></script>
 <script src="native.js"></script>
 <script src="app.js"></script>
 </body>

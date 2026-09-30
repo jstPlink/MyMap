@@ -6,6 +6,7 @@ import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.location.LocationManager
 import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
@@ -120,6 +121,16 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun getPoints(): String = store.recentJson(1_000_000)
+
+        /** Ultima posizione nota del telefono (la più recente tra i provider), o stringa vuota. */
+        @JavascriptInterface
+        fun getLocation(): String {
+            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return ""
+            val lm = getSystemService(LocationManager::class.java)
+            val best = lm.getProviders(true).mapNotNull { try { lm.getLastKnownLocation(it) } catch (e: SecurityException) { null } }
+                .maxByOrNull { it.time } ?: return ""
+            return JSONObject().put("lat", best.latitude).put("lon", best.longitude).toString()
+        }
 
         @JavascriptInterface
         fun startTracking() { runOnUiThread { this@MainActivity.startTracking() } }

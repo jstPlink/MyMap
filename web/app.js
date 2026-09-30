@@ -1,4 +1,4 @@
-// Interfaccia di MyMap: mappa, tracker, impostazioni. Il motore (Native) è in native.js.
+// Interfaccia di MyMap: mappa, statistiche, tracker, impostazioni. Il motore (Native) è in native.js.
 const $ = (id) => document.getElementById(id);
 
 const map = L.map("map").setView([45.4642, 9.19], 13);
@@ -6,40 +6,71 @@ L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19, attribution: "&copy; OpenStreetMap",
 }).addTo(map);
 const layer = L.layerGroup().addTo(map);
+const meLayer = L.layerGroup().addTo(map);
 let points = [];
 
 // ---------- schede ----------
-let current = "map";
 function show(view) {
-  current = view;
   document.querySelectorAll(".view").forEach((v) => v.classList.toggle("active", v.id === "view-" + view));
   document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
   if (view === "map") { map.invalidateSize(); loadPoints(); }
+  if (view === "stats") { renderStats(points); }
   if (view === "tracker") refreshStatus();
 }
 document.querySelectorAll("nav button").forEach((b) => (b.onclick = () => show(b.dataset.view)));
 
-// ---------- mappa ----------
-const dayKey = (ts) => new Date(ts).toLocaleDateString("it-IT");
+// ---------- filtri: anno, mese, giorno ----------
+const ts2 = (ts) => { const d = new Date(ts); return [d.getFullYear(), d.getMonth(), d.getDate()]; };
+const opt = (v, t) => `<option value="${v}">${t}</option>`;
 
-function km(a, b) {
-  const R = 6371, rad = Math.PI / 180;
-  const dLat = (b.lat - a.lat) * rad, dLon = (b.lon - a.lon) * rad;
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLon / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
+function fillFilters() {
+  const ys = $("f-year"), ms = $("f-month"), ds = $("f-day");
+  const keep = [ys.value, ms.value, ds.value];
+  const dates = points.map((p) => ts2(p.ts));
+  const years = [...new Set(dates.map((d) => d[0]))].sort((a, b) => b - a);
+  ys.innerHTML = opt("", "Tutti gli anni") + years.map((y) => opt(y, y)).join("");
+  if (years.map(String).includes(keep[0])) ys.value = keep[0];
+
+  const inYear = dates.filter((d) => !ys.value || d[0] === +ys.value);
+  const months = [...new Set(inYear.map((d) => d[1]))].sort((a, b) => a - b);
+  ms.innerHTML = opt("", "Tutti i mesi") + months.map((m) => opt(m, MESI[m])).join("");
+  if (months.map(String).includes(keep[1])) ms.value = keep[1];
+
+  const inMonth = inYear.filter((d) => ms.value === "" || d[1] === +ms.value);
+  const days = [...new Set(inMonth.map((d) => d[2]))].sort((a, b) => a - b);
+  ds.innerHTML = opt("", "Tutti i giorni") + days.map((d) => opt(d, d)).join("");
+  ds.disabled = ms.value === "";
+  if (ms.value !== "" && days.map(String).includes(keep[2])) ds.value = keep[2];
 }
 
-async function loadPoints() {
-  points = await Native.points();
-  const sel = $("day"), prev = sel.value;
-  const days = [...new Set(points.map((p) => dayKey(p.ts)))];
-  sel.innerHTML = '<option value="">Tutti i giorni</option>' + days.map((d) => `<option>${d}</option>`).join("");
-  if (days.includes(prev)) sel.value = prev;
-  render();
+function filtered() {
+  const y = $("f-year").value, m = $("f-month").value, d = $("f-day").value;
+  if (!y && m === "" && !d) return points;
+  return points.filter((p) => {
+    const [py, pm, pd] = ts2(p.ts);
+    return (!y || py === +y) && (m === "" || pm === +m) && (!d || pd === +d);
+  });
 }
+
+["f-year", "f-month", "f-day"].forEach((id) => ($(id).onchange = () => { fillFilters(); render(true); }));
+
+// ---------- posizione attuale ----------
+let here = null;
+async function locate() {
+  try { here = await Native.location(); } catch { here = null; }
+  if (!here && points.length) { const p = points[points.length - 1]; here = { lat: p.lat, lon: p.lon, approx: true }; }
+  return here;
+}
+function drawMe() {
+  meLayer.clearLayers();
+  if (!here) return;
+  L.circleMarker([here.lat, here.lon], { radius: 8, color: "#fff", weight: 3, fillColor: "#1e88e5", fillOpacity: 1 }).addTo(meLayer);
+}
+$("locate").onclick = async () => { await locate(); if (here) { drawMe(); map.setView([here.lat, here.lon], 15); } };
 
 // ---------- viste della mappa ----------
 let mode = "routes";
+let firstRender = true; // all'apertura la mappa si centra su dove sei, non sull'intero storico
 const canvas = L.canvas({ padding: 0.5 });
 const fmtDay = (ts) => new Date(ts).toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" });
 
@@ -57,9 +88,7 @@ function drawRoutes(pts) {
     if (s.length > 1) L.polyline(s, { color: "#009688", weight: 4, opacity: .85, renderer: canvas }).addTo(layer);
     else L.circleMarker(s[0], { radius: 3, color: "#009688", weight: 1, fillOpacity: .8, renderer: canvas }).addTo(layer); // punto isolato (sosta)
   });
-  const last = pts[pts.length - 1];
-  if (last) L.circleMarker([last.lat, last.lon], { radius: 7, color: "#00796b", fillColor: "#fff", fillOpacity: 1 }).addTo(layer);
-  return { dist, fit: segs.flat(), info: "Il tuo tracciato. Scegli un giorno per vedere un solo percorso." };
+  return { dist, fit: segs.flat(), info: "Il tuo tracciato. Filtra per anno, mese o giorno per vedere un solo periodo." };
 }
 
 // Heatmap: tra due punti vicini nel tempo si aggiungono punti intermedi, così i percorsi fatti più volte "si scaldano"
@@ -78,63 +107,53 @@ function drawHeat(pts) {
   return { fit: pts.map((p) => [p.lat, p.lon]), info: "Più il colore è caldo, più spesso sei passato di lì." };
 }
 
-// Scratch map: il mondo è coperto e le zone visitate si "grattano" (celle di circa 500 m)
+// Scratch map: esagoni azzurri sulle zone visitate (circa 300 m di lato)
 function drawScratch(pts) {
-  const S = 0.005, cells = new Map();
-  pts.forEach((p) => {
-    const y = Math.floor(p.lat / S), x = Math.floor(p.lon / S);
-    cells.set(y * 100000 + x, [y, x]);
+  const hex = hexCells(pts);
+  hex.cells.forEach(([q, r]) => {
+    L.polygon(hexCorners(q, r), {
+      renderer: canvas, color: "#0288d1", weight: 1, opacity: .7, fillColor: "#4fc3f7", fillOpacity: .6, interactive: false,
+    }).addTo(layer);
   });
-  const rows = [...cells.values()];
-  rows.forEach(([y, x]) => {
-    L.rectangle([[y * S, x * S], [(y + 1) * S, (x + 1) * S]],
-      { renderer: canvas, stroke: false, fillColor: "#ffb300", fillOpacity: .65, interactive: false }).addTo(layer);
-  });
-  const area = rows.reduce((a, [y]) => a + (S * 111.32) * (S * 111.32 * Math.cos((y + .5) * S * Math.PI / 180)), 0);
-  const fit = rows.map(([y, x]) => [y * S, x * S]);
-  return { fit, info: `${rows.length} celle visitate (≈ ${area.toFixed(0)} km² grattati). Ognuna è larga circa 500 m.` };
+  return {
+    fit: hex.cells.map(([q, r]) => hexCorners(q, r)[0]),
+    info: `${hex.cells.length} esagoni visitati (≈ ${hex.area.toFixed(0)} km² grattati). Ognuno è largo circa 500 m.`,
+  };
 }
 
-// Soste: dove hai passato più tempo. Il tempo tra due punti vicini (<150 m, <3 h) va alla cella di partenza
+// Soste: dove hai passato più tempo
 function drawStays(pts) {
-  const S = 0.002, cells = new Map();
-  pts.forEach((p, i) => {
-    const n = pts[i + 1];
-    if (!n) return;
-    const dt = n.ts - p.ts;
-    if (dt <= 0 || dt > 3 * 3600000 || km(p, n) > 0.15) return;
-    const key = Math.floor(p.lat / S) * 100000 + Math.floor(p.lon / S);
-    const c = cells.get(key) || { ms: 0, lat: 0, lon: 0, w: 0, first: p.ts, last: p.ts };
-    c.ms += dt; c.lat += p.lat * dt; c.lon += p.lon * dt; c.w += dt; c.first = Math.min(c.first, p.ts); c.last = Math.max(c.last, n.ts);
-    cells.set(key, c);
-  });
-  const top = [...cells.values()].filter((c) => c.ms >= 20 * 60000).sort((a, b) => b.ms - a.ms).slice(0, 60);
-  const hours = (c) => c.ms / 3600000;
+  const top = topStays(pts, 60);
   top.forEach((c, i) => {
-    const h = hours(c);
-    L.circle([c.lat / c.w, c.lon / c.w], { radius: 40 + 40 * Math.sqrt(h), color: "#6a1b9a", weight: 1, fillColor: "#ab47bc", fillOpacity: .45 })
+    const h = c.ms / 3600000;
+    L.circle([c.lat, c.lon], { radius: 40 + 40 * Math.sqrt(h), color: "#6a1b9a", weight: 1, fillColor: "#ab47bc", fillOpacity: .45 })
       .bindPopup(`<b>#${i + 1}</b> · ${h >= 48 ? (h / 24).toFixed(1) + " giorni" : h.toFixed(1) + " ore"}<br>${fmtDay(c.first)} – ${fmtDay(c.last)}`)
       .addTo(layer);
   });
   const best = top[0];
   return {
-    fit: top.map((c) => [c.lat / c.w, c.lon / c.w]),
-    info: best ? `Top ${top.length} luoghi dove ti sei fermato di più (il primo: ${hours(best).toFixed(0)} ore in totale). Tocca i cerchi per i dettagli.` : "Nessuna sosta lunga trovata.",
+    fit: top.map((c) => [c.lat, c.lon]),
+    info: best ? `Top ${top.length} luoghi dove ti sei fermato di più (il primo: ${(best.ms / 36e5).toFixed(0)} ore in totale). Tocca i cerchi per i dettagli.` : "Nessuna sosta lunga trovata.",
   };
 }
 
-function render() {
+// fit = true quando l'utente cambia vista o filtro: allora la mappa inquadra i dati; all'avvio resta su dove sei
+function render(fit) {
   layer.clearLayers();
-  const day = $("day").value;
-  const pts = day ? points.filter((p) => dayKey(p.ts) === day) : points;
+  const pts = filtered();
   const last = pts[pts.length - 1];
   const draw = { routes: drawRoutes, heat: drawHeat, scratch: drawScratch, stays: drawStays }[mode];
-  const r = pts.length ? draw(pts) : { dist: 0, fit: [], info: "Nessun punto." };
+  const r = pts.length ? draw(pts) : { dist: 0, fit: [], info: "Nessun punto nel periodo scelto." };
   map.invalidateSize();
-  if (r.fit.length) map.fitBounds(L.latLngBounds(r.fit), { padding: [30, 30], maxZoom: 17 });
+  if (firstRender && here) {
+    map.setView([here.lat, here.lon], 15);
+  } else if (fit && r.fit.length) {
+    map.fitBounds(L.latLngBounds(r.fit), { padding: [30, 30], maxZoom: 17 });
+  }
+  firstRender = false;
   $("modeinfo").textContent = r.info;
   let dist = r.dist;
-  if (dist === undefined) { dist = 0; pts.forEach((p, i) => { if (i && p.ts - pts[i - 1].ts <= 5 * 60000) dist += km(pts[i - 1], p); }); }
+  if (dist === undefined) { dist = 0; for (const s of moveSteps(pts)) dist += s.d; }
   $("s-points").textContent = pts.length;
   $("s-km").textContent = dist.toFixed(1);
   $("s-last").textContent = last ? new Date(last.ts).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "–";
@@ -142,9 +161,15 @@ function render() {
 document.querySelectorAll("#modes button").forEach((b) => (b.onclick = () => {
   mode = b.dataset.mode;
   document.querySelectorAll("#modes button").forEach((x) => x.classList.toggle("active", x === b));
-  render();
+  render(true);
 }));
-$("day").onchange = render;
+
+async function loadPoints() {
+  points = await Native.points();
+  if (firstRender) { await locate(); drawMe(); }
+  fillFilters();
+  render(false);
+}
 
 // ---------- tracker ----------
 function refreshStatus() {

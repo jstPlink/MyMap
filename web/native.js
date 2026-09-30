@@ -20,6 +20,7 @@ const Native = (() => {
       start: () => real.startTracking(),
       stop: () => real.stopTracking(),
       sync: () => real.syncNow(),
+      location: async () => { const t = real.getLocation(); return t ? JSON.parse(t) : null; },
       battery: () => real.requestIgnoreBattery(),
       saveConfig: (c) => new Promise((res) => { pending = res; real.saveConfigAndLogin(JSON.stringify(c)); }),
     };
@@ -41,6 +42,10 @@ const Native = (() => {
     points: async () => demo, // nel browser solo dati demo: le credenziali non vanno mai messe nel sito
     start: () => { state.tracking = true; },
     stop: () => { state.tracking = false; },
+    location: () => new Promise((res) => {
+      if (!navigator.geolocation) return res(null);
+      navigator.geolocation.getCurrentPosition((p) => res({ lat: p.coords.latitude, lon: p.coords.longitude }), () => res(null), { timeout: 4000 });
+    }),
     sync: () => { state.pending = 0; state.lastSync = new Date().toLocaleTimeString("it-IT"); },
     battery: () => alert("Disponibile solo nell'app Android"),
     saveConfig: async (c) => { store.set("url", c.url.trim()); return true; },

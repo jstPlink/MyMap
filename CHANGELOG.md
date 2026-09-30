@@ -4,6 +4,12 @@ Versione app in `android/app/build.gradle.kts` (`versionName` e `versionCode`).
 Ad ogni rilascio: alzare `versionCode` di 1, aggiornare `versionName` e aggiungere una voce qui.
 La versione è mostrata in cima alla schermata dell'app.
 
+## 0.6.0 (build 7) - 2026-10-01
+- All'apertura la mappa si centra su dove ti trovi (con pulsante per tornarci).
+- Scratch map con esagoni azzurri.
+- Filtri per anno, mese e giorno.
+- Nuova scheda Statistiche: km totali e per mese/ora/giorno della settimana, record, giorni consecutivi, punto più lontano da casa, esagoni visitati, luoghi dove passi più tempo.
+
 ## 0.5.0 (build 6) - 2026-10-01
 - La mappa ha quattro viste: Percorsi, Heatmap (percorsi più ripetuti), Scratch (zone visitate, celle da ~500 m) e Soste (i luoghi dove hai passato più tempo).
 - Tutte rispettano il filtro per giorno.
