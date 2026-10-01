@@ -10,8 +10,8 @@ const Native = (() => {
   const real = window.MyMapNative;
 
   if (real) {
-    let pending = null;
-    window.__nativeResult = (ok) => { if (pending) { pending(ok); pending = null; } };
+    let authPending = null;
+    window.__authResult = (r) => { if (authPending) { authPending(r); authPending = null; } };
     return {
       isApp: true,
       status: () => JSON.parse(real.getStatus()),
@@ -27,9 +27,16 @@ const Native = (() => {
       start: () => real.startTracking(),
       stop: () => real.stopTracking(),
       sync: () => real.syncNow(),
+      repull: () => real.repullHistory(),
       location: async () => { const t = real.getLocation(); return t ? JSON.parse(t) : null; },
       battery: () => real.requestIgnoreBattery(),
-      saveConfig: (c) => new Promise((res) => { pending = res; real.saveConfigAndLogin(JSON.stringify(c)); }),
+      session: () => JSON.parse(real.getSession()),
+      loginEmail: (c) => new Promise((res) => { authPending = res; real.loginEmail(JSON.stringify(c)); }),
+      loginGoogle: (url) => new Promise((res) => { authPending = res; real.loginGoogle(url); }),
+      cancelGoogle: () => real.cancelGoogle(),
+      useLocal: () => real.useLocal(),
+      logout: (wipe) => real.logout(wipe),
+      exportData: (fmt) => real.exportData(fmt),
     };
   }
 
@@ -45,7 +52,10 @@ const Native = (() => {
   return {
     isApp: false,
     status: () => ({ version: "web", build: "", total: state.total, pending: state.pending, lastSync: state.lastSync, tracking: state.tracking }),
-    config: () => ({ url: store.get("url") || "https://pocketbase.fplinio.it", email: "", hasPassword: false }),
+    session: () => ({ mode: "local", url: "", email: "", oauth: false }),
+    loginEmail: async () => ({ ok: false, error: "Disponibile solo nell'app Android" }),
+    loginGoogle: async () => ({ ok: false, error: "Disponibile solo nell'app Android" }),
+    cancelGoogle: () => {}, useLocal: () => {}, logout: () => {}, exportData: () => {},
     points: async () => demo, // nel browser solo dati demo: le credenziali non vanno mai messe nel sito
     start: () => { state.tracking = true; },
     stop: () => { state.tracking = false; },
@@ -54,8 +64,8 @@ const Native = (() => {
       navigator.geolocation.getCurrentPosition((p) => res({ lat: p.coords.latitude, lon: p.coords.longitude }), () => res(null), { timeout: 4000 });
     }),
     sync: () => { state.pending = 0; state.lastSync = new Date().toLocaleTimeString("it-IT"); },
+    repull: () => {},
     battery: () => alert("Disponibile solo nell'app Android"),
-    saveConfig: async (c) => { store.set("url", c.url.trim()); return true; },
   };
 })();
 

@@ -29,11 +29,22 @@
           <button data-mode="scratch" class="active">Scratch</button>
           <button data-mode="heat">Heatmap</button>
           <button data-mode="routes">Percorsi</button>
+          <button data-mode="sleep">Notti</button>
+          <button data-mode="places">Posti</button>
         </div>
         <div class="filters">
           <select id="f-year"></select>
           <select id="f-month"></select>
           <select id="f-day"></select>
+        </div>
+        <div class="filters chips2">
+          <button id="f-today" class="chip">Oggi</button>
+          <button id="f-range-btn" class="chip">Periodo</button>
+          <button id="f-reset" class="chip danger" hidden>&#10005; Rimuovi filtri</button>
+        </div>
+        <div class="filters range" id="f-range" hidden>
+          <label>Dal <input type="date" id="f-from"></label>
+          <label>Al <input type="date" id="f-to"></label>
         </div>
       </div>
 
@@ -43,6 +54,7 @@
 
       <div class="float bottom">
         <p class="modeinfo" id="modeinfo"></p>
+        <button id="name-new" class="chip" hidden>Nomina i nuovi posti</button>
         <div class="chips">
           <div><b id="s-points">–</b><span>punti</span></div>
           <div><b id="s-km">–</b><span>km</span></div>
@@ -53,6 +65,10 @@
   </section>
 
   <section id="view-stats" class="view">
+    <div class="sfilters">
+      <select id="s-year"></select>
+      <select id="s-month"></select>
+    </div>
     <div id="stats"></div>
   </section>
 
@@ -73,13 +89,21 @@
 
   <section id="view-settings" class="view">
     <div class="card">
-      <h2>Server</h2>
-      <input id="url" type="url" placeholder="URL server (es. https://mymap.tuodominio.it)">
-      <input id="email" type="email" placeholder="Email" autocomplete="username">
-      <input id="pw" type="password" placeholder="Password" autocomplete="current-password">
-      <button id="save">Salva e prova login</button>
-      <p id="msg" class="msg"></p>
+      <h2>Account</h2>
+      <div id="acct-info"></div>
+      <button id="logout" class="secondary">Esci dall'account</button>
     </div>
+    <div class="card">
+      <h2>Esporta i dati</h2>
+      <p class="hint">Salva tutti i punti di questo telefono in un file, dove vuoi tu.</p>
+      <div class="exp">
+        <button class="secondary" data-export="csv">CSV</button>
+        <button class="secondary" data-export="gpx">GPX</button>
+        <button class="secondary" data-export="json">JSON</button>
+      </div>
+      <p class="msg" id="export-msg"></p>
+    </div>
+    <div id="prefs-ui"></div>
   </section>
 
   <nav>
@@ -102,11 +126,54 @@
   </nav>
 </div>
 
+<div id="login" hidden>
+  <div class="login-card">
+    <div class="logo big"></div>
+    <h1>MyMap</h1>
+    <p class="hint">Accedi per salvare e ritrovare i tuoi spostamenti.</p>
+    <div class="seg2" id="login-db">
+      <button data-db="server" class="active">Il mio server</button>
+      <button data-db="local">Su questo telefono</button>
+    </div>
+    <div id="login-server">
+      <input id="l-url" type="url" placeholder="URL del database (https://…)" autocapitalize="off">
+      <input id="l-email" type="email" placeholder="Email" autocomplete="username" autocapitalize="off">
+      <input id="l-pw" type="password" placeholder="Password" autocomplete="current-password">
+      <button id="l-login">Accedi</button>
+      <button id="l-create" class="secondary">Crea un nuovo account</button>
+      <div class="or"><span>oppure</span></div>
+      <button id="l-google" class="secondary">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="#4285F4" d="M22 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.6a4.8 4.8 0 0 1-2.1 3.1v2.6h3.4c2-1.8 3.1-4.5 3.1-7.5Z"/><path fill="#34A853" d="M12 22c2.8 0 5.1-.9 6.9-2.5l-3.4-2.6c-.9.6-2.1 1-3.5 1-2.7 0-5-1.8-5.800-4.300H2.700v2.700A10 10 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.200 13.600a6 6 0 0 1 0-3.800V7.100H2.700a10 10 0 0 0 0 9.200l3.500-2.700Z"/><path fill="#EA4335" d="M12 6c1.500 0 2.900.5 4 1.600l3-3A10 10 0 0 0 2.700 7.100l3.500 2.700C7 7.800 9.300 6 12 6Z"/></svg>
+        Continua con Google
+      </button>
+      <button id="l-cancel" class="secondary" hidden>Annulla accesso con Google</button>
+    </div>
+    <div id="login-local" hidden>
+      <p class="hint">I punti restano solo in questo telefono, senza account e senza sincronizzazione. Potrai collegarti a un server più avanti dalle impostazioni: i punti registrati nel frattempo saranno caricati nel tuo account.</p>
+      <button id="l-local">Usa il database locale</button>
+    </div>
+    <p id="l-msg" class="msg"></p>
+  </div>
+</div>
+
+<div id="modal" hidden>
+  <div class="sheet">
+    <p id="modal-text"></p>
+    <input id="modal-input" type="text" maxlength="60" autocomplete="off" hidden>
+    <button id="modal-ok" class="danger">Conferma</button>
+    <button id="modal-skip" class="secondary" hidden>Salta</button>
+    <button id="modal-no" class="secondary">Annulla</button>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
 <script src="geo.js"></script>
+<script src="prefs.js"></script>
+<script src="places.js"></script>
 <script src="stats.js"></script>
 <script src="native.js"></script>
 <script src="app.js"></script>
+<script src="account.js"></script>
 </body>
 </html>

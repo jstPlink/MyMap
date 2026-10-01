@@ -21,6 +21,17 @@ class Prefs(context: Context) {
     var userId: String
         get() = sp.getString("uid", "") ?: ""
         set(v) = sp.edit().putString("uid", v).apply()
+    /** "none" = non ha ancora scelto, "server" = account su un PocketBase, "local" = solo database del telefono. */
+    var mode: String
+        get() = sp.getString("mode", null) ?: if (email.isNotEmpty() || token.isNotEmpty()) "server" else "none" // installazioni precedenti
+        set(v) = sp.edit().putString("mode", v).apply()
+    /** true se l'accesso è avvenuto con Google: non c'è una password con cui rifare il login, si rinnova il token. */
+    var oauth: Boolean
+        get() = sp.getBoolean("oauth", false)
+        set(v) = sp.edit().putBoolean("oauth", v).apply()
+    fun clearAccount() {
+        sp.edit().remove("email").remove("pw").remove("token").remove("uid").putBoolean("oauth", false).putBoolean("historyPulled", false).apply()
+    }
     var tracking: Boolean
         get() = sp.getBoolean("tracking", false)
         set(v) = sp.edit().putBoolean("tracking", v).apply()

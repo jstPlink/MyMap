@@ -36,6 +36,28 @@ class PointStore(context: Context) : SQLiteOpenHelper(context, "points.db", null
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {}
 
+    init { setWriteAheadLoggingEnabled(true) } // l'esportazione legge mentre il tracking continua a scrivere
+
+    /** Scorre tutti i punti in ordine di tempo, senza tenerli in memoria (usato dall'esportazione). */
+    fun forEachPoint(block: (TrackPoint) -> Unit) {
+        readableDatabase.rawQuery("SELECT ts,lat,lon,accuracy,speed,bearing,altitude,provider,battery FROM points ORDER BY ts", null).use { c ->
+            while (c.moveToNext()) {
+                block(
+                    TrackPoint(
+                        0, "", c.getLong(0), c.getDouble(1), c.getDouble(2),
+                        if (c.isNull(3)) null else c.getFloat(3), if (c.isNull(4)) null else c.getFloat(4),
+                        if (c.isNull(5)) null else c.getFloat(5), if (c.isNull(6)) null else c.getDouble(6),
+                        c.getString(7) ?: "", c.getInt(8),
+                    )
+                )
+            }
+        }
+    }
+
+    /** Svuota il buffer: si fa uscendo da un account, così i punti di un utente non finiscono in quello di un altro. */
+    @Synchronized
+    fun clear() { writableDatabase.delete("points", null, null) }
+
     @Synchronized
     fun insert(p: TrackPoint) {
         val v = ContentValues().apply {

@@ -146,29 +146,128 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun syncNow() { SyncWorker.enqueue(this@MainActivity) }
 
+        /** Rilegge dal server tutto lo storico (i punti già presenti restano, i nuovi si aggiungono). */
+        @JavascriptInterface
+        fun repullHistory() { prefs.historyPulled = false; SyncWorker.enqueue(this@MainActivity) }
+
         @JavascriptInterface
         fun requestIgnoreBattery() { runOnUiThread { this@MainActivity.requestIgnoreBattery() } }
 
-        /** Salva la configurazione e prova il login; il risultato torna all'interfaccia con window.__nativeResult. */
+        /** Stato dell'accesso: modalità (none/server/local), server, email. */
         @JavascriptInterface
-        fun saveConfigAndLogin(json: String) {
+        fun getSession(): String = JSONObject()
+            .put("mode", prefs.mode).put("url", prefs.serverUrl).put("email", prefs.email).put("oauth", prefs.oauth)
+            .toString()
+
+        /**
+         * Accesso (o creazione dell'account) con email e password su un server PocketBase. Le credenziali sono quelle con cui
+         * l'app fa poi login: i punti registrati vengono associati a questo account. Risultato in window.__authResult({ok, error}).
+         */
+        @JavascriptInterface
+        fun loginEmail(json: String) {
             val c = JSONObject(json)
-            prefs.serverUrl = c.getString("url")
-            prefs.email = c.getString("email")
-            if (c.getString("password").isNotEmpty()) prefs.password = c.getString("password")
-            prefs.token = ""
-            prefs.historyPulled = false
+            val before = prefs.mode
+            val old = listOf(prefs.serverUrl, prefs.email, prefs.password, prefs.token, prefs.userId)
             Thread {
-                val ok = try { Api(prefs).login() } catch (e: Exception) { false }
-                if (ok) SyncWorker.enqueue(this@MainActivity)
-                runOnUiThread { web.evaluateJavascript("window.__nativeResult($ok)", null) }
+                var err: String?
+                try {
+                    prefs.serverUrl = c.getString("url"); prefs.email = c.getString("email"); prefs.password = c.getString("password")
+                    prefs.token = ""; prefs.oauth = false
+                    val api = Api(prefs)
+                    err = if (!api.health()) "Server non raggiungibile" else null
+                    if (err == null && c.optBoolean("create")) err = api.register()
+                    if (err == null) err = api.loginMessage()
+                } catch (e: Exception) {
+                    err = "Errore di rete: ${e.message}"
+                }
+                if (err != null && before == "server") { // un tentativo fallito non deve cancellare l'account già collegato
+                    prefs.serverUrl = old[0]; prefs.email = old[1]; prefs.password = old[2]; prefs.token = old[3]; prefs.userId = old[4]
+                }
+                finishAuth(err)
             }.start()
         }
+
+        private var google: Api? = null
+
+        /** Accesso con Google tramite il server PocketBase: apre il browser e attende il ritorno. */
+        @JavascriptInterface
+        fun loginGoogle(url: String) {
+            prefs.serverUrl = url
+            val api = Api(prefs).also { google = it }
+            Thread {
+                var err: String? = try {
+                    api.googleLogin { u -> runOnUiThread { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(u))) } }
+                } catch (e: Exception) { "Errore: ${e.message}" }
+                if (err != null) prefs.oauth = false
+                finishAuth(err)
+            }.start()
+        }
+
+        @JavascriptInterface
+        fun cancelGoogle() { google?.cancelOAuth() }
+
+        /** Solo database locale: nessun account, i punti restano nel telefono (e si caricano se poi ci si collega a un server). */
+        @JavascriptInterface
+        fun useLocal() { prefs.clearAccount(); prefs.mode = "local" }
+
+        /** Esce dall'account. Con `wipe` svuota anche i punti locali, che appartengono all'account che si lascia. */
+        @JavascriptInterface
+        fun logout(wipe: Boolean) {
+            if (wipe) store.clear()
+            prefs.clearAccount()
+            prefs.mode = "none"
+        }
+
+        /** Esporta i punti in un file scelto dall'utente: format = csv | gpx | json. */
+        @JavascriptInterface
+        fun exportData(format: String) {
+            runOnUiThread {
+                exportFormat = format
+                val (mime, ext) = when (format) {
+                    "gpx" -> "application/gpx+xml" to "gpx"
+                    "json" -> "application/json" to "json"
+                    else -> "text/csv" to "csv"
+                }
+                val name = "mymap-" + java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date()) + "." + ext
+                startActivityForResult(
+                    Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType(mime).putExtra(Intent.EXTRA_TITLE, name),
+                    REQ_EXPORT,
+                )
+            }
+        }
+    }
+
+    private var exportFormat = "csv"
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQ_EXPORT || resultCode != RESULT_OK) return
+        val uri = data?.data ?: return
+        Thread {
+            val msg = try {
+                val n = contentResolver.openOutputStream(uri)!!.use { Exporter.write(store, exportFormat, it) }
+                "Esportati $n punti"
+            } catch (e: Exception) {
+                "Esportazione non riuscita: ${e.message}"
+            }
+            runOnUiThread { Toast.makeText(this, msg, Toast.LENGTH_LONG).show() }
+        }.start()
+    }
+
+    /** Risultato dell'accesso verso l'interfaccia: window.__authResult({ok, error}). */
+    private fun finishAuth(err: String?) {
+        if (err == null) {
+            prefs.mode = "server"; prefs.historyPulled = false
+            SyncWorker.enqueue(this) // carica i punti locali non ancora inviati e scarica lo storico dell'account
+        }
+        val r = JSONObject().put("ok", err == null).put("error", err ?: "")
+        runOnUiThread { web.evaluateJavascript("window.__authResult($r)", null) }
     }
 
     companion object {
         private const val REQ_FG = 1
         private const val REQ_BG = 2
         private const val REQ_NOTIF = 3
+        private const val REQ_EXPORT = 4
     }
 }

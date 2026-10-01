@@ -4,6 +4,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 
 /** Client minimale per PocketBase: invio batch di punti e scarico dello storico, con login utente. Nessuna libreria esterna. */
 class Api(private val prefs: Prefs) {
@@ -25,33 +26,139 @@ class Api(private val prefs: Prefs) {
         return code to text
     }
 
-    fun login(): Boolean {
+    fun health(): Boolean = try { call("GET", "/api/health", null, false).first == 200 } catch (e: Exception) { false }
+
+    /** Messaggio leggibile da una risposta d'errore di PocketBase ("campo: messaggio"). */
+    private fun errorText(code: Int, text: String): String = try {
+        val j = JSONObject(text)
+        val data = j.optJSONObject("data")
+        val detail = data?.keys()?.asSequence()?.mapNotNull { k -> data.optJSONObject(k)?.optString("message")?.let { "$k: $it" } }?.joinToString("; ")
+        if (!detail.isNullOrEmpty()) detail else j.optString("message", "errore $code")
+    } catch (e: Exception) { "errore $code" }
+
+    /** Login con email e password già nelle preferenze. Ritorna null se ok, altrimenti il motivo. */
+    fun loginMessage(): String? {
         val (code, text) = call(
             "POST", "/api/collections/users/auth-with-password",
             JSONObject().put("identity", prefs.email).put("password", prefs.password), false,
         )
-        if (code != 200) return false
+        if (code != 200) return if (code == 400) "Email o password non corrette" else errorText(code, text)
         val j = JSONObject(text)
         prefs.token = j.getString("token")
         prefs.userId = j.getJSONObject("record").getString("id")
+        return null
+    }
+
+    fun login(): Boolean = loginMessage() == null
+
+    /** Rinnova il token (accesso con Google, senza password). */
+    private fun refresh(): Boolean {
+        val (code, text) = call("POST", "/api/collections/users/auth-refresh", null)
+        if (code != 200) return false
+        val j = JSONObject(text)
+        prefs.token = j.getString("token")
         return true
+    }
+
+    /** Token scaduto: con la password si rifà il login, con Google si rinnova il token. */
+    private fun relogin(): Boolean = if (prefs.oauth) refresh() else login()
+
+    /** Crea un nuovo account con email e password nelle preferenze (le stesse che userà l'app per il login). */
+    fun register(): String? {
+        val (code, text) = call(
+            "POST", "/api/collections/users/records",
+            JSONObject().put("email", prefs.email).put("password", prefs.password).put("passwordConfirm", prefs.password), false,
+        )
+        return if (code in 200..299) null else errorText(code, text)
+    }
+
+    @Volatile private var sse: HttpURLConnection? = null
+    fun cancelOAuth() { sse?.disconnect() }
+
+    /**
+     * Accesso con Google tramite PocketBase (serve il provider Google attivo nel server):
+     * si ascolta il canale realtime "@oauth2", si apre il browser sulla pagina di Google e, quando PocketBase riceve il
+     * codice dal reindirizzamento, lo si scambia con il token. `openUrl` apre il browser. Ritorna null se ok, altrimenti il motivo.
+     */
+    fun googleLogin(openUrl: (String) -> Unit): String? {
+        val (c, t) = call("GET", "/api/collections/users/auth-methods", null, false)
+        if (c != 200) return "Server non raggiungibile"
+        val m = JSONObject(t)
+        val list = m.optJSONObject("oauth2")?.optJSONArray("providers") ?: m.optJSONArray("authProviders")
+        var prov: JSONObject? = null
+        for (i in 0 until (list?.length() ?: 0)) if (list!!.getJSONObject(i).optString("name") == "google") prov = list.getJSONObject(i)
+        if (prov == null) return "Google non è attivo su questo server (si abilita da PocketBase: collection users, opzioni OAuth2)"
+        val redirect = prefs.serverUrl + "/api/oauth2-redirect"
+        val base = prov.optString("authURL", prov.optString("authUrl"))
+        val url = base + URLEncoder.encode(redirect, "UTF-8")
+
+        val conn = URL(prefs.serverUrl + "/api/realtime").openConnection() as HttpURLConnection
+        conn.connectTimeout = 15000
+        conn.readTimeout = 180000 // tempo massimo per completare l'accesso nel browser
+        sse = conn
+        try {
+            val reader = conn.inputStream.bufferedReader()
+            var event = ""
+            var data = ""
+            var clientId = ""
+            var code = ""
+            while (true) {
+                val line = reader.readLine() ?: return "Connessione chiusa dal server"
+                when {
+                    line.startsWith("event:") -> event = line.substring(6).trim()
+                    line.startsWith("data:") -> data = line.substring(5).trim()
+                    line.isEmpty() && event.isNotEmpty() -> {
+                        if (event == "PB_CONNECT" && clientId.isEmpty()) {
+                            clientId = JSONObject(data).getString("clientId")
+                            val (sc, _) = call("POST", "/api/realtime", JSONObject().put("clientId", clientId).put("subscriptions", org.json.JSONArray().put("@oauth2")), false)
+                            if (sc !in 200..299) return "Impossibile avviare l'accesso con Google"
+                            openUrl(url)
+                        } else if (event == "@oauth2") {
+                            val d = JSONObject(data)
+                            if (d.optString("state") != prov.optString("state")) return "Risposta di accesso non valida"
+                            if (d.optString("error").isNotEmpty()) return "Accesso rifiutato: ${d.optString("error")}"
+                            code = d.optString("code")
+                            break
+                        }
+                        event = ""; data = ""
+                    }
+                }
+            }
+            val (ac, at) = call(
+                "POST", "/api/collections/users/auth-with-oauth2",
+                JSONObject().put("provider", "google").put("code", code).put("codeVerifier", prov.optString("codeVerifier")).put("redirectUrl", redirect), false,
+            )
+            if (ac != 200) return errorText(ac, at)
+            val j = JSONObject(at)
+            prefs.token = j.getString("token")
+            prefs.userId = j.getJSONObject("record").getString("id")
+            prefs.email = j.getJSONObject("record").optString("email")
+            prefs.oauth = true
+            return null
+        } catch (e: java.net.SocketTimeoutException) {
+            return "Tempo scaduto: accesso con Google non completato"
+        } catch (e: java.io.IOException) {
+            return "Accesso annullato"
+        } finally {
+            conn.disconnect(); sse = null
+        }
     }
 
     /** Ritorna gli id locali dei punti confermati dal server (inclusi i duplicati già presenti). */
     fun sendBatch(points: List<TrackPoint>): List<Long> {
-        if (prefs.token.isEmpty() && !login()) error("login fallito")
+        if (prefs.token.isEmpty() && !relogin()) error("login fallito")
         var ok = trySend(points)
-        if (ok == null && login()) ok = trySend(points) // token scaduto
+        if (ok == null && relogin()) ok = trySend(points) // token scaduto
         return ok ?: error("invio fallito")
     }
 
     /** Una pagina dello storico dal server (ordinato per tempo). Ritorna i punti e il numero di pagine totali. */
     fun fetchPage(page: Int): Pair<List<TrackPoint>, Int> {
-        if (prefs.token.isEmpty() && !login()) error("login fallito")
+        if (prefs.token.isEmpty() && !relogin()) error("login fallito")
         val path = "/api/collections/points/records?perPage=500&page=$page&sort=ts" +
             "&fields=client_id,ts,lat,lon,accuracy,speed,bearing,altitude,provider,battery"
         var (code, text) = call("GET", path, null)
-        if ((code == 401 || code == 403) && login()) { val r = call("GET", path, null); code = r.first; text = r.second }
+        if ((code == 401 || code == 403) && relogin()) { val r = call("GET", path, null); code = r.first; text = r.second }
         if (code != 200) error("scarico fallito: $code")
         val j = JSONObject(text)
         val items = j.getJSONArray("items")

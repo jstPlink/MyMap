@@ -19,19 +19,11 @@ function* moveSteps(pts) {
 }
 
 // ---------- griglia esagonale (scratch map) ----------
-// Il livello 0 ha esagoni larghi 200 m (raggio 100 m); ogni livello raddoppia il raggio. La dimensione dipende dallo zoom,
-// così a mappa piena gli esagoni restano pochi e il disegno leggero. Le misure sono in metri "mercatore": sullo schermo
-// gli esagoni risultano regolari e a 44,5° N coincidono con quelle reali.
-const HEX_BASE_M = 100;
+// Gli esagoni si descrivono con il diametro reale (da vertice a vertice) in metri. Il calcolo è nel piano "mercatore":
+// sullo schermo gli esagoni risultano regolari e a 44,5° N le misure coincidono con quelle reali.
 const HEX_K = 1 / Math.cos(44.5 * Math.PI / 180);
 const SQ3 = Math.sqrt(3);
-const hexSize = (level) => HEX_BASE_M * HEX_K * 2 ** level;
-
-// Livello giusto per lo zoom attuale: esagoni di circa 26 px di raggio sullo schermo
-function hexLevelFor(map) {
-  const mpp = 156543 * Math.cos(map.getCenter().lat * Math.PI / 180) / 2 ** map.getZoom(); // metri reali per pixel
-  return Math.max(0, Math.min(8, Math.ceil(Math.log2(Math.max(1, mpp * 26 / HEX_BASE_M)))));
-}
+const hexS = (diam) => (diam / 2) * HEX_K;   // raggio in metri mercatore
 
 function hexOf(lat, lon, S) {
   const p = L.CRS.EPSG3857.project(L.latLng(lat, lon));
@@ -59,13 +51,32 @@ function hexCorners(q, r, S) {
   return out;
 }
 
-// Esagoni visitati a un dato livello: celle [q, r, lat, lon, primoTs] e area totale in km²
-function hexCells(pts, level) {
-  const S = hexSize(level), cells = new Map();
-  pts.forEach((p) => {
-    const [q, r] = hexOf(p.lat, p.lon, S), k = (q + 50000) * 100000 + (r + 50000);
-    if (!cells.has(k)) cells.set(k, [q, r, p.lat, 0, p.ts]);
-  });
+// Esagoni visitati. Tra due punti vicini nel tempo si "gratta" anche il tratto in mezzo (un passo per raggio), perché
+// i dati hanno un punto ogni qualche minuto. Con `bounds` si considera solo la parte di mappa visibile (veloce a zoom vicino).
+// Ritorna celle [q, r, lat, lon, primoTs], il raggio S e l'area totale in km².
+function hexVisits(pts, diam, bounds) {
+  const S = hexS(diam), cells = new Map(), step = diam / 2 / 1000;
+  const so = bounds ? bounds.getSouth() : -90, no = bounds ? bounds.getNorth() : 90;
+  const we = bounds ? bounds.getWest() : -180, ea = bounds ? bounds.getEast() : 180;
+  const add = (la, lo, ts) => {
+    const [q, r] = hexOf(la, lo, S), k = (q + 50000) * 100000 + (r + 50000);
+    if (!cells.has(k)) cells.set(k, [q, r, 0, 0, ts]);
+  };
+  let prev = null;
+  for (const p of pts) {
+    if (prev && p.ts - prev.ts <= 20 * 60000 && !(Math.max(prev.lat, p.lat) < so || Math.min(prev.lat, p.lat) > no || Math.max(prev.lon, p.lon) < we || Math.min(prev.lon, p.lon) > ea)) {
+      const d = km(prev, p);
+      if (d > step * 1.5 && d < 60) {
+        const n = Math.min(3000, Math.floor(d / step));
+        for (let i = 1; i < n; i++) {
+          const f = i / n;
+          add(prev.lat + (p.lat - prev.lat) * f, prev.lon + (p.lon - prev.lon) * f, prev.ts + (p.ts - prev.ts) * f);
+        }
+      }
+    }
+    if (p.lat >= so && p.lat <= no && p.lon >= we && p.lon <= ea) add(p.lat, p.lon, p.ts);
+    prev = p;
+  }
   let area = 0;
   const list = [...cells.values()];
   list.forEach((c) => {
@@ -75,6 +86,72 @@ function hexCells(pts, level) {
     area += 1.5 * SQ3 * s * s;
   });
   return { cells: list, area, S };
+}
+
+// ---------- dove hai dormito ----------
+// Una notte conta come "dormita in un posto" se, nella finestra notturna (default 01:00–05:00 ora locale):
+//  1. ci sono almeno `minPts` punti e coprono almeno metà della finestra (c'erano dati per tutta la notte, non un solo campione);
+//  2. almeno l'80% dei punti sta entro `radiusM` metri dalla loro posizione mediana: eri fermo, non in viaggio;
+// il luogo della notte è la mediana di lat/lon. Le notti vicine (entro 400 m) si raggruppano nello stesso posto.
+// Finestra, punti minimi e raggio massimo si regolano nelle impostazioni.
+function sleepPlaces(pts, fromH, toH, minPts = 3, radiusM = 300) {
+  const nights = new Map();
+  for (const p of pts) {
+    const d = new Date(p.ts), h = d.getHours();
+    if (h < fromH || h >= toH) continue;
+    const k = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+    (nights.get(k) || nights.set(k, []).get(k)).push(p);
+  }
+  const med = (a) => { const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+  const need = (toH - fromH) * 36e5 * 0.5;
+  const found = [];
+  nights.forEach((a) => {
+    if (a.length < minPts || a[a.length - 1].ts - a[0].ts < need) return;
+    const c = { lat: med(a.map((p) => p.lat)), lon: med(a.map((p) => p.lon)) };
+    if (a.filter((p) => km(c, p) <= radiusM / 1000).length < a.length * 0.8) return;
+    found.push({ lat: c.lat, lon: c.lon, ts: a[0].ts });
+  });
+  const places = [];
+  for (const n of found.sort((x, y) => x.ts - y.ts)) {
+    let best = null, bd = 0.4;
+    for (const pl of places) { const d = km(pl, n); if (d < bd) { bd = d; best = pl; } }
+    if (!best) places.push(best = { lat: n.lat, lon: n.lon, nights: 0, first: n.ts, last: n.ts, sl: 0, so: 0 });
+    best.nights++; best.sl += n.lat; best.so += n.lon;
+    best.lat = best.sl / best.nights; best.lon = best.so / best.nights; best.last = n.ts;
+  }
+  return { places: places.sort((x, y) => y.nights - x.nights), nights: found.length };
+}
+
+// ---------- posti visitati ----------
+// Una visita è un periodo di almeno 20 minuti in cui i punti restano entro 150 m dal primo (con buchi di dati fino a 3 ore).
+// Le visite vicine (entro 150 m) si raggruppano nello stesso posto. Ritorna i posti ordinati per tempo totale.
+function visitPlaces(pts) {
+  const episodes = [];
+  for (let i = 0; i < pts.length;) {
+    const a = pts[i];
+    let j = i + 1, sl = a.lat, so = a.lon;
+    while (j < pts.length && pts[j].ts - pts[j - 1].ts <= 3 * 36e5 && km(a, pts[j]) < 0.15) { sl += pts[j].lat; so += pts[j].lon; j++; }
+    const n = j - i, end = pts[j - 1].ts;
+    if (end - a.ts >= 20 * 60000) episodes.push({ lat: sl / n, lon: so / n, start: a.ts, end });
+    i = j;
+  }
+  const grid = new Map(), places = [], CELL = 0.0015;
+  const cellOf = (la, lo) => [Math.round(la / CELL), Math.round(lo / CELL)];
+  for (const e of episodes) {
+    const [cy, cx] = cellOf(e.lat, e.lon);
+    let best = null, bd = 0.15;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      for (const pl of grid.get(`${cy + dy},${cx + dx}`) || []) { const d = km(pl, e); if (d < bd) { bd = d; best = pl; } }
+    }
+    if (!best) {
+      places.push(best = { lat: e.lat, lon: e.lon, visits: 0, ms: 0, first: e.start, last: e.end, sl: 0, so: 0 });
+      const k = `${cy},${cx}`;
+      (grid.get(k) || grid.set(k, []).get(k)).push(best);
+    }
+    best.visits++; best.ms += e.end - e.start; best.sl += e.lat; best.so += e.lon;
+    best.lat = best.sl / best.visits; best.lon = best.so / best.visits; best.last = e.end;
+  }
+  return places.sort((x, y) => y.ms - x.ms);
 }
 
 // ---------- soste ----------
@@ -122,3 +199,5 @@ function clean(pts) {
   }
   return out;
 }
+
+const isStay = (p) => p.acc === -1; // visita di Google importata come punto ogni 30 minuti: serve per soste e notti, non per percorsi e heatmap

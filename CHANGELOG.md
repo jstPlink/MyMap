@@ -4,6 +4,16 @@ Versione app in `android/app/build.gradle.kts` (`versionName` e `versionCode`).
 Ad ogni rilascio: alzare `versionCode` di 1, aggiornare `versionName` e aggiungere una voce qui.
 La versione è mostrata in cima alla schermata dell'app.
 
+## 0.9.0 (build 11) - 2026-10-01
+- Scratch map invertita: la mappa è coperta e gratti i posti in cui sei stato. Esagoni da 100 m minimo, con dimensione regolabile per ogni livello di zoom nelle impostazioni.
+- Nuove viste: Notti (dove hai dormito) e Posti visitati. Heatmap regolabile (raggio, sfocatura, calore, densità, gradiente).
+- Filtri: anno/mese/giorno, periodo da data a data e tasto Oggi; pulsante per rimuovere tutti i filtri.
+- Statistiche: righe su una sola riga, nomi dei luoghi al posto delle coordinate (OpenStreetMap Nominatim, disattivabile), 10 giorni più lunghi, filtro per anno e mese, asse verticale con i valori nei grafici, sezioni Notti e Posti visitati.
+- Account: accesso con email (anche creazione dell'account) o con Google, scelta tra database proprio (URL) e database locale nel telefono, logout nelle impostazioni. I punti sono associati all'account.
+- Notti: punti minimi e raggio massimo regolabili. Posti: puoi dare o cambiare il nome dei posti (suggerimento da OpenStreetMap), con elenco e cancellazione nelle impostazioni.
+- Esportazione dei dati in CSV, GPX o JSON dalle impostazioni.
+- `tools/import_timeline.py` importa anche le soste di Google (opzione `--only takeout-visit` per aggiungerle soltanto).
+
 ## 0.7.0 (build 9) - 2026-10-01
 - Scratch map con esagoni adattivi: il più piccolo è largo 200 m e le dimensioni crescono allontanando lo zoom, così il disegno resta leggero. L'area grattata si calcola sempre sugli esagoni piccoli.
 - Viste della mappa riordinate: Scratch (principale), Heatmap, Percorsi. Tolta la vista Soste, che resta nelle statistiche.

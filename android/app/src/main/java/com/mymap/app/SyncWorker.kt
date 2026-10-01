@@ -19,7 +19,7 @@ class SyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, 
 
     override suspend fun doWork(): Result {
         val prefs = Prefs(applicationContext)
-        if (prefs.serverUrl.isEmpty()) return Result.success()
+        if (prefs.mode != "server" || prefs.serverUrl.isEmpty()) return Result.success() // in modalità locale non c'è nulla da sincronizzare
         val store = PointStore(applicationContext)
         val api = Api(prefs)
         return try {

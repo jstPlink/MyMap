@@ -7,9 +7,10 @@ L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
 }).addTo(map);
 const layer = L.layerGroup().addTo(map);
 const meLayer = L.layerGroup().addTo(map);
-let points = [];      // tutti i punti (statistiche, filtri)
-let drawPts = [];      // versione alleggerita per il disegno
-let statsFor = -2;     // per quanti punti sono state calcolate le statistiche
+let points = [];      // tutti i punti, comprese le soste (scratch, notti, statistiche)
+let movePts = [];      // solo punti di movimento e alleggeriti, per percorsi e heatmap
+const pin = L.layerGroup().addTo(map);
+let statsFor = "";     // per quali punti e filtro sono state calcolate le statistiche
 let loadedTotal = -1;  // quanti punti c'erano all'ultimo caricamento
 
 // ---------- schede ----------
@@ -17,7 +18,7 @@ function show(view) {
   document.querySelectorAll(".view").forEach((v) => v.classList.toggle("active", v.id === "view-" + view));
   document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
   if (view === "map") { map.invalidateSize(); loadPoints(); }
-  if (view === "stats" && statsFor !== loadedTotal) { renderStats(points); statsFor = loadedTotal; } // si ricalcola solo se ci sono punti nuovi
+  if (view === "stats") refreshStats(); // si ricalcola solo se ci sono punti nuovi o è cambiato il filtro
   if (view === "tracker") refreshStatus();
 }
 document.querySelectorAll("nav button").forEach((b) => (b.onclick = () => show(b.dataset.view)));
@@ -31,31 +32,67 @@ function fillFilters() {
   const keep = [ys.value, ms.value, ds.value];
   const dates = points.map((p) => ts2(p.ts));
   const years = [...new Set(dates.map((d) => d[0]))].sort((a, b) => b - a);
-  ys.innerHTML = opt("", "Tutti gli anni") + years.map((y) => opt(y, y)).join("");
+  ys.innerHTML = opt("", "Anno") + years.map((y) => opt(y, y)).join("");
   if (years.map(String).includes(keep[0])) ys.value = keep[0];
 
   const inYear = dates.filter((d) => !ys.value || d[0] === +ys.value);
   const months = [...new Set(inYear.map((d) => d[1]))].sort((a, b) => a - b);
-  ms.innerHTML = opt("", "Tutti i mesi") + months.map((m) => opt(m, MESI[m])).join("");
+  ms.innerHTML = opt("", "Mese") + months.map((m) => opt(m, MESI[m])).join("");
   if (months.map(String).includes(keep[1])) ms.value = keep[1];
 
   const inMonth = inYear.filter((d) => ms.value === "" || d[1] === +ms.value);
   const days = [...new Set(inMonth.map((d) => d[2]))].sort((a, b) => a - b);
-  ds.innerHTML = opt("", "Tutti i giorni") + days.map((d) => opt(d, d)).join("");
+  ds.innerHTML = opt("", "Giorno") + days.map((d) => opt(d, d)).join("");
   ds.disabled = ms.value === "";
   if (ms.value !== "" && days.map(String).includes(keep[2])) ds.value = keep[2];
 }
 
-function filtered() {
-  const y = $("f-year").value, m = $("f-month").value, d = $("f-day").value;
-  if (!y && m === "" && !d) return drawPts;
-  return drawPts.filter((p) => {
+const filterState = () => ({ y: $("f-year").value, m: $("f-month").value, d: $("f-day").value, from: $("f-from").value, to: $("f-to").value });
+
+// Il periodo (da data a data) ha la precedenza su anno/mese/giorno; scegliendone uno si azzera l'altro
+function applyFilter(arr) {
+  const { y, m, d, from, to } = filterState();
+  if (from || to) {
+    const a = from ? new Date(from + "T00:00:00").getTime() : -Infinity;
+    const b = to ? new Date(to + "T23:59:59.999").getTime() : Infinity;
+    return arr.filter((p) => p.ts >= a && p.ts <= b);
+  }
+  if (!y && m === "" && !d) return arr;
+  return arr.filter((p) => {
     const [py, pm, pd] = ts2(p.ts);
     return (!y || py === +y) && (m === "" || pm === +m) && (!d || pd === +d);
   });
 }
 
-["f-year", "f-month", "f-day"].forEach((id) => ($(id).onchange = () => { fillFilters(); render(true); }));
+// il pulsante "rimuovi filtri" compare solo quando almeno un filtro è attivo
+function updateFilterUI() {
+  const { y, m, d, from, to } = filterState();
+  const range = !!(from || to);
+  $("f-reset").hidden = !(y || m !== "" || d || range);
+  $("f-range-btn").classList.toggle("on", range || !$("f-range").hidden);
+  const today = new Date().toLocaleDateString("sv-SE"); // AAAA-MM-GG in ora locale
+  $("f-today").classList.toggle("on", from === today && to === today);
+}
+
+function clearRange() { $("f-from").value = ""; $("f-to").value = ""; }
+["f-year", "f-month", "f-day"].forEach((id) => ($(id).onchange = () => { clearRange(); fillFilters(); render(true); }));
+["f-from", "f-to"].forEach((id) => ($(id).onchange = () => {
+  ["f-year", "f-month", "f-day"].forEach((x) => ($(x).value = ""));
+  fillFilters(); render(true);
+}));
+$("f-range-btn").onclick = () => { $("f-range").hidden = !$("f-range").hidden; updateFilterUI(); };
+$("f-today").onclick = () => {
+  const today = new Date().toLocaleDateString("sv-SE");
+  ["f-year", "f-month", "f-day"].forEach((x) => ($(x).value = ""));
+  $("f-from").value = today; $("f-to").value = today;
+  $("f-range").hidden = false;
+  fillFilters(); render(true);
+};
+$("f-reset").onclick = () => {
+  ["f-year", "f-month", "f-day"].forEach((id) => ($(id).value = ""));
+  clearRange(); $("f-range").hidden = true;
+  fillFilters(); render(true);
+};
 
 // ---------- posizione attuale ----------
 let here = null;
@@ -118,59 +155,148 @@ function drawRoutes(pts) {
   return { dist, fit: bbox(pts), info: "Il tuo tracciato. Filtra per anno, mese o giorno per vedere un solo periodo." };
 }
 
-// Heatmap: tra due punti vicini nel tempo si aggiungono punti intermedi, così i percorsi fatti più volte "si scaldano"
+// Heatmap: tra due punti vicini nel tempo si aggiungono punti intermedi, così i percorsi fatti più volte "si scaldano".
+// Raggio, sfocatura, quantità di calore, densità e gradiente si regolano nelle impostazioni.
 function drawHeat(pts) {
   repaint = () => {
     layer.clearLayers();
+    const H = Prefs.v.heat, stepKm = H.step / 1000;
     const v = viewPts(pts, 15), heat = [];
     v.forEach((p, i) => {
       heat.push([p.lat, p.lon, 1]);
       const q = v[i - 1];
-      if (!q || p.ts - q.ts > 20 * 60000) return;
+      if (!q || !stepKm || p.ts - q.ts > 20 * 60000) return;
       const d = km(q, p);
-      if (d < 0.1 || d > 30) return;
-      const steps = heat.length > 40000 ? 1 : Math.min(40, Math.floor(d / 0.1));
+      if (d < stepKm * 1.5 || d > 30) return;
+      const steps = heat.length > 40000 ? 1 : Math.min(60, Math.floor(d / stepKm));
       for (let k = 1; k < steps; k++) heat.push([q.lat + (p.lat - q.lat) * k / steps, q.lon + (p.lon - q.lon) * k / steps, 1]);
     });
-    L.heatLayer(heat, { radius: 9, blur: 12, minOpacity: .35, max: 30, gradient: { .2: "#3b82f6", .45: "#22c55e", .7: "#facc15", 1: "#ef4444" } }).addTo(layer);
+    L.heatLayer(heat, { radius: H.radius, blur: H.blur, minOpacity: H.minOpacity / 100, max: H.max, gradient: Prefs.heatGradient() }).addTo(layer);
   };
-  return { fit: bbox(pts), info: "Più il colore è caldo, più spesso sei passato di lì." };
+  return { fit: bbox(pts), info: "Più il colore è caldo, più spesso sei passato di lì. Regolazioni in Impostazioni." };
 }
 
-// Scratch map: esagoni azzurri sulle zone visitate. Il più piccolo è largo 200 m; più si allontana lo zoom, più crescono.
+// Scratch map: la mappa è coperta e le zone in cui sei stato si "grattano" (buchi esagonali nella copertura).
+// La dimensione degli esagoni dipende dallo zoom e si regola nelle impostazioni.
 function drawScratch(pts) {
-  const cache = new Map();   // livello -> esagoni visitati a quel livello
-  let shown = -1;
   repaint = () => {
-    const level = hexLevelFor(map);
-    if (!cache.has(level)) cache.set(level, hexCells(pts, level));
-    const hex = cache.get(level), S = hex.S;
     layer.clearLayers();
-    const bnd = map.getBounds().pad(0.3);
-    hex.cells.filter((h) => bnd.contains([h[2], h[3]])).forEach((h) => {
-      L.polygon(hexCorners(h[0], h[1], S), {
-        renderer: canvas, color: "#0284c7", weight: 1, opacity: .55, fillColor: "#38bdf8", fillOpacity: .5, interactive: false, smoothFactor: 0,
-      }).addTo(layer);
-    });
-    if (level !== shown) {
-      shown = level;
-      if (!cache.has(0)) cache.set(0, hexCells(pts, 0));
-      const fine = cache.get(0); // i numeri si danno sempre sugli esagoni più piccoli: a zoom lontano gli esagoni grandi sovrastimano l'area
-      const width = Math.round(2 * S / HEX_K / 10) * 10; // diametro reale (da vertice a vertice), in metri
-      $("modeinfo").textContent = `${fine.cells.length.toLocaleString("it-IT")} esagoni visitati · ≈ ${fine.area.toFixed(0)} km² grattati · ora esagoni da ${width >= 1000 ? (width / 1000).toFixed(1) + " km" : width + " m"}`;
-    }
+    const dark = document.documentElement.dataset.theme === "dark";
+    const diam = Prefs.hexDiam(map.getZoom());
+    const view = map.getBounds().pad(0.35), cover = map.getBounds().pad(0.25);
+    const hex = hexVisits(pts, diam, view);
+    const ring = [[cover.getSouth(), cover.getWest()], [cover.getNorth(), cover.getWest()], [cover.getNorth(), cover.getEast()], [cover.getSouth(), cover.getEast()]];
+    L.polygon([ring, ...hex.cells.map(([q, r]) => hexCorners(q, r, hex.S))], {
+      renderer: canvas, fillRule: "evenodd", smoothFactor: 0, interactive: false,
+      color: dark ? "#64748b" : "#8693aa", weight: 1, opacity: .55,
+      fillColor: dark ? "#334155" : "#a3b1c6", fillOpacity: .94,
+    }).addTo(layer);
+    $("modeinfo").textContent = `${hex.cells.length.toLocaleString("it-IT")} esagoni grattati in vista · esagoni da ${fmtM(diam)}`;
   };
   return { fit: bbox(pts), info: "" };
+}
+
+// Notti: i luoghi in cui hai dormito, con il numero di notti. Il calcolo è spiegato nelle impostazioni.
+function drawSleep(pts) {
+  const sl = sleepPlaces(pts, Prefs.v.sleep.from, Prefs.v.sleep.to, Prefs.v.sleep.minPts, Prefs.v.sleep.radius);
+  const top = sl.places[0] ? sl.places[0].nights : 1;
+  sl.places.forEach((p) => {
+    const size = Math.round(28 + 26 * Math.sqrt(p.nights / top));
+    const icon = L.divIcon({ className: "", iconSize: [size, size], iconAnchor: [size / 2, size / 2],
+      html: `<div class="moon" style="width:${size}px;height:${size}px"><b>${p.nights}</b></div>` });
+    const m = L.marker([p.lat, p.lon], { icon }).addTo(layer);
+    m.bindPopup(() => `<div class="pop"><b>${placeSpan(p.lat, p.lon)}</b><br>${p.nights} ${p.nights === 1 ? "notte" : "notti"}<br>${fmtDay(p.first)} – ${fmtDay(p.last)}<br><button class="pop-btn" data-rename>Rinomina</button></div>`);
+    m.on("popupopen", (e) => popupReady(e, p));
+  });
+  const info = sl.places.length
+    ? `${sl.nights} notti · ${sl.places.length} ${sl.places.length === 1 ? "luogo" : "luoghi"} · il primo con ${top} notti. Tocca una luna per i dettagli.`
+    : `Nessuna notte rilevata nel periodo: servono dati tra le ${String(Prefs.v.sleep.from).padStart(2, "0")}:00 e le ${String(Prefs.v.sleep.to).padStart(2, "0")}:00.`;
+  return { fit: sl.places.map((p) => [p.lat, p.lon]), info };
+}
+
+// ---------- nomi dei posti ----------
+const needsName = (p) => !Names.find(p.lat, p.lon) && !Names.isSkipped(p.lat, p.lon) && (p.visits >= 2 || p.ms >= 36e5);
+
+function refreshAfterNames() {
+  statsFor = "";
+  buildNamesCard();
+  render(false);
+  if ($("view-stats").classList.contains("active")) refreshStats();
+}
+
+// popup di un posto: carica il nome da OpenStreetMap (se manca) e collega il pulsante Rinomina
+function popupReady(e, p) {
+  const el = e.popup.getElement();
+  hydratePlaces(el);
+  const btn = el.querySelector("[data-rename]");
+  if (btn) btn.onclick = () => { map.closePopup(); renamePlace(p.lat, p.lon); };
+}
+
+async function renamePlace(lat, lon, suggestion) {
+  const cur = Names.find(lat, lon);
+  const r = await promptDialog({
+    text: cur ? "Rinomina questo posto. Lascia vuoto per tornare al nome di OpenStreetMap." : "Dai un nome a questo posto.",
+    value: cur ? cur.name : suggestion || Places.cached(lat, lon) || "", placeholder: "Es. Casa di Marco, Palestra, Ufficio…",
+  });
+  if (r.action !== "save") return false;
+  Names.set(lat, lon, r.value);
+  refreshAfterNames();
+  return true;
+}
+
+// Passa in rassegna i posti scoperti che non hanno ancora un nome (i più frequentati per primi)
+async function nameNewPlaces() {
+  const list = visitPlaces(applyFilter(points)).filter(needsName).slice(0, 40);
+  for (let i = 0; i < list.length; i++) {
+    const p = list[i];
+    pin.clearLayers();
+    L.circleMarker([p.lat, p.lon], { radius: 10, color: "#fff", weight: 3, fillColor: "#f97316", fillOpacity: 1 }).addTo(pin);
+    map.setView([p.lat, p.lon], 16, { animate: false });
+    const guess = Prefs.v.names ? Places.cached(p.lat, p.lon) || (await Places.lookup(p.lat, p.lon)) || "" : "";
+    const hours = p.ms / 36e5;
+    const r = await promptDialog({
+      text: `Nuovo posto ${i + 1} di ${list.length}: ${p.visits} ${p.visits === 1 ? "visita" : "visite"}, ${hours >= 48 ? (hours / 24).toFixed(1) + " giorni" : hours.toFixed(1) + " ore"}. Come lo chiami?`,
+      value: guess, placeholder: "Es. Palestra, Nonna, Ufficio…", okLabel: "Salva", skipLabel: "Salta", noLabel: "Fine",
+    });
+    if (r.action === "cancel") break;
+    if (r.action === "skip") Names.skip(p.lat, p.lon);
+    else if (r.value) Names.set(p.lat, p.lon, r.value);
+  }
+  pin.clearLayers();
+  refreshAfterNames();
+}
+$("name-new").onclick = nameNewPlaces;
+
+// Posti visitati: dove ti sei fermato almeno 20 minuti, raggruppati per luogo (entro 150 m), con visite e tempo totale
+function drawPlaces(pts) {
+  const all = visitPlaces(pts), shown = all.slice(0, 400);
+  const todo = all.filter(needsName).length;
+  shown.forEach((p, i) => {
+    const hours = p.ms / 36e5, r = Math.max(6, Math.min(24, 6 + 4 * Math.sqrt(hours)));
+    const named = !!Names.find(p.lat, p.lon);
+    const m = L.circleMarker([p.lat, p.lon], { radius: r, color: "#fff", weight: 2, fillColor: named ? "#10b981" : i === 0 ? "#f97316" : "#8b5cf6", fillOpacity: .78 }).addTo(layer);
+    m.bindPopup(() => `<div class="pop"><b>${placeSpan(p.lat, p.lon)}</b><br>${p.visits} ${p.visits === 1 ? "visita" : "visite"} · ${hours >= 48 ? (hours / 24).toFixed(1) + " giorni" : hours.toFixed(1) + " ore"}<br>${fmtDay(p.first)} – ${fmtDay(p.last)}<br><button class="pop-btn" data-rename>${named ? "Rinomina" : "Dai un nome"}</button></div>`);
+    m.on("popupopen", (e) => popupReady(e, p));
+  });
+  const tot = all.reduce((a, p) => a + p.visits, 0);
+  $("name-new").hidden = !todo;
+  $("name-new").textContent = `Nomina ${todo > 40 ? "i primi 40 dei " + todo : todo} nuovi posti`;
+  return {
+    fit: shown.map((p) => [p.lat, p.lon]),
+    info: all.length ? `${all.length.toLocaleString("it-IT")} posti visitati · ${tot.toLocaleString("it-IT")} visite${all.length > shown.length ? ` · mostrati i ${shown.length} dove stai di più` : ""}. In verde quelli che hai già nominato.` : "Nessuna sosta trovata nel periodo.",
+  };
 }
 
 // fit = true quando l'utente cambia vista o filtro: allora la mappa inquadra i dati; all'avvio resta su dove sei
 function render(fit) {
   layer.clearLayers();
+  $("name-new").hidden = true;
   repaint = null;
-  const pts = filtered();
+  const pts = applyFilter(mode === "scratch" || mode === "sleep" || mode === "places" ? points : movePts);
   const last = pts[pts.length - 1];
-  const draw = { scratch: drawScratch, heat: drawHeat, routes: drawRoutes }[mode];
+  const draw = { scratch: drawScratch, heat: drawHeat, routes: drawRoutes, sleep: drawSleep, places: drawPlaces }[mode];
   const r = pts.length ? draw(pts) : { dist: 0, fit: [], info: "Nessun punto nel periodo scelto." };
+  updateFilterUI();
   map.invalidateSize();
   if (firstRender && here) {
     map.setView([here.lat, here.lon], 15);
@@ -195,16 +321,58 @@ document.querySelectorAll("#modes button").forEach((b) => (b.onclick = () => {
   render(true);
 }));
 
+let lastLoad = 0, lastSeen = -1;
+// ogni 4 s controlla se ci sono punti nuovi: ricarica quando il numero smette di crescere (scarico finito) o dopo un minuto
+setInterval(() => {
+  if (!$("view-map").classList.contains("active") || !points.length && loadedTotal === -1 && session && session.mode === "none") return;
+  const t = Native.status().total;
+  if (t !== loadedTotal && (t === lastSeen || Date.now() - lastLoad > 60000)) loadPoints();
+  lastSeen = t;
+}, 4000);
+
 async function loadPoints() {
+  lastLoad = Date.now();
   const total = Native.status().total;
   if (total === loadedTotal && points.length) return; // niente ricarico se non ci sono punti nuovi
   points = clean(await Native.points());
   loadedTotal = total;
-  drawPts = thin(points, 15, 5 * 60000);
+  movePts = thin(points.filter((p) => !isStay(p)), 15, 5 * 60000);
   if (firstRender) { await locate(); drawMe(); }
   fillFilters();
   render(false);
 }
+
+// ---------- filtro delle statistiche: anno e mese ----------
+function fillStatsFilter() {
+  const sy = $("s-year"), sm = $("s-month"), keepY = sy.value, keepM = sm.value;
+  const years = [...new Set(points.map((p) => new Date(p.ts).getFullYear()))].sort((a, b) => b - a);
+  sy.innerHTML = opt("", "Tutti gli anni") + years.map((y) => opt(y, y)).join("");
+  if (years.map(String).includes(keepY)) sy.value = keepY;
+  sm.innerHTML = opt("", "Tutti i mesi") + MESI.map((m, i) => opt(i, m)).join("");
+  sm.value = keepM;
+}
+function refreshStats() {
+  if (!$("s-year").options.length || statsFor === "") fillStatsFilter();
+  const y = $("s-year").value, m = $("s-month").value, key = `${loadedTotal}|${y}|${m}`;
+  if (key === statsFor) return;
+  statsFor = key;
+  renderStats(y === "" && m === "" ? points : points.filter((p) => { const d = new Date(p.ts); return (y === "" || d.getFullYear() === +y) && (m === "" || d.getMonth() === +m); }),
+    y === "" && m === "" ? "" : `${m === "" ? "" : MESI[+m] + " "}${y}`.trim());
+}
+["s-year", "s-month"].forEach((id) => ($(id).onchange = refreshStats));
+
+// ---------- vai a un luogo (dalle statistiche) ----------
+function gotoPlace(lat, lon) {
+  show("map");
+  pin.clearLayers();
+  L.circleMarker([lat, lon], { radius: 9, color: "#fff", weight: 3, fillColor: "#f97316", fillOpacity: 1 }).addTo(pin);
+  setTimeout(() => { map.invalidateSize(); map.setView([lat, lon], 16); }, 60);
+  setTimeout(() => pin.clearLayers(), 12000);
+}
+$("stats").addEventListener("click", (e) => {
+  const g = e.target.closest("[data-go]");
+  if (g) { const [la, lo] = g.dataset.go.split(",").map(Number); gotoPlace(la, lo); }
+});
 
 // ---------- tracker ----------
 function refreshStatus() {
@@ -229,18 +397,11 @@ $("battery").onclick = () => Native.battery();
 $("battery").hidden = !Native.isApp;
 setInterval(() => { if ($("view-tracker").classList.contains("active")) refreshStatus(); }, 3000);
 
-// ---------- impostazioni ----------
-function say(text, err) { $("msg").textContent = text; $("msg").classList.toggle("err", !!err); }
-const cfg = Native.config();
-$("url").value = cfg.url; $("email").value = cfg.email || "";
-if (cfg.hasPassword) $("pw").placeholder = "Password (già salvata)";
-
-$("save").onclick = async () => {
-  say("Connessione…");
-  const ok = await Native.saveConfig({ url: $("url").value, email: $("email").value, password: $("pw").value });
-  say(ok ? "Login riuscito" : "Login fallito o server non raggiungibile", !ok);
-  $("pw").value = "";
-};
+// preferenze (esagoni, heatmap, notti, nomi): ogni modifica ridisegna la mappa
+buildPrefsUI();
+bindPrefsUI();
+Prefs.onChange = () => { statsFor = ""; render(false); };
+$("repull").onclick = () => { Native.repull(); $("repull-msg").textContent = "Scarico avviato: i punti nuovi compaiono al prossimo avvio dell'app."; };
 
 refreshStatus();
 loadPoints();
