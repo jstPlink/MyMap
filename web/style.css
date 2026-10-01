@@ -401,3 +401,9 @@ details[data-sfold] .rank { margin: 0; }
 .vlist button b { display: block; font-size: 15px; font-weight: 700; }
 .vlist button small { display: block; margin-top: 2px; font-size: 12px; font-weight: 500; line-height: 1.35; color: var(--muted); }
 .vlist button.active { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+
+/* ---------- riga in alto: versione e zoom a sinistra, vista a destra; filtro a destra sulla seconda riga ---------- */
+.row1 { align-items: center; }
+.row1 .verpill, .row1 .zoompill { margin-left: 0; }
+.row1 .modebtn { margin-left: auto; }
+.fgroup { display: flex; align-items: center; gap: 6px; margin-left: auto; }

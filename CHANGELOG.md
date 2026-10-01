@@ -4,6 +4,9 @@ Versione app in `android/app/build.gradle.kts` (`versionName` e `versionCode`).
 Ad ogni rilascio: alzare `versionCode` di 1, aggiornare `versionName` e aggiungere una voce qui.
 La versione è mostrata in cima alla schermata dell'app.
 
+## 0.18.1 (build 31) - 2026-10-02
+- Barra in alto: versione e livello di zoom a sinistra, lista delle viste a destra; il filtro del periodo passa sulla seconda riga, a destra.
+
 ## 0.18.0 (build 30) - 2026-10-02
 - Nuovo modo di scegliere la vista della mappa: un pulsante in alto mostra la vista corrente e apre un foglio con l'elenco, ognuna con una riga di spiegazione. Sostituisce la barra scorrevole.
 - Impostazioni condivise sul database: oltre a quelle già salvate nel profilo (esagoni, heatmap, notti, percorsi, aspetto, nomi dei posti) ora ci sono anche la vista corrente e la frequenza dei punti del tracker. Con l'account su un server si ritrovano su ogni dispositivo (vince la modifica più recente); con il database locale restano solo nel telefono. Serve il campo `settings` sul server (`tools/setup_server.py`).

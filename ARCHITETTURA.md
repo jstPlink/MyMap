@@ -1,4 +1,4 @@
-# MyMap – Architettura (v0.18.0, build 30)
+# MyMap – Architettura (v0.18.1, build 31)
 
 Panoramica del progetto com'è oggi. La cronologia delle versioni è in [CHANGELOG.md](CHANGELOG.md): va aggiornata a ogni rilascio
 (alzare `versionCode` di 1 e `versionName` in `android/app/build.gradle.kts`, poi aggiungere la voce).
