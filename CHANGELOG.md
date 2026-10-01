@@ -4,6 +4,49 @@ Versione app in `android/app/build.gradle.kts` (`versionName` e `versionCode`).
 Ad ogni rilascio: alzare `versionCode` di 1, aggiornare `versionName` e aggiungere una voce qui.
 La versione è mostrata in cima alla schermata dell'app.
 
+## 0.12.2 (build 20) - 2026-10-01
+- Oltre 365 giorni durate e conteggi si scrivono in anni, mesi e giorni (es. "2 anni, 3 mesi e 12 giorni"; un anno = 365 giorni, le parti a zero si omettono). Sostituisce il formato "anni e giorni" della 0.12.1.
+
+## 0.12.1 (build 19) - 2026-10-01
+- Oltre 365 giorni durate e conteggi si scrivono come "X anni e Y giorni" (un anno = 365 giorni): giorni con dati, giorni a casa o lontano, serie di giorni, tempo in movimento e nei posti, notti. Sotto i 365 restano in giorni.
+
+## 0.12.0 (build 18) - 2026-10-01
+- Cambiando vista o filtro la mappa non inquadra più tutto lo storico: resta sulla tua posizione con circa 300 km di diametro.
+- Posti: con lo zoom lontano i posti vicini si fondono in gruppi (visite totali e numero di posti); toccandoli la mappa si avvicina. Ora si gestiscono fino a 1500 posti.
+- Percorsi: ogni tratto si semplifica in base allo zoom (Ramer-Douglas-Peucker, ~1,5 px), si disegnano solo i tratti visibili e i puntini delle soste compaiono da zoom 12.
+- Heatmap: i punti si accorpano in celle di pochi pixel (con peso) e i punti intermedi si fanno solo quanto serve allo zoom, così da lontano resta leggera.
+
+## 0.11.1 (build 17) - 2026-10-01
+- Password di almeno 5 caratteri (creazione account e cambio password). Il minimo lo impone anche PocketBase, che di default vuole 8: va abbassato con `python tools/setup_server.py ...` (o dal pannello: users, campo password, lunghezza minima).
+- Notti: con lo zoom lontano le lune vicine si fondono in un gruppo (totale notti e numero di luoghi); toccandolo la mappa si avvicina e il gruppo si apre.
+
+## 0.11.0 (build 16) - 2026-10-01
+- Impostazioni nel profilo: con un account sul server, impostazioni e nomi dei posti si salvano nel profilo e si ritrovano dopo una reinstallazione o su un altro telefono (vince la modifica più recente). Serve il campo JSON `settings` sugli utenti: `python tools/setup_server.py ...` lo aggiunge (o la migrazione `1700000002_user_settings.js`). Nell'Account compare lo stato "Salvate nel profilo".
+- Notti: nuova formula. Una notte è registrata se, tra le 23:00 e le 09:00, ci sono almeno 2 punti entro il raggio scelto (default 300 m); la notte prende la data della sera. Le impostazioni delle notti tornano ai nuovi valori.
+- Mappa di base semplice (CARTO chiara o scura) al posto di OpenStreetMap standard.
+- Scratch map: copertura semitrasparente, senza bordi e con contorni arrotondati (gli esagoni adiacenti si fondono in zone morbide).
+- Tema chiaro con toni più morbidi.
+
+## 0.10.3 (build 15) - 2026-10-01
+- Impostazioni → Account: "Cambia password" (password attuale, nuova e conferma). Disponibile per gli account con email; dopo il cambio l'app rifà il login da sola.
+
+## 0.10.2 (build 14) - 2026-10-01
+- Accesso: "Accedi" e "Nuovo account" sono schede separate; il nuovo account chiede di ripetere la password.
+- Il database sul telefono è la scelta predefinita nella schermata di accesso.
+- "Continua con Google" resta grigio finché il provider non è attivo in PocketBase (si riattiva con `GOOGLE_ENABLED` in `web/account.js`).
+- L'icona dell'app compare anche nell'intestazione e nella schermata di accesso, dove si vede anche la versione.
+
+## 0.10.1 (build 13) - 2026-10-01
+- Accesso: pulsante "Password dimenticata?". Scrivi URL ed email, tocca il pulsante e il server manda l'email con il link per scegliere una nuova password. Serve la posta (SMTP) configurata in PocketBase.
+
+## 0.10.0 (build 12) - 2026-10-01
+- Nell'app compare solo la versione (es. v0.10.0), senza il numero di build.
+- Icona dell'app: segnaposto bianco su esagono con sfondo sfumato azzurro-viola, anche monocromatica per le icone a tema di Android 13+.
+- Tema chiaro: in Impostazioni → Aspetto si sceglie Chiaro, Scuro o Come il telefono (si applica subito, comprese le barre di sistema).
+- Percorsi: colore, spessore e opacità delle linee regolabili nelle impostazioni, con anteprima.
+- Nuovo filtro del periodo: un solo pulsante sulla mappa mostra il periodo attivo e apre un pannello con scorciatoie (Oggi, Ieri, Ultimi 7 e 30 giorni, Questo mese, Mese scorso, Quest'anno, Tutto), anno/mese/giorno, da data a data e fascia oraria (es. 07:00-09:00 per i tragitti del mattino).
+- Impostazioni raggruppate in sezioni richiudibili che ricordano se erano aperte.
+
 ## 0.9.0 (build 11) - 2026-10-01
 - Scratch map invertita: la mappa è coperta e gratti i posti in cui sei stato. Esagoni da 100 m minimo, con dimensione regolabile per ogni livello di zoom nelle impostazioni.
 - Nuove viste: Notti (dove hai dormito) e Posti visitati. Heatmap regolabile (raggio, sfocatura, calore, densità, gradiente).
@@ -51,7 +94,7 @@ La versione è mostrata in cima alla schermata dell'app.
 ## 0.2.0 (build 2) - 2026-09-30
 - Nuova interfaccia web (cartella `web/`) mostrata nell'app tramite WebView: schede Mappa, Tracker, Impostazioni.
 - La mappa nell'app legge i punti dal buffer locale del telefono, anche senza server raggiungibile.
-- Tracking, buffer e sync invariati; la vecchia schermata nativa � sostituita dal ponte `window.MyMapNative`.
+- Tracking, buffer e sync invariati; la vecchia schermata nativa � sostituita dal ponte `window.MyMapNative`.
 
 ## 0.1.0 (build 1) - 2026-09-30
 - Prototipo: tracking GPS in background con LocationManager (senza Google Play Services).

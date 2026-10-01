@@ -88,28 +88,56 @@ function hexVisits(pts, diam, bounds) {
   return { cells: list, area, S };
 }
 
+// ---------- durate lunghe ----------
+// Oltre 365 giorni un conteggio si scrive in anni, mesi e giorni ("2 anni, 3 mesi e 12 giorni"), più leggibile di "812 giorni".
+// Un anno è 365 giorni e un mese 365/12 (circa 30,4); le parti a zero si omettono.
+function fmtSpan(n, one = "giorno", many = "giorni") {
+  n = Math.round(n);
+  const plain = (v, o, m) => `${v.toLocaleString("it-IT")} ${v === 1 ? o : m}`;
+  if (n <= 365) return plain(n, one, many);
+  const MESE = 365 / 12, y = Math.floor(n / 365), rest = n - y * 365;
+  const mo = Math.floor(rest / MESE), d = Math.round(rest - mo * MESE);
+  const parts = [plain(y, "anno", "anni")];
+  if (mo) parts.push(plain(mo, "mese", "mesi"));
+  if (d) parts.push(plain(d, one, many));
+  return parts.length > 1 ? parts.slice(0, -1).join(", ") + " e " + parts[parts.length - 1] : parts[0];
+}
+// Come fmtSpan, ma sotto i 365 dà il solo numero (per le righe che hanno già l'unità nell'etichetta)
+const fmtCount = (n, one, many) => (Math.round(n) <= 365 ? Math.round(n).toLocaleString("it-IT") : fmtSpan(n, one, many));
+// Tempo trascorso in un posto, in ore (sotto 48 h), giorni, oppure anni e giorni
+function fmtHoursLong(h) {
+  if (h < 48) return h.toFixed(1) + " ore";
+  const d = h / 24;
+  return d > 365 ? fmtSpan(d) : d.toFixed(1) + " giorni";
+}
+
 // ---------- dove hai dormito ----------
-// Una notte conta come "dormita in un posto" se, nella finestra notturna (default 01:00–05:00 ora locale):
-//  1. ci sono almeno `minPts` punti e coprono almeno metà della finestra (c'erano dati per tutta la notte, non un solo campione);
-//  2. almeno l'80% dei punti sta entro `radiusM` metri dalla loro posizione mediana: eri fermo, non in viaggio;
-// il luogo della notte è la mediana di lat/lon. Le notti vicine (entro 400 m) si raggruppano nello stesso posto.
-// Finestra, punti minimi e raggio massimo si regolano nelle impostazioni.
-function sleepPlaces(pts, fromH, toH, minPts = 3, radiusM = 300) {
+// Una notte viene registrata se, nella finestra notturna (default 23:00–09:00, a cavallo della mezzanotte), ci sono almeno
+// `minPts` punti (default 2) entro `radiusM` metri uno dall'altro. La notte porta la data della sera e il luogo è il centro del
+// gruppo di punti più numeroso. Le notti vicine (entro 400 m) si raggruppano nello stesso posto.
+// Finestra, punti minimi e raggio si regolano nelle impostazioni.
+function sleepPlaces(pts, fromH, toH, minPts = 2, radiusM = 300) {
+  const inWin = (h) => (fromH <= toH ? h >= fromH && h < toH : h >= fromH || h < toH);
   const nights = new Map();
   for (const p of pts) {
     const d = new Date(p.ts), h = d.getHours();
-    if (h < fromH || h >= toH) continue;
+    if (!inWin(h)) continue;
+    if (fromH > toH && h < toH) d.setDate(d.getDate() - 1); // dopo la mezzanotte: è la notte iniziata la sera prima
     const k = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
     (nights.get(k) || nights.set(k, []).get(k)).push(p);
   }
-  const med = (a) => { const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
-  const need = (toH - fromH) * 36e5 * 0.5;
-  const found = [];
-  nights.forEach((a) => {
-    if (a.length < minPts || a[a.length - 1].ts - a[0].ts < need) return;
-    const c = { lat: med(a.map((p) => p.lat)), lon: med(a.map((p) => p.lon)) };
-    if (a.filter((p) => km(c, p) <= radiusM / 1000).length < a.length * 0.8) return;
-    found.push({ lat: c.lat, lon: c.lon, ts: a[0].ts });
+  const r = radiusM / 1000, found = [];
+  nights.forEach((all) => {
+    if (all.length < minPts) return;
+    const step = Math.ceil(all.length / 120), a = step > 1 ? all.filter((_, i) => i % step === 0) : all; // limita il lavoro nelle notti con molti punti
+    let best = null;
+    for (const p of a) {
+      const g = a.filter((q) => km(p, q) <= r);
+      if (!best || g.length > best.length) best = g;
+    }
+    if (!best || best.length < minPts) return;
+    const lat = best.reduce((x, q) => x + q.lat, 0) / best.length, lon = best.reduce((x, q) => x + q.lon, 0) / best.length;
+    found.push({ lat, lon, ts: best[0].ts });
   });
   const places = [];
   for (const n of found.sort((x, y) => x.ts - y.ts)) {

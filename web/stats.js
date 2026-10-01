@@ -30,7 +30,7 @@ function bars(labels, values, unit) {
     `<div class="bar" title="${labels[i]}: ${fmt1(v)} ${unit}"><div class="col"><i style="height:${Math.max(1.5, v / top * 100)}%"></i></div><b>${labels[i]}</b></div>`).join("")}</div></div></div>
     <div class="unit">${unit}</div>`;
 }
-const dur = (ms) => (ms >= 48 * 36e5 ? `${fmt1(ms / 864e5)} giorni` : `${fmt0(ms / 36e5)} ore`);
+const dur = (ms) => (ms >= 48 * 36e5 ? (ms / 864e5 > 365 ? fmtSpan(ms / 864e5) : `${fmt1(ms / 864e5)} giorni`) : `${fmt0(ms / 36e5)} ore`);
 const tile = (big, label, small, id) => `<div class="tile"><b${id ? ` id="${id}"` : ""}>${big}</b><span>${label}</span>${small ? `<small>${small}</small>` : ""}</div>`;
 
 // Riga etichetta/valore su una sola riga. Con `go` (lat, lon) la riga si tocca per aprire quel posto sulla mappa.
@@ -107,7 +107,7 @@ function renderStats(pts, periodo) {
   el.innerHTML = `
     ${periodo ? `<p class="period">Statistiche di <b>${esc(periodo)}</b></p>` : ""}
     <div class="tiles">
-      ${tile(fmt0(total), "km percorsi", `${fmt0(days.length)} giorni con dati`)}
+      ${tile(fmt0(total), "km percorsi", `${fmtSpan(days.length)} con dati`)}
       ${tile(fmt1(total / 40075), "giri della Terra", `${fmt1(total / 384400 * 100)}% verso la Luna`)}
       ${tile(fmt1(avgSpeed), "km/h di media", "solo in movimento")}
       ${tile("…", "km² grattati", "esagoni da 100 m", "t-area")}
@@ -116,17 +116,17 @@ function renderStats(pts, periodo) {
     <div class="card"><h2>Panoramica</h2>
       ${row("Punti registrati", fmt0(pts.length))}
       ${row("Periodo", `${fmtDataBreve(first)} → ${fmtDataBreve(last)}`)}
-      ${row("Giorni in movimento", `${fmt0(movingDays)} su ${fmt0(days.length)}`)}
+      ${row("Giorni in movimento", `${fmtCount(movingDays)} su ${fmtCount(days.length)}`)}
       ${row("Media giorni attivi", `${fmt1(movingDays ? total / movingDays : 0)} km`)}
       ${row("Tempo in movimento", dur(movingMs))}
-      ${row("Serie di giorni con dati", `${bestStreak} → ${fmtDataBreve(bestEnd * 864e5 + 12 * 36e5)}`)}
+      ${row("Serie di giorni con dati", `${fmtCount(bestStreak)} → ${fmtDataBreve(bestEnd * 864e5 + 12 * 36e5)}`)}
     </div>
 
     <div class="card"><h2>Dove hai dormito</h2>
-      ${row("Notti rilevate", fmt0(sleep.nights))}
+      ${row("Notti rilevate", fmtCount(sleep.nights, "notte", "notti"))}
       ${row("Luoghi diversi", fmt0(sleep.places.length))}
-      ${row("Notti fuori casa", fmt0(Math.max(0, nightsAway)))}
-      ${sleep.places.length ? rank(sleep.places.slice(0, 5).map((p, i) => [place(p) + (i === 0 ? ' <small class="tag">casa</small>' : ""), `${fmt0(p.nights)} notti`, at(p)])) : ""}
+      ${row("Notti fuori casa", fmtCount(Math.max(0, nightsAway), "notte", "notti"))}
+      ${sleep.places.length ? rank(sleep.places.slice(0, 5).map((p, i) => [place(p) + (i === 0 ? ' <small class="tag">casa</small>' : ""), fmtSpan(p.nights, "notte", "notti"), at(p)])) : ""}
     </div>
 
     <div class="card"><h2>I 10 giorni più lunghi</h2>
@@ -146,9 +146,9 @@ function renderStats(pts, periodo) {
 
     <div class="card"><h2>Casa e lontananza</h2>
       ${home ? row("Casa", place(home), at(home)) : ""}
-      ${row("Giorni a casa (< 1 km)", fmt0(daysHome))}
-      ${row("Giorni a più di 50 km", fmt0(daysAway50))}
-      ${row("Giorni a più di 200 km", fmt0(daysAway200))}
+      ${row("Giorni a casa (< 1 km)", fmtCount(daysHome))}
+      ${row("Giorni a più di 50 km", fmtCount(daysAway50))}
+      ${row("Giorni a più di 200 km", fmtCount(daysAway200))}
       ${far.p ? row("Punto più lontano", `${fmt0(far.d)} km`, at(far.p)) : ""}
       ${far.p ? row("&nbsp;", `${place(far.p)} · ${fmtDataBreve(far.p.ts)}`, at(far.p)) : ""}
     </div>

@@ -1,19 +1,19 @@
 /* Interfaccia mobile-first di MyMap: chiara o scura secondo il telefono. Usata nel browser e nella WebView dell'app. */
 :root {
-  --bg: #f3f5f9;
-  --surface: #ffffff;
-  --surface-2: #eef1f6;
-  --text: #0f172a;
-  --muted: #64748b;
-  --line: #e2e8f0;
-  --accent: #0ea5e9;
-  --accent-2: #6366f1;
-  --accent-soft: #e0f2fe;
-  --grad: linear-gradient(135deg, #0ea5e9, #6366f1);
-  --danger: #e11d48;
-  --ok: #10b981;
-  --glass: rgba(255, 255, 255, .82);
-  --shadow: 0 6px 24px rgba(15, 23, 42, .14);
+  --bg: #e9edf3;
+  --surface: #f6f8fb;
+  --surface-2: #e3e8f0;
+  --text: #2b3548;
+  --muted: #7b879b;
+  --line: #d8dfe9;
+  --accent: #5aa7d4;
+  --accent-2: #8084d6;
+  --accent-soft: #dfecf6;
+  --grad: linear-gradient(135deg, #62b2de, #8a8fdb);
+  --danger: #d65a72;
+  --ok: #4db79a;
+  --glass: rgba(246, 248, 251, .84);
+  --shadow: 0 6px 22px rgba(43, 53, 72, .10);
   --radius: 18px;
 }
 :root[data-theme="dark"] {
@@ -40,8 +40,7 @@ body {
 /* ---------- intestazione ---------- */
 header { display: flex; align-items: center; gap: 10px; padding: 12px 18px 8px; }
 h1 { display: flex; align-items: center; gap: 9px; font-size: 20px; margin: 0; font-weight: 700; letter-spacing: -.02em; }
-.logo { width: 22px; height: 22px; border-radius: 7px; background: var(--grad); display: inline-block; position: relative; }
-.logo::after { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: #fff; opacity: .92; }
+.logo { width: 24px; height: 24px; border-radius: 7px; background: url(icon.svg) center / cover no-repeat; display: inline-block; }
 #version { color: var(--muted); font-size: 12px; flex: 1; }
 .badge { font-size: 12px; font-weight: 600; padding: 4px 11px; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
 .badge.on { background: var(--accent-soft); color: var(--accent); }
@@ -144,8 +143,7 @@ nav button svg { width: 22px; height: 22px; }
 nav button.active { background: var(--accent-soft); color: var(--accent); }
 
 /* ---------- mappa OpenStreetMap ammorbidita: i dati risaltano sullo sfondo ---------- */
-.leaflet-tile-pane { filter: saturate(.55) brightness(1.04) contrast(.95); }
-:root[data-theme="dark"] .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) saturate(.45) brightness(.92) contrast(.9); }
+/* le tessere CARTO sono già chiare o scure e senza fronzoli: nessun filtro */
 
 /* ---------- statistiche: tutto su una riga ---------- */
 .kv { display: flex; align-items: baseline; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; min-width: 0; }
@@ -175,6 +173,9 @@ nav button.active { background: var(--accent-soft); color: var(--accent); }
 /* ---------- notti: lune sulla mappa ---------- */
 .moon { border-radius: 50%; display: grid; place-items: center; color: #fff; background: radial-gradient(circle at 32% 30%, #a5b4fc, #4f46e5 70%); box-shadow: 0 3px 12px rgba(79, 70, 229, .55); border: 2px solid rgba(255, 255, 255, .85); }
 .moon b { font-size: 12px; font-weight: 800; }
+.moon.cluster { position: relative; background: radial-gradient(circle at 32% 30%, #c4b5fd, #6d28d9 72%); box-shadow: 0 3px 14px rgba(109, 40, 217, .55); }
+.moon.cluster.pl { background: radial-gradient(circle at 32% 30%, #c4b5fd, #7c3aed 72%); }
+.moon.cluster i { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; display: grid; place-items: center; font-style: normal; font-size: 10px; font-weight: 800; color: #4c1d95; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .3); }
 .leaflet-popup-content-wrapper { border-radius: 14px; background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
 .leaflet-popup-tip { background: var(--surface); }
 .pop { font-size: 13px; line-height: 1.5; min-width: 140px; }
@@ -204,12 +205,14 @@ nav button.active { background: var(--accent-soft); color: var(--accent); }
 .login-card .hint { margin-bottom: 18px; }
 .login-card input { text-align: left; }
 .logo.big { width: 64px; height: 64px; border-radius: 20px; margin: 0 auto; box-shadow: 0 10px 30px rgba(99, 102, 241, .45); }
-.logo.big::after { inset: 20px; }
 .seg2 { display: flex; padding: 4px; gap: 2px; border-radius: 999px; background: var(--surface-2); margin-bottom: 16px; }
 .seg2 button { flex: 1; margin: 0; padding: 10px 4px; font-size: 13px; background: none; color: var(--muted); box-shadow: none; border-radius: 999px; }
 .seg2 button.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 4px rgba(15, 23, 42, .18); }
 .or { display: flex; align-items: center; gap: 12px; margin: 16px 0 6px; color: var(--muted); font-size: 12px; }
 .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+button.linkbtn { background: none; box-shadow: none; color: var(--accent); font-weight: 600; font-size: 13.5px; padding: 10px; margin-top: 4px; }
+.login-card .ver { margin: 0 0 14px; font-size: 12px; color: var(--muted); }
+#l-google small { font-weight: 500; opacity: .8; }
 #l-google { display: flex; align-items: center; justify-content: center; gap: 10px; }
 #login button:disabled { opacity: .55; }
 #modal { position: fixed; inset: 0; z-index: 6000; background: rgba(2, 6, 23, .55); display: flex; align-items: flex-end; justify-content: center; padding: 16px; }
@@ -217,7 +220,9 @@ nav button.active { background: var(--accent-soft); color: var(--accent); }
 .sheet p { margin: 0 0 6px; font-size: 14.5px; line-height: 1.5; }
 .exp { display: flex; gap: 8px; }
 .exp button { margin-top: 0; }
-#logout { margin-top: 12px; }
+#logout, #pc-open { margin-top: 12px; }
+#pc-form { margin-top: 12px; }
+#pc-form input { margin-bottom: 8px; }
 h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 14px 0 4px; font-weight: 600; }
 .seg { overflow-x: auto; scrollbar-width: none; }
 .seg::-webkit-scrollbar { display: none; }
@@ -265,3 +270,49 @@ h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: v
 #name-new { width: auto; margin: 0 0 8px; }
 .kv .x { flex: none; width: 28px; height: 28px; margin: 0; padding: 0; font-size: 13px; border-radius: 50%; background: var(--surface-2); color: var(--muted); box-shadow: none; }
 .kv .nm { color: var(--text); font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- impostazioni: sezioni richiudibili ---------- */
+details.fold { padding: 0; overflow: hidden; }
+details.fold > summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 16px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
+}
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary::after {
+  content: ""; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
+  transform: rotate(45deg); transition: transform .18s; margin-right: 4px; flex: none;
+}
+details.fold[open] > summary { color: var(--text); }
+details.fold[open] > summary::after { transform: rotate(-135deg); }
+.foldbody { padding: 0 16px 16px; }
+
+/* ---------- aspetto e linee dei percorsi ---------- */
+.field input.colorbtn { width: 64px; height: 38px; padding: 2px; border-radius: 10px; cursor: pointer; }
+.routeprev { height: 40px; margin: 2px 0 12px; border-radius: 12px; background: var(--surface-2); padding: 2px 8px; }
+.routeprev svg { width: 100%; height: 100%; display: block; }
+
+/* ---------- filtro del periodo ---------- */
+.filterbtn { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; }
+.filterbtn svg { flex: none; }
+.filterbtn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#f-reset { width: 34px; height: 34px; padding: 0; display: grid; place-items: center; border-radius: 50%; flex: none; }
+#fsheet { position: fixed; inset: 0; z-index: 5500; background: rgba(2, 6, 23, .55); display: flex; align-items: flex-end; justify-content: center; padding: 12px; }
+#fsheet[hidden] { display: none; }
+.sheet.fs { max-height: 92dvh; overflow-y: auto; max-width: 480px; }
+.fhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 16px; }
+.fhead .x { width: 34px; height: 34px; margin: 0; padding: 0; border-radius: 50%; background: var(--surface-2); color: var(--muted); box-shadow: none; }
+.quick { display: flex; flex-wrap: wrap; gap: 8px; }
+.quick .chip { background: var(--surface-2); color: var(--text); box-shadow: none; padding: 9px 14px; }
+.quick .chip.on { background: var(--grad); color: #fff; }
+.fsel { display: flex; gap: 8px; }
+.fsel select {
+  flex: 1; min-width: 0; padding: 12px 10px; font-size: 14px; font-family: inherit; color: var(--text);
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px;
+}
+.fsel select:disabled { opacity: .55; }
+.frow { display: flex; gap: 8px; }
+.frow label { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.frow input { flex: 1; min-width: 0; margin: 0; padding: 11px 8px; }
+.sheet.fs h3 { margin: 16px 0 8px; }
+.sheet.fs .hint { margin: 8px 0 0; }
+#f-done { margin-top: 16px; }

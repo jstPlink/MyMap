@@ -37,11 +37,15 @@ const Places = (() => {
 const Names = (() => {
   let list = [], skipped = [];
   try { list = JSON.parse(localStorage.getItem("mymap.names") || "[]"); skipped = JSON.parse(localStorage.getItem("mymap.skipped") || "[]"); } catch {}
-  const save = () => { try { localStorage.setItem("mymap.names", JSON.stringify(list)); localStorage.setItem("mymap.skipped", JSON.stringify(skipped)); } catch {} };
+  let onSave = null;
+  const save = () => { try { localStorage.setItem("mymap.names", JSON.stringify(list)); localStorage.setItem("mymap.skipped", JSON.stringify(skipped)); } catch {} if (onSave) onSave(); };
   const R = 0.12;
   const near = (arr, lat, lon) => { let best = null, bd = R; arr.forEach((n) => { const d = km(n, { lat, lon }); if (d < bd) { bd = d; best = n; } }); return best; };
   return {
     list: () => list,
+    setOnSave: (f) => { onSave = f; },
+    snapshot: () => ({ list, skipped }),
+    adopt(o) { list = Array.isArray(o.list) ? o.list : []; skipped = Array.isArray(o.skipped) ? o.skipped : []; try { localStorage.setItem("mymap.names", JSON.stringify(list)); localStorage.setItem("mymap.skipped", JSON.stringify(skipped)); } catch {} },
     find: (lat, lon) => near(list, lat, lon),
     set(lat, lon, name) {
       const cur = near(list, lat, lon);

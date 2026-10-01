@@ -72,6 +72,56 @@ class Api(private val prefs: Prefs) {
         return if (code in 200..299) null else errorText(code, text)
     }
 
+    /**
+     * Impostazioni salvate nel profilo (campo JSON `settings` della collection users).
+     * Ritorna (supportato, json): `supportato` è false se il server non ha ancora il campo.
+     */
+    fun fetchSettings(): Pair<Boolean, String?> {
+        if (prefs.token.isEmpty() && !relogin()) error("accesso scaduto")
+        val path = "/api/collections/users/records/${prefs.userId}"
+        var (code, text) = call("GET", path, null)
+        if ((code == 401 || code == 404) && relogin()) call("GET", path, null).also { code = it.first; text = it.second }
+        if (code !in 200..299) error(errorText(code, text))
+        val j = JSONObject(text)
+        if (!j.has("settings")) return false to null
+        val s = j.opt("settings")
+        return true to (if (s == null || s == JSONObject.NULL || s.toString().isEmpty()) null else s.toString())
+    }
+
+    /** Salva le impostazioni nel profilo. Ritorna null se ok, altrimenti il motivo. */
+    fun saveSettings(json: String): String? {
+        if (prefs.token.isEmpty() && !relogin()) return "accesso scaduto"
+        val path = "/api/collections/users/records/${prefs.userId}"
+        val body = JSONObject().put("settings", JSONObject(json))
+        var (code, text) = call("PATCH", path, body, true)
+        if ((code == 401 || code == 404) && relogin()) call("PATCH", path, body, true).also { code = it.first; text = it.second }
+        return if (code in 200..299) null else errorText(code, text)
+    }
+
+    /**
+     * Cambia la password dell'utente collegato (serve quella attuale). PocketBase invalida i token precedenti,
+     * quindi si memorizza la nuova password e si rifà il login. Ritorna null se ok, altrimenti il motivo.
+     */
+    fun changePassword(old: String, new: String): String? {
+        if (prefs.token.isEmpty() && !relogin()) return "Accesso scaduto: esci e accedi di nuovo"
+        val body = JSONObject().put("oldPassword", old).put("password", new).put("passwordConfirm", new)
+        var (code, text) = call("PATCH", "/api/collections/users/records/${prefs.userId}", body, true)
+        if ((code == 401 || code == 404) && relogin()) call("PATCH", "/api/collections/users/records/${prefs.userId}", body, true).also { code = it.first; text = it.second }
+        if (code !in 200..299) return if (code == 400 && text.contains("oldPassword")) "La password attuale non è corretta" else errorText(code, text)
+        prefs.password = new
+        return loginMessage()
+    }
+
+    /**
+     * "Password dimenticata": chiede a PocketBase di mandare all'email il link per sceglierne una nuova.
+     * Serve un server di posta (SMTP) configurato in PocketBase. Ritorna null se la richiesta è partita, altrimenti il motivo.
+     */
+    fun requestPasswordReset(email: String): String? {
+        val (code, text) = call("POST", "/api/collections/users/request-password-reset", JSONObject().put("email", email), false)
+        if (code in 200..299) return null
+        return if (code == 400) "Il server non riesce a inviare email: controlla le impostazioni di posta (SMTP) in PocketBase" else errorText(code, text)
+    }
+
     @Volatile private var sse: HttpURLConnection? = null
     fun cancelOAuth() { sse?.disconnect() }
 

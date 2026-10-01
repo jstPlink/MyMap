@@ -7,9 +7,16 @@
 <title>MyMap</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
 <script>
-  // tema scuro se l'app lo chiede (?night=1) o, nel browser, se il sistema è scuro
-  document.documentElement.dataset.theme = /night=1/.test(location.search) || (!/night=0/.test(location.search) && matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+  // tema: scelta dell'utente (chiaro/scuro) o, se "come il telefono", quello del telefono (l'app lo passa come ?sys=0/1)
+  (function () {
+    var t = "system";
+    try { t = JSON.parse(localStorage.getItem("mymap.prefs") || "{}").theme || "system"; } catch (e) {}
+    var m = /[?&]sys=(\d)/.exec(location.search);
+    var sys = m ? m[1] === "1" : matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.dataset.theme = t === "dark" || (t === "system" && sys) ? "dark" : "light";
+  })();
 </script>
+<link rel="icon" href="icon.svg">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -32,19 +39,12 @@
           <button data-mode="sleep">Notti</button>
           <button data-mode="places">Posti</button>
         </div>
-        <div class="filters">
-          <select id="f-year"></select>
-          <select id="f-month"></select>
-          <select id="f-day"></select>
-        </div>
         <div class="filters chips2">
-          <button id="f-today" class="chip">Oggi</button>
-          <button id="f-range-btn" class="chip">Periodo</button>
-          <button id="f-reset" class="chip danger" hidden>&#10005; Rimuovi filtri</button>
-        </div>
-        <div class="filters range" id="f-range" hidden>
-          <label>Dal <input type="date" id="f-from"></label>
-          <label>Al <input type="date" id="f-to"></label>
+          <button id="f-open" class="chip filterbtn" aria-label="Filtra per periodo">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M8 3v4M16 3v4M3.500 10h17"/></svg>
+            <span id="f-summary">Tutto il periodo</span>
+          </button>
+          <button id="f-reset" class="chip danger" hidden aria-label="Rimuovi filtri">&#10005;</button>
         </div>
       </div>
 
@@ -88,13 +88,20 @@
   </section>
 
   <section id="view-settings" class="view">
-    <div class="card">
-      <h2>Account</h2>
+    <details class="card fold" data-fold="account"><summary>Account</summary><div class="foldbody">
       <div id="acct-info"></div>
+      <button id="pc-open" class="secondary" hidden>Cambia password</button>
+      <div id="pc-form" hidden>
+        <input id="pc-old" type="password" placeholder="Password attuale" autocomplete="current-password">
+        <input id="pc-new" type="password" placeholder="Nuova password (almeno 5 caratteri)" autocomplete="new-password">
+        <input id="pc-new2" type="password" placeholder="Ripeti la nuova password" autocomplete="new-password">
+        <button id="pc-save">Salva nuova password</button>
+        <p class="msg" id="pc-msg"></p>
+      </div>
       <button id="logout" class="secondary">Esci dall'account</button>
-    </div>
-    <div class="card">
-      <h2>Esporta i dati</h2>
+    </div></details>
+    <div id="prefs-ui"></div>
+    <details class="card fold" data-fold="export"><summary>Esporta i dati</summary><div class="foldbody">
       <p class="hint">Salva tutti i punti di questo telefono in un file, dove vuoi tu.</p>
       <div class="exp">
         <button class="secondary" data-export="csv">CSV</button>
@@ -102,8 +109,7 @@
         <button class="secondary" data-export="json">JSON</button>
       </div>
       <p class="msg" id="export-msg"></p>
-    </div>
-    <div id="prefs-ui"></div>
+    </div></details>
   </section>
 
   <nav>
@@ -130,29 +136,78 @@
   <div class="login-card">
     <div class="logo big"></div>
     <h1>MyMap</h1>
+    <p class="ver" id="l-version"></p>
     <p class="hint">Accedi per salvare e ritrovare i tuoi spostamenti.</p>
     <div class="seg2" id="login-db">
-      <button data-db="server" class="active">Il mio server</button>
-      <button data-db="local">Su questo telefono</button>
+      <button data-db="local" class="active">Su questo telefono</button>
+      <button data-db="server">Il mio server</button>
     </div>
-    <div id="login-server">
+    <div id="login-server" hidden>
+      <div class="seg2" id="login-mode">
+        <button data-lm="login" class="active">Accedi</button>
+        <button data-lm="create">Nuovo account</button>
+      </div>
       <input id="l-url" type="url" placeholder="URL del database (https://…)" autocapitalize="off">
       <input id="l-email" type="email" placeholder="Email" autocomplete="username" autocapitalize="off">
       <input id="l-pw" type="password" placeholder="Password" autocomplete="current-password">
-      <button id="l-login">Accedi</button>
-      <button id="l-create" class="secondary">Crea un nuovo account</button>
-      <div class="or"><span>oppure</span></div>
-      <button id="l-google" class="secondary">
-        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="#4285F4" d="M22 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.6a4.8 4.8 0 0 1-2.1 3.1v2.6h3.4c2-1.8 3.1-4.5 3.1-7.5Z"/><path fill="#34A853" d="M12 22c2.8 0 5.1-.9 6.9-2.5l-3.4-2.6c-.9.6-2.1 1-3.5 1-2.7 0-5-1.8-5.800-4.300H2.700v2.700A10 10 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.200 13.600a6 6 0 0 1 0-3.800V7.100H2.700a10 10 0 0 0 0 9.200l3.500-2.700Z"/><path fill="#EA4335" d="M12 6c1.500 0 2.900.5 4 1.600l3-3A10 10 0 0 0 2.700 7.100l3.500 2.700C7 7.800 9.300 6 12 6Z"/></svg>
-        Continua con Google
-      </button>
-      <button id="l-cancel" class="secondary" hidden>Annulla accesso con Google</button>
+      <input id="l-pw2" type="password" placeholder="Ripeti la password" autocomplete="new-password" hidden>
+
+      <div id="lm-login">
+        <button id="l-login">Accedi</button>
+        <button id="l-forgot" class="linkbtn">Password dimenticata?</button>
+        <div class="or"><span>oppure</span></div>
+        <button id="l-google" class="secondary" disabled>
+          <svg viewBox="0 0 24 24" width="18" height="18"><path fill="#4285F4" d="M22 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.6a4.8 4.8 0 0 1-2.1 3.1v2.6h3.4c2-1.8 3.1-4.5 3.1-7.5Z"/><path fill="#34A853" d="M12 22c2.8 0 5.1-.9 6.9-2.5l-3.4-2.6c-.9.6-2.1 1-3.5 1-2.7 0-5-1.8-5.800-4.300H2.700v2.700A10 10 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.200 13.600a6 6 0 0 1 0-3.800V7.100H2.700a10 10 0 0 0 0 9.200l3.500-2.700Z"/><path fill="#EA4335" d="M12 6c1.500 0 2.900.5 4 1.600l3-3A10 10 0 0 0 2.700 7.100l3.500 2.700C7 7.800 9.300 6 12 6Z"/></svg>
+          Continua con Google <small>(non ancora attivo)</small>
+        </button>
+        <button id="l-cancel" class="secondary" hidden>Annulla accesso con Google</button>
+      </div>
+
+      <div id="lm-create" hidden>
+        <p class="hint">Crea un nuovo utente sul tuo database. Usa una password di almeno 5 caratteri.</p>
+        <button id="l-create">Crea account</button>
+      </div>
     </div>
-    <div id="login-local" hidden>
+    <div id="login-local">
       <p class="hint">I punti restano solo in questo telefono, senza account e senza sincronizzazione. Potrai collegarti a un server più avanti dalle impostazioni: i punti registrati nel frattempo saranno caricati nel tuo account.</p>
       <button id="l-local">Usa il database locale</button>
     </div>
     <p id="l-msg" class="msg"></p>
+  </div>
+</div>
+
+<div id="fsheet" hidden>
+  <div class="sheet fs">
+    <div class="fhead"><b>Filtra per periodo</b><button id="f-close" class="x" aria-label="Chiudi">&#10005;</button></div>
+    <div class="quick" id="f-quick">
+      <button class="chip" data-q="today">Oggi</button>
+      <button class="chip" data-q="yesterday">Ieri</button>
+      <button class="chip" data-q="7">Ultimi 7 giorni</button>
+      <button class="chip" data-q="30">Ultimi 30 giorni</button>
+      <button class="chip" data-q="month">Questo mese</button>
+      <button class="chip" data-q="lastmonth">Mese scorso</button>
+      <button class="chip" data-q="year">Quest'anno</button>
+      <button class="chip" data-q="all">Tutto</button>
+    </div>
+    <h3>Anno, mese, giorno</h3>
+    <div class="fsel">
+      <select id="f-year"></select>
+      <select id="f-month"></select>
+      <select id="f-day"></select>
+    </div>
+    <h3>Da data a data</h3>
+    <div class="frow">
+      <label>Dal <input type="date" id="f-from"></label>
+      <label>Al <input type="date" id="f-to"></label>
+    </div>
+    <h3>Fascia oraria</h3>
+    <div class="frow">
+      <label>Dalle <input type="time" id="f-tfrom"></label>
+      <label>Alle <input type="time" id="f-tto"></label>
+    </div>
+    <p class="hint">La fascia oraria vale per ogni giorno del periodo scelto (es. 07:00–09:00 per i tragitti del mattino). Se la seconda ora è prima della prima, la fascia passa la mezzanotte.</p>
+    <button id="f-done">Fatto</button>
+    <button id="f-clear" class="secondary">Rimuovi filtri</button>
   </div>
 </div>
 
@@ -174,6 +229,7 @@
 <script src="stats.js"></script>
 <script src="native.js"></script>
 <script src="app.js"></script>
+<script src="profile.js"></script>
 <script src="account.js"></script>
 </body>
 </html>

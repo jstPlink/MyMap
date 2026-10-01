@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- esagono della scratch map, dietro al segnaposto -->
+    <path
+        android:fillColor="#38FFFFFF"
+        android:pathData="M54,22 L81.7,38 L81.7,70 L54,86 L26.3,70 L26.3,38 Z" />
+    <!-- segnaposto con foro centrale -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M54,27 C44.6,27 37,34.6 37,44 C37,56.5 54,77 54,77 C54,77 71,56.5 71,44 C71,34.6 63.4,27 54,27 Z M54,37.5 A6.5,6.5 0 1,0 54.01,37.5 Z" />
+</vector>

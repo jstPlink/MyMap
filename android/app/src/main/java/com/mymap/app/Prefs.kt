@@ -32,6 +32,10 @@ class Prefs(context: Context) {
     fun clearAccount() {
         sp.edit().remove("email").remove("pw").remove("token").remove("uid").putBoolean("oauth", false).putBoolean("historyPulled", false).apply()
     }
+    /** Tema scelto nelle impostazioni: "system", "light" o "dark". Serve a colorare le barre di sistema prima che la pagina si carichi. */
+    var theme: String
+        get() = sp.getString("theme", "system") ?: "system"
+        set(v) = sp.edit().putString("theme", v).apply()
     var tracking: Boolean
         get() = sp.getBoolean("tracking", false)
         set(v) = sp.edit().putBoolean("tracking", v).apply()

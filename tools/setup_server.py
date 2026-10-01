@@ -61,6 +61,25 @@ def main():
             sys.exit(f"creazione collection fallita: {code} {res}")
         print("collection `points` creata")
 
+    # collection users: campo JSON `settings` (impostazioni del profilo) e password di almeno 5 caratteri (di default PocketBase vuole 8)
+    code, users = call(base, "GET", "/api/collections/users", token=tok)
+    if code != 200:
+        sys.exit(f"lettura della collection users fallita: {code} {users}")
+    fields, changed = users["fields"], False
+    if any(f["name"] == "settings" for f in fields):
+        print("campo `settings` già presente su users")
+    else:
+        fields.append(dict(type="json", name="settings", maxSize=500000)); changed = True
+        print("campo `settings` aggiunto a users")
+    for f in fields:
+        if f["name"] == "password" and f.get("min") != 5:
+            f["min"] = 5; changed = True
+            print("lunghezza minima della password portata a 5")
+    if changed:
+        code, res = call(base, "PATCH", "/api/collections/users", {"fields": fields}, tok)
+        if code != 200:
+            sys.exit(f"aggiornamento della collection users fallito: {code} {res}")
+
     code, res = call(base, "PATCH", "/api/settings", {"batch": {"enabled": True, "maxRequests": 300, "timeout": 30, "maxBodySize": 0}}, tok)
     if code != 200:
         sys.exit(f"abilitazione batch fallita: {code} {res}")

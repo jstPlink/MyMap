@@ -39,7 +39,7 @@ class MainActivity : Activity() {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             addJavascriptInterface(Bridge(), "MyMapNative")
-            loadUrl("file:///android_asset/index.html?night=" + (if (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES) 1 else 0))
+            loadUrl("file:///android_asset/index.html?sys=" + (if (systemNight()) 1 else 0))
         }
         // da Android 15 l'app disegna sotto barra di stato, notch e barra di navigazione: lasciamo lo spazio
         val root = FrameLayout(this).apply {
@@ -57,14 +57,27 @@ class MainActivity : Activity() {
                 }
             }
         }
-        // dietro le barre di sistema e prima che la pagina si disegni: stesso colore di fondo dell'interfaccia (chiaro o scuro)
-        val night = resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES
-        val bg = android.graphics.Color.parseColor(if (night) "#0B1120" else "#F3F5F9")
-        root.setBackgroundColor(bg)
-        web.setBackgroundColor(bg)
-        if (Build.VERSION.SDK_INT >= 23) window.decorView.systemUiVisibility = if (night) 0 else android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+        rootView = root
+        applyBars()
         setContentView(root)
         root.requestApplyInsets()
+    }
+
+    private lateinit var rootView: FrameLayout
+
+    private fun systemNight() =
+        resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES
+
+    /** Tema effettivo: la scelta dell'utente oppure quello del telefono. */
+    private fun night() = when (prefs.theme) { "dark" -> true; "light" -> false; else -> systemNight() }
+
+    /** Dietro le barre di sistema e prima che la pagina si disegni: stesso colore di fondo dell'interfaccia (chiaro o scuro). */
+    private fun applyBars() {
+        val night = night()
+        val bg = android.graphics.Color.parseColor(if (night) "#0B1120" else "#E9EDF3")
+        rootView.setBackgroundColor(bg)
+        web.setBackgroundColor(bg)
+        if (Build.VERSION.SDK_INT >= 23) window.decorView.systemUiVisibility = if (night) 0 else android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
     }
 
     /** Android impone i permessi a gradini: prima posizione precisa, poi "sempre", poi notifiche. */
@@ -187,6 +200,74 @@ class MainActivity : Activity() {
             }.start()
         }
 
+        /** Impostazioni del profilo: lettura. Risposta in window.__nativeResult(id, {ok, supported, settings, error}). */
+        @JavascriptInterface
+        fun pullSettings(id: Int) {
+            Thread {
+                val r = JSONObject()
+                try {
+                    if (prefs.mode != "server") error("non collegato a un server")
+                    val (supported, s) = Api(prefs).fetchSettings()
+                    r.put("ok", true).put("supported", supported).put("settings", s ?: JSONObject.NULL)
+                } catch (e: Exception) {
+                    r.put("ok", false).put("error", e.message ?: "errore")
+                }
+                runOnUiThread { web.evaluateJavascript("window.__nativeResult($id, $r)", null) }
+            }.start()
+        }
+
+        /** Impostazioni del profilo: scrittura. Risposta in window.__nativeResult(id, {ok, error}). */
+        @JavascriptInterface
+        fun pushSettings(id: Int, json: String) {
+            Thread {
+                val r = JSONObject()
+                try {
+                    if (prefs.mode != "server") error("non collegato a un server")
+                    val err = Api(prefs).saveSettings(json)
+                    r.put("ok", err == null).put("error", err ?: "")
+                } catch (e: Exception) {
+                    r.put("ok", false).put("error", e.message ?: "errore")
+                }
+                runOnUiThread { web.evaluateJavascript("window.__nativeResult($id, $r)", null) }
+            }.start()
+        }
+
+        /** Cambio password dalle impostazioni (serve quella attuale). Risultato in window.__authResult({ok, error}). */
+        @JavascriptInterface
+        fun changePassword(json: String) {
+            val c = JSONObject(json)
+            Thread {
+                val err = try {
+                    if (prefs.oauth || prefs.mode != "server") "Il cambio password è disponibile solo per gli account con email"
+                    else Api(prefs).changePassword(c.getString("old"), c.getString("new"))
+                } catch (e: Exception) {
+                    "Errore di rete: ${e.message}"
+                }
+                val r = JSONObject().put("ok", err == null).put("error", err ?: "")
+                runOnUiThread { web.evaluateJavascript("window.__authResult($r)", null) }
+            }.start()
+        }
+
+        /** "Password dimenticata": il server manda l'email con il link di reimpostazione. Risultato in window.__authResult({ok, error}). */
+        @JavascriptInterface
+        fun resetPassword(json: String) {
+            val c = JSONObject(json)
+            Thread {
+                val old = prefs.serverUrl
+                val err = try {
+                    prefs.serverUrl = c.getString("url") // l'utente può non aver ancora fatto accesso: si usa l'URL scritto nel modulo
+                    val api = Api(prefs)
+                    if (!api.health()) "Server non raggiungibile" else api.requestPasswordReset(c.getString("email"))
+                } catch (e: Exception) {
+                    "Errore di rete: ${e.message}"
+                } finally {
+                    if (prefs.mode == "server") prefs.serverUrl = old
+                }
+                val r = JSONObject().put("ok", err == null).put("error", err ?: "")
+                runOnUiThread { web.evaluateJavascript("window.__authResult($r)", null) }
+            }.start()
+        }
+
         private var google: Api? = null
 
         /** Accesso con Google tramite il server PocketBase: apre il browser e attende il ritorno. */
@@ -216,6 +297,14 @@ class MainActivity : Activity() {
             if (wipe) store.clear()
             prefs.clearAccount()
             prefs.mode = "none"
+        }
+
+        /** Tema scelto nelle impostazioni (system | light | dark): si ricorda e si aggiornano le barre di sistema. */
+        @JavascriptInterface
+        fun setTheme(theme: String) {
+            if (theme !in listOf("system", "light", "dark")) return
+            prefs.theme = theme
+            runOnUiThread { applyBars() }
         }
 
         /** Esporta i punti in un file scelto dall'utente: format = csv | gpx | json. */

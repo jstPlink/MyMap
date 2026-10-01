@@ -11,6 +11,9 @@ const Native = (() => {
 
   if (real) {
     let authPending = null;
+    const waiting = {}; let seq = 0;
+    window.__nativeResult = (id, r) => { const f = waiting[id]; delete waiting[id]; if (f) f(r); };
+    const ask = (fn) => new Promise((res) => { const id = ++seq; waiting[id] = res; fn(id); });
     window.__authResult = (r) => { if (authPending) { authPending(r); authPending = null; } };
     return {
       isApp: true,
@@ -32,11 +35,16 @@ const Native = (() => {
       battery: () => real.requestIgnoreBattery(),
       session: () => JSON.parse(real.getSession()),
       loginEmail: (c) => new Promise((res) => { authPending = res; real.loginEmail(JSON.stringify(c)); }),
+      pullSettings: () => ask((id) => real.pullSettings(id)),
+      pushSettings: (json) => ask((id) => real.pushSettings(id, json)),
+      changePassword: (c) => new Promise((res) => { authPending = res; real.changePassword(JSON.stringify(c)); }),
+      resetPassword: (c) => new Promise((res) => { authPending = res; real.resetPassword(JSON.stringify(c)); }),
       loginGoogle: (url) => new Promise((res) => { authPending = res; real.loginGoogle(url); }),
       cancelGoogle: () => real.cancelGoogle(),
       useLocal: () => real.useLocal(),
       logout: (wipe) => real.logout(wipe),
       exportData: (fmt) => real.exportData(fmt),
+      setTheme: (t) => real.setTheme(t),
     };
   }
 
@@ -54,8 +62,12 @@ const Native = (() => {
     status: () => ({ version: "web", build: "", total: state.total, pending: state.pending, lastSync: state.lastSync, tracking: state.tracking }),
     session: () => ({ mode: "local", url: "", email: "", oauth: false }),
     loginEmail: async () => ({ ok: false, error: "Disponibile solo nell'app Android" }),
+    pullSettings: async () => ({ ok: false, error: "solo nell'app" }),
+    pushSettings: async () => ({ ok: false, error: "solo nell'app" }),
+    changePassword: async () => ({ ok: false, error: "Disponibile solo nell'app Android" }),
+    resetPassword: async () => ({ ok: false, error: "Disponibile solo nell'app Android" }),
     loginGoogle: async () => ({ ok: false, error: "Disponibile solo nell'app Android" }),
-    cancelGoogle: () => {}, useLocal: () => {}, logout: () => {}, exportData: () => {},
+    cancelGoogle: () => {}, useLocal: () => {}, logout: () => {}, exportData: () => {}, setTheme: () => {},
     points: async () => demo, // nel browser solo dati demo: le credenziali non vanno mai messe nel sito
     start: () => { state.tracking = true; },
     stop: () => { state.tracking = false; },
