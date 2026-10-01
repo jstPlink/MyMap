@@ -97,7 +97,7 @@ class MainActivity : Activity() {
     /** Dietro le barre di sistema e prima che la pagina si disegni: stesso colore di fondo dell'interfaccia (chiaro o scuro). */
     private fun applyBars() {
         val night = night()
-        val bg = android.graphics.Color.parseColor(if (night) "#0B1120" else "#E9EDF3")
+        val bg = android.graphics.Color.parseColor(if (night) "#121212" else "#E9EDF3")
         rootView.setBackgroundColor(bg)
         web.setBackgroundColor(bg)
         if (Build.VERSION.SDK_INT >= 23) window.decorView.systemUiVisibility = if (night) 0 else android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR

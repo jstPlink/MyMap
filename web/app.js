@@ -174,6 +174,7 @@ function filterActive() { const f = filterState(); return !!(f.y || f.m !== "" |
 function updateFilterUI() {
   const on = filterActive();
   $("f-summary").textContent = filterSummary();
+  $("f-open").title = on ? "Filtro: " + filterSummary() : "Filtra per periodo"; // il pulsante è solo un'icona
   $("f-open").classList.toggle("on", on);
   $("f-reset").hidden = !on;
   // evidenzia la scorciatoia che coincide con il periodo scelto
@@ -238,7 +239,8 @@ $("locate").onclick = async () => {
 };
 
 // ---------- viste della mappa ----------
-let mode = "scratch"; // vista principale
+const MODES = ["scratch", "heat", "routes", "mix", "sleep", "places", "stay"];
+let mode = MODES.includes(Prefs.v.view) ? Prefs.v.view : "scratch"; // vista corrente: si ricorda ed è condivisa con le altre impostazioni
 let firstRender = true; // all'apertura la mappa si centra su dove sei, non sull'intero storico
 // SVG e non canvas: nella WebView di Android il canvas 2D di Leaflet bloccava l'interfaccia per ~2 secondi a ogni disegno
 const canvas = L.svg({ padding: 0.1 });
@@ -360,12 +362,11 @@ function drawRoutes(pts) {
     }))();
   };
 
-  repaint = () => {
-    layer.clearLayers();
+  const paint = (linesOnly) => { // linesOnly: nella vista Mix si disegnano sempre le linee, anche con lo stile per frequenza
     const R = { ...Prefs.v.route, weight: Prefs.widthAt("route", map.getZoom()) }, z = Math.round(map.getZoom()), bn = map.getBounds().pad(0.5); // spessore per lo zoom attuale
     const S = bn.getSouth(), N = bn.getNorth(), W = bn.getWest(), E = bn.getEast();
     const vis = simplified(z).filter((t) => { const g = t.g; return !(g.c < S || g.a > N || g.d < W || g.b > E); });
-    if (R.mode === "freq") {
+    if (R.mode === "freq" && !linesOnly) {
       freqLayer(vis.filter((t) => t.line).map((t) => t.line), R).addTo(layer);
       return;
     }
@@ -375,10 +376,8 @@ function drawRoutes(pts) {
       else if (z >= 12 && dots < 1500) { L.circleMarker(t.dot, { radius: Math.max(2, R.weight), color: R.color, weight: 1, fillOpacity: .8, renderer: canvas, interactive: false }).addTo(layer); dots++; }
     }
   };
-  const freq = Prefs.v.route.mode === "freq";
-  return { dist, fit: bbox(pts), info: freq
-    ? "Più volte passi da un tratto, più il colore è caldo. Stile, sfocatura, calore e gradiente sono nelle impostazioni."
-    : "Il tuo tracciato, semplificato in base allo zoom. Filtra per periodo per vederne una parte; colore e spessore sono nelle impostazioni." };
+  repaint = () => { layer.clearLayers(); paint(); };
+  return { fit: bbox(pts), paint, info: "" };
 }
 
 // Heatmap: tra due punti vicini nel tempo si aggiungono punti intermedi, così i percorsi fatti più volte "si scaldano".
@@ -386,8 +385,7 @@ function drawRoutes(pts) {
 // intermedi si fanno solo quanto serve a quello zoom: da lontano restano poche migliaia di punti pesati.
 // Raggio, sfocatura, quantità di calore, densità e gradiente si regolano nelle impostazioni.
 function drawHeat(pts) {
-  repaint = () => {
-    layer.clearLayers();
+  const paint = () => {
     const H = Prefs.v.heat, z = map.getZoom(), rad = Prefs.widthAt("heat", z), cell = Math.max(2, rad / 3); // raggio per questo zoom; lato della cella in pixel
     const mpp = 156543 * Math.cos(map.getCenter().lat * Math.PI / 180) / 2 ** z;
     const stepKm = H.step ? Math.max(H.step, mpp * cell) / 1000 : 0; // da lontano non servono punti più fitti della cella
@@ -414,7 +412,15 @@ function drawHeat(pts) {
     bins.forEach((b) => heat.push([b.la / b.n, b.lo / b.n, b.n]));
     L.heatLayer(heat, { radius: rad, blur: H.blur, minOpacity: H.minOpacity / 100, max: H.max, gradient: Prefs.heatGradient() }).addTo(layer);
   };
-  return { fit: bbox(pts), info: "" };
+  repaint = () => { layer.clearLayers(); paint(); };
+  return { fit: bbox(pts), paint, info: "" };
+}
+
+// Mix: la heatmap con sopra i percorsi (sempre come linee, con colore, spessore e opacità scelti per i percorsi)
+function drawMix(pts) {
+  const h = drawHeat(pts), r = drawRoutes(pts);
+  repaint = () => { layer.clearLayers(); h.paint(); r.paint(true); };
+  return { fit: h.fit, info: "" };
 }
 
 // Contorni morbidi: si uniscono gli esagoni adiacenti in zone (si tolgono i lati condivisi), si concatenano i lati
@@ -465,6 +471,17 @@ function softOutlines(cells, S) {
 
 // Scratch map: la mappa è coperta e le zone in cui sei stato si "grattano" (buchi esagonali nella copertura).
 // La dimensione degli esagoni dipende dallo zoom e si regola nelle impostazioni.
+const scratchCache = new Map();
+let scratchTimer = null;
+function scratchTotal(pts, diam) {
+  const key = `${pts.length}|${pts[0].ts}|${pts[pts.length - 1].ts}|${diam}`;
+  if (!scratchCache.has(key)) {
+    if (scratchCache.size > 20) scratchCache.clear();
+    scratchCache.set(key, hexVisits(pts, diam).cells.length);
+  }
+  return scratchCache.get(key);
+}
+
 function drawScratch(pts) {
   repaint = () => {
     layer.clearLayers();
@@ -476,9 +493,13 @@ function drawScratch(pts) {
     // coperta morbida e semitrasparente, senza bordi: le zone visitate sono "buchi" dai contorni arrotondati
     L.polygon([ring, ...softOutlines(hex.cells, hex.S)], {
       renderer: canvas, fillRule: "evenodd", smoothFactor: 0, interactive: false, stroke: false,
-      fillColor: dark ? "#050a14" : "#47536a", fillOpacity: dark ? .66 : .56,
+      fillColor: dark ? "#0b0b0b" : "#47536a", fillOpacity: dark ? .66 : .56,
     }).addTo(layer);
-    $("modeinfo").innerHTML = sumHtml([[hex.cells.length.toLocaleString("it-IT"), "esagoni grattati in vista"], [fmtM(diam), "dimensione esagoni"]]);
+    // il totale degli esagoni grattati (su tutto il periodo scelto) si calcola subito dopo il disegno, così la mappa resta fluida
+    const info = (n) => sumHtml([[n, "esagoni grattati"], [fmtM(diam), "diametro esagono"]]);
+    $("modeinfo").innerHTML = info("…");
+    clearTimeout(scratchTimer);
+    scratchTimer = setTimeout(() => { if (mode === "scratch") $("modeinfo").innerHTML = info(scratchTotal(pts, diam).toLocaleString("it-IT")); }, 50);
   };
   return { fit: bbox(pts), info: "" };
 }
@@ -489,8 +510,7 @@ function drawSleep(pts) {
   const top = sl.places[0] ? sl.places[0].nights : 1;
   // Con lo zoom lontano le lune si sovrapporrebbero: quelle vicine sullo schermo (entro ~60 px) si fondono in un gruppo
   // con il totale delle notti e il numero di luoghi. Toccando un gruppo la mappa si avvicina. Si ricalcola a ogni zoom.
-  repaint = () => {
-    layer.clearLayers();
+  const paint = () => {
     const z = map.getZoom(), CELL = 60, cells = new Map();
     for (const p of sl.places) {
       const pt = map.project([p.lat, p.lon], z), k = Math.floor(pt.x / CELL) + "," + Math.floor(pt.y / CELL);
@@ -516,11 +536,12 @@ function drawSleep(pts) {
       }
     });
   };
-  const info = sl.places.length
-    ? sumHtml([[fmtCount(sl.nights, "notte", "notti"), "notti"], [sl.places.length.toLocaleString("it-IT"), sl.places.length === 1 ? "luogo" : "luoghi"], [fmtCount(top, "notte", "notti"), "nel luogo principale"]],
-      "Tocca una luna per i dettagli, un gruppo per avvicinarti.")
+  repaint = () => { layer.clearLayers(); paint(); };
+  const nights = sl.nights, n = sl.places.length;
+  const info = n
+    ? sumHtml([[nights.toLocaleString("it-IT"), "notti trovate"], [n.toLocaleString("it-IT"), "luoghi diversi"], [top.toLocaleString("it-IT"), "notti nel luogo principale"]])
     : `Nessuna notte rilevata nel periodo: servono almeno ${Prefs.v.sleep.minPts} punti entro ${Prefs.v.sleep.radius} m tra le ${String(Prefs.v.sleep.from).padStart(2, "0")}:00 e le ${String(Prefs.v.sleep.to).padStart(2, "0")}:00.`;
-  return { fit: sl.places.map((p) => [p.lat, p.lon]), info };
+  return { fit: sl.places.map((p) => [p.lat, p.lon]), paint, info, nights, n };
 }
 
 // ---------- nomi dei posti ----------
@@ -582,8 +603,7 @@ $("name-new").onclick = nameNewPlaces;
 function drawPlaces(pts) {
   const all = visitPlaces(pts), shown = all.slice(0, 1500);
   const todo = all.filter(needsName).length;
-  repaint = () => {
-    layer.clearLayers();
+  const paint = () => {
     const z = map.getZoom(), CELL = 56, cells = new Map();
     for (const p of shown) {
       const pt = map.project([p.lat, p.lon], z), k = Math.floor(pt.x / CELL) + "," + Math.floor(pt.y / CELL);
@@ -607,16 +627,26 @@ function drawPlaces(pts) {
       }
     });
   };
+  repaint = () => { layer.clearLayers(); paint(); };
   const tot = all.reduce((a, p) => a + p.visits, 0), named = all.filter((p) => Names.find(p.lat, p.lon)).length;
   $("name-new").hidden = !todo;
   $("name-new").textContent = `Nomina ${todo > 40 ? "i primi 40 dei " + todo : todo} nuovi posti`;
+  const f = (n) => n.toLocaleString("it-IT");
   return {
-    fit: shown.map((p) => [p.lat, p.lon]),
-    info: all.length
-      ? sumHtml([[all.length.toLocaleString("it-IT"), "posti"], [tot.toLocaleString("it-IT"), "visite"], [named.toLocaleString("it-IT"), "nominati"]],
-        `Verde: già nominati. Cerchio numerato: gruppo, toccalo per avvicinarti.${all.length > shown.length ? ` Mostrati i ${shown.length} dove stai di più.` : ""}`)
-      : "Nessuna sosta trovata nel periodo.",
+    fit: shown.map((p) => [p.lat, p.lon]), paint, n: all.length, tot,
+    info: all.length ? sumHtml([[f(all.length), "posti totali"], [f(tot), "visite"], [f(named), "rinominati"], [f(todo), "da rinominare"]]) : "Nessuna sosta trovata nel periodo.",
   };
+}
+
+// Notti e posti insieme: i posti visitati con sopra le lune delle notti
+function drawStay(pts) {
+  const p = drawPlaces(pts), s = drawSleep(pts);
+  repaint = () => { layer.clearLayers(); p.paint(); s.paint(); };
+  const f = (n) => n.toLocaleString("it-IT");
+  const info = p.n || s.n
+    ? sumHtml([[f(s.nights), "notti trovate"], [f(s.n), "luoghi per dormire"], [f(p.n), "posti totali"], [f(p.tot), "visite"]])
+    : "Nessuna sosta né notte trovata nel periodo.";
+  return { fit: [...p.fit, ...s.fit], info };
 }
 
 // Inquadra la tua posizione (l'ultima nota se manca il GPS) con 100 km di raggio, cioè 200 km sulla larghezza della mappa
@@ -636,8 +666,8 @@ function render(fit) {
   // I km si calcolano sempre sugli stessi dati (tutti i punti del filtro), così sono uguali in ogni vista; percorsi e heatmap
   // si disegnano invece sui punti alleggeriti (senza soste importate e con almeno 15 m tra due punti)
   const all = applyFilter(points);
-  const pts = mode === "heat" || mode === "routes" ? applyFilter(movePts) : all;
-  const draw = { scratch: drawScratch, heat: drawHeat, routes: drawRoutes, sleep: drawSleep, places: drawPlaces }[mode];
+  const pts = mode === "heat" || mode === "routes" || mode === "mix" ? applyFilter(movePts) : all;
+  const draw = { scratch: drawScratch, heat: drawHeat, routes: drawRoutes, mix: drawMix, sleep: drawSleep, places: drawPlaces, stay: drawStay }[mode];
   const r = pts.length ? draw(pts) : { fit: [], info: "Nessun punto nel periodo scelto." };
   updateFilterUI();
   map.invalidateSize();
@@ -649,18 +679,30 @@ function render(fit) {
   firstRender = false;
   $("modeinfo").innerHTML = r.info || "";
   if (repaint) repaint();
-  let total = 0;
-  for (const s of moveSteps(all)) total += s.d;
-  $("s-km").textContent = total.toLocaleString("it-IT", { maximumFractionDigits: 1 });
+  // Heatmap, Percorsi e Mix non mostrano dati: il pannello compare solo se c'è qualcosa da dire
+  $("panel").hidden = !$("modeinfo").innerHTML && $("name-new").hidden;
 }
 let moveTimer = null;
 map.on("moveend", () => { clearTimeout(moveTimer); moveTimer = setTimeout(() => repaint && repaint(), 120); });
 
-document.querySelectorAll("#modes button").forEach((b) => (b.onclick = () => {
-  mode = b.dataset.mode;
-  document.querySelectorAll("#modes button").forEach((x) => x.classList.toggle("active", x === b));
-  render(true);
-}));
+// Vista corrente: il pulsante in alto la mostra e apre l'elenco. silent = arriva dalle impostazioni condivise (non si risalva).
+function showModeUI() {
+  document.querySelectorAll("#modes button").forEach((x) => x.classList.toggle("active", x.dataset.mode === mode));
+  const b = document.querySelector(`#modes [data-mode="${mode}"] b`);
+  if (b) $("mode-name").textContent = b.textContent;
+}
+function setMode(m, silent) {
+  if (!MODES.includes(m) || (silent && m === mode)) return;
+  mode = m;
+  showModeUI();
+  if (!silent) { Prefs.v.view = m; Prefs.save(); }
+  render(!silent);
+}
+document.querySelectorAll("#modes button").forEach((b) => (b.onclick = () => { $("msheet").hidden = true; setMode(b.dataset.mode); }));
+$("mode-open").onclick = () => { $("msheet").hidden = false; };
+$("m-close").onclick = () => { $("msheet").hidden = true; };
+$("msheet").addEventListener("click", (e) => { if (e.target === $("msheet")) $("msheet").hidden = true; });
+showModeUI();
 
 let lastLoad = 0, lastSeen = -1;
 // ogni 4 s controlla se ci sono punti nuovi: ricarica quando il numero smette di crescere (scarico finito) o dopo un minuto
@@ -763,6 +805,7 @@ function fillTrackerConfig() {
 $("tc-save").onclick = () => {
   const n = (id, lo, hi) => Math.min(hi, Math.max(lo, Math.round(+$(id).value) || lo));
   Native.setTrackerConfig({ movingSec: n("tc-moving", 1, 600), stillPoints: n("tc-still-n", 1, 60), stillMinutes: n("tc-still-m", 1, 240) });
+  Prefs.save(); // la frequenza dei punti fa parte delle impostazioni condivise
   fillTrackerConfig();
   sumTrackerConfig();
   Native.haptic("ok");

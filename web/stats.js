@@ -39,6 +39,17 @@ const row = (k, v, go) => `<div class="kv${go ? " go" : ""}"${go ? ` data-go="${
 const rank = (items) => `<ul class="rank">${items.map((it, i) =>
   `<li${it[2] ? ` class="go" data-go="${it[2][0].toFixed(5)},${it[2][1].toFixed(5)}"` : ""}><i>${i + 1}</i><em>${it[0]}</em><b>${it[1]}</b></li>`).join("")}</ul>`;
 
+// Sezioni comprimibili delle statistiche: si ricorda quali l'utente ha chiuso (di default sono aperte)
+const closedFolds = () => { try { return JSON.parse(localStorage.getItem("mymap.sfolds") || "[]"); } catch { return []; } };
+const sfold = (id, title, body) => `<details class="card fold" data-sfold="${id}"${closedFolds().includes(id) ? "" : " open"}><summary>${title}</summary><div class="foldbody">${body}</div></details>`;
+document.addEventListener("toggle", (e) => {
+  const d = e.target;
+  if (!d.matches || !d.matches("details[data-sfold]")) return;
+  const set = new Set(closedFolds());
+  d.open ? set.delete(d.dataset.sfold) : set.add(d.dataset.sfold);
+  try { localStorage.setItem("mymap.sfolds", JSON.stringify([...set])); } catch {}
+}, true);
+
 function renderStats(pts, periodo) {
   const el = document.getElementById("stats");
   if (!pts.length) { el.innerHTML = '<div class="card"><p>Ancora nessun punto registrato.</p></div>'; return; }
@@ -129,13 +140,9 @@ function renderStats(pts, periodo) {
       ${sleep.places.length ? rank(sleep.places.slice(0, 5).map((p, i) => [place(p) + (i === 0 ? ' <small class="tag">casa</small>' : ""), fmtSpan(p.nights, "notte", "notti"), at(p)])) : ""}
     </div>
 
-    <div class="card"><h2>I 10 giorni più lunghi</h2>
-      ${rank(topDays.map(([k, v]) => [fmtData(dkeyTs(k)), `${fmt0(v)} km`]))}
-    </div>
+    ${sfold("days", "I 10 giorni più lunghi", rank(topDays.map(([k, v]) => [fmtData(dkeyTs(k)), `${fmt0(v)} km`])))}
 
-    <div class="card"><h2>Dove passi più tempo</h2>
-      ${rank(stays.map((s) => [place(s) + tag(s), dur(s.ms), at(s)]))}
-    </div>
+    ${sfold("stays", "Dove passi più tempo", rank(stays.map((s) => [place(s) + tag(s), dur(s.ms), at(s)])))}
 
     <div class="card"><h2>Posti visitati</h2>
       ${row("Posti diversi", fmt0(visited.length))}

@@ -1,4 +1,4 @@
-// Impostazioni nel profilo: con un account su un server, le impostazioni (esagoni, heatmap, notti, linee, tema, nomi dei posti)
+// Impostazioni nel profilo: con un account su un server, le impostazioni (esagoni, heatmap, notti, linee, tema, vista corrente, frequenza dei punti, nomi dei posti)
 // si salvano nel campo JSON `settings` dell'utente, così le ritrovi dopo una reinstallazione o su un altro telefono.
 // Vince la modifica più recente: ogni salvataggio locale segna l'ora (mymap.profile_t) e al confronto con il profilo si tiene la più nuova.
 // Con il database locale restano solo nel telefono.
@@ -10,7 +10,7 @@ const Profile = (() => {
 
   const localT = () => +store.get(T_KEY) || 0;
   const online = () => Native.isApp && session && session.mode === "server";
-  const snapshot = () => ({ t: localT(), prefs: Prefs.v, names: Names.snapshot() });
+  const snapshot = () => ({ t: localT(), prefs: { ...Prefs.v, tracker: Native.isApp ? Native.trackerConfig() : undefined }, names: Names.snapshot() });
   const set = (s, d = "") => { state = s; detail = d; if (api.onState) api.onState(); };
 
   async function push() {
@@ -38,6 +38,8 @@ const Profile = (() => {
     try {
       Prefs.adopt(remote.prefs || {});
       Prefs.save();
+      const tc = remote.prefs && remote.prefs.tracker; // frequenza dei punti del tracker (solo nell'app)
+      if (tc && Native.isApp) { Native.setTrackerConfig(tc); fillTrackerConfig(); sumTrackerConfig(); }
       Names.adopt(remote.names || {});
       store.set(T_KEY, String(remote.t || Date.now()));
     } finally { applying = false; }
@@ -47,6 +49,7 @@ const Profile = (() => {
     buildPrefsUI();
     buildNamesCard();
     statsFor = "";
+    setMode(Prefs.v.view, true); // la vista condivisa (non risalva); se è già quella corrente basta ridisegnare
     render(false);
   }
 

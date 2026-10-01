@@ -1,135 +1,101 @@
-# MyMap – Documentazione tecnica (v0.1.0, build 1)
+# MyMap – Architettura (v0.18.0, build 30)
 
-Documento di analisi dello stato attuale del prototipo, ricavato dalla lettura del codice.
+Panoramica del progetto com'è oggi. La cronologia delle versioni è in [CHANGELOG.md](CHANGELOG.md): va aggiornata a ogni rilascio
+(alzare `versionCode` di 1 e `versionName` in `android/app/build.gradle.kts`, poi aggiungere la voce).
 
 ## 1. Cos'è
 
-App Android **personale** che registra la posizione GPS in background e la invia a un backend **PocketBase** self-hosted. L'obiettivo di prodotto (da README) è: scratch map, luoghi salvati, strade percorse, senza alcuna parte social. Il prototipo copre solo la **raccolta dei dati**: tracking, buffer locale, sincronizzazione.
+App Android **personale** che registra la posizione in background e la mostra come scratch map, heatmap, percorsi, notti e posti
+visitati, con statistiche. Nessuna parte social. I dati restano sul telefono (database locale) oppure si sincronizzano con un
+server **PocketBase** proprio.
 
-### Stato di avanzamento
-
-| Componente | Stato |
-|---|---|
-| `android/` – app di tracking | Implementata (prototipo) |
-| `pocketbase/` – schema e config | Implementato (collection `points`, batch API) |
-| `worker/` – map matching, soste, scratch map | **Non esiste ancora** (citato nel README) |
-| `web/` – dashboard mappa | **Non esiste ancora** (citato nel README) |
-
-## 2. Architettura
+## 2. Come è fatta
 
 ```
-┌────────────────────── Telefono Android ──────────────────────┐
-│                                                               │
-│  MainActivity ──start/stop──► LocationService (foreground)    │
-│   (config, permessi,            │  LocationManager (GPS)      │
-│    stato buffer)                ▼                             │
-│                              PointStore (SQLite "points.db")  │
-│                                 │  ogni 20 punti / a stop     │
-│                                 ▼                             │
-│                              SyncWorker (WorkManager)         │
-│                                 │                             │
-│                                 ▼                             │
-│                               Api (HttpURLConnection)         │
-└─────────────────────────────────┼─────────────────────────────┘
-                                  │ HTTPS  POST /api/batch
-                        (tunnel Cloudflare → 127.0.0.1:8090)
-                                  ▼
-                    PocketBase (Docker) – collection `points`
+┌──────────────────────────── App Android ────────────────────────────┐
+│  WebView ── interfaccia web (cartella web/, inclusa negli asset)     │
+│     │  window.MyMapNative (ponte)                                    │
+│     ▼                                                                │
+│  MainActivity ── permessi, ponte JS                                  │
+│  LocationService (foreground) ──► PointStore (SQLite) ──► SyncWorker │
+│  TrackerWatchdog, BootReceiver        Api (HttpURLConnection)        │
+└──────────────────────────────────────────────┬───────────────────────┘
+                                               │ HTTPS (opzionale)
+                                               ▼
+                                   PocketBase (Docker, sul NAS)
 ```
 
-Flusso dati: **fix GPS → scarto se impreciso → insert in SQLite (synced=0) → worker di sync invia a batch da 200 → il server conferma → righe marcate synced=1**.
+**Un'unica interfaccia.** Tutta la grafica è in `web/` (HTML, CSS, JS senza build). Nel browser (`python -m http.server` dentro
+`web/`) gira con dati demo, perché `native.js` simula il motore; nell'app la stessa cartella viene impacchettata nell'APK e usa il
+ponte nativo con i dati veri. Il tracking, il buffer e la sincronizzazione sono sempre nativi.
 
-## 3. App Android (`android/`)
+### Android (`android/`)
 
-Kotlin, `minSdk 26`, `targetSdk/compileSdk 35`, package `com.mymap.app`. Dipendenze: solo `androidx.core-ktx` e `androidx.work`. **Nessun Google Play Services** (si usa `LocationManager` puro) e nessuna libreria HTTP/JSON esterna (`HttpURLConnection` + `org.json`). UI costruita interamente a codice, senza layout XML.
+Kotlin, `minSdk 26`, `targetSdk/compileSdk 35`, package `com.mymap.app`. Dipendenze: `androidx.core-ktx` e `androidx.work`; niente
+Google Play Services né librerie HTTP/JSON esterne.
 
 | File | Ruolo |
 |---|---|
-| `MainActivity.kt` | Schermata unica: versione, campi URL/email/password, pulsante "Salva e prova login", stato (punti totali, da sincronizzare, ultima sync, tracking attivo) aggiornato ogni 3 s, avvio/stop tracking, "Sincronizza ora", richiesta esclusione dal risparmio batteria. Gestisce i permessi a gradini: posizione precisa → "Consenti sempre" (background) → notifiche (Android 13+). |
-| `LocationService.kt` | Foreground service (tipo `location`, notifica persistente). Richiede aggiornamenti dal solo `GPS_PROVIDER`. `START_STICKY`. Dettagli in §3.1. |
-| `PointStore.kt` | Buffer SQLite (`points.db`, tabella `points`). `client_id` UNIQUE, colonna `synced`, indice `(synced, id)`. Metodi: `insert`, `pending(limit)`, `markSynced`, `counts`. Tutti `@Synchronized`. |
-| `SyncWorker.kt` | `CoroutineWorker` con vincolo di rete connessa, backoff esponenziale da 30 s, lavoro univoco `"sync"` (policy REPLACE). Svuota il buffer a blocchi da 200; in caso di errore `Result.retry()`. Aggiorna `lastSync`. |
-| `Api.kt` | Client PocketBase: `login()` (`/api/collections/users/auth-with-password`) e `sendBatch()`. Dettagli in §3.2. |
-| `Prefs.kt` | `SharedPreferences` "mymap": URL server, email, password, token, userId, flag tracking, ultima sync, `deviceId` (UUID generato al primo uso). |
-| `BootReceiver.kt` | Al `BOOT_COMPLETED` riavvia il servizio se il tracking era attivo (può fallire su Android 12+; l'eccezione è ignorata e l'utente deve riaprire l'app). |
+| `MainActivity.kt` | Contiene la WebView, gestisce i permessi a gradini (posizione precisa → "sempre" → notifiche), le barre di sistema e il ponte `MyMapNative`. |
+| `LocationService.kt` | Servizio in primo piano: frequenza dei punti regolabile (in movimento ogni N secondi, da fermo N punti ogni X minuti), filtro sui fix imprecisi, GPS con rete come riserva da fermo. |
+| `TrackerWatchdog.kt` | Ogni ~15 minuti controlla che il tracking giri; se Android l'ha fermato lo riavvia o manda una notifica. |
+| `BootReceiver.kt` | Riavvia il tracking dopo il boot e dopo un aggiornamento dell'app. |
+| `PointStore.kt` | Buffer SQLite dei punti; si svuota solo dopo una sincronizzazione riuscita. |
+| `SyncWorker.kt` / `Api.kt` | Invio a batch idempotente (`client_id`), scarico dello storico, login, registrazione, cambio password, accesso con Google. |
+| `Exporter.kt` | Esportazione in CSV, GPX o JSON. |
+| `Prefs.kt` | Preferenze native (server, account, tracker). |
 
-### 3.1 Logica di tracking (`LocationService`)
+### Interfaccia (`web/`)
 
-- **Frequenza adattiva**
-  - *Veloce*: ogni 5 s / 5 m minimi di spostamento.
-  - *Lenta*: ogni 60 s / 25 m.
-  - Passa a lenta dopo **6 fix consecutivi con velocità < 0,5 m/s**; torna veloce al primo fix in movimento.
-- **Filtro qualità**: i fix con `accuracy > 60 m` vengono scartati (per non sporcare il futuro map matching).
-- **Dati per punto**: `client_id` (UUID), `ts` (ms dal fix), lat, lon, accuracy, speed, bearing, altitude, provider, battery (%).
-- **Trigger sync**: ogni 20 punti salvati e in `onDestroy`.
-- Il commento in codice indica che questo è il punto di partenza per gli esperimenti sul consumo batteria.
+| File | Ruolo |
+|---|---|
+| `index.html`, `style.css` | Struttura e stile (tema chiaro, o scuro in scala di grigi). |
+| `app.js` | Mappa Leaflet, viste (Scratch, Heatmap, Percorsi, Mix, Notti, Posti, Notti e posti) scelte da un pulsante che apre un foglio, filtro del periodo, pannello dati, tracker. |
+| `stats.js` | Scheda Statistiche (sezioni comprimibili incluse). |
+| `geo.js`, `places.js` | Calcoli geografici (esagoni, notti, visite) e nomi dei luoghi (OpenStreetMap Nominatim + nomi dati dall'utente). |
+| `prefs.js`, `profile.js` | Impostazioni, preset (vista corrente e frequenza dei punti inclusi) e loro salvataggio nel profilo del server, condiviso tra i dispositivi. |
+| `account.js` | Schermata di accesso, account, cambio password, esportazione. |
+| `native.js` | Adattatore verso il motore nativo (o simulazione nel browser). |
 
-### 3.2 Sincronizzazione e idempotenza (`Api`)
+Viste della mappa e dati mostrati nel pannello in basso:
 
-1. Se manca il token, login.
-2. `POST /api/batch` con una richiesta `POST /api/collections/points/records` per punto (PocketBase limita a 300 richieste, configurato in migrazione).
-3. `401/403` → nuovo login e un secondo tentativo (token scaduto).
-4. `200` → tutti i punti confermati.
-5. Altro errore (tipicamente un duplicato, dato che il batch è transazionale) → **fallback punto per punto**; un `400` che cita `client_id` conta come "già presente", quindi sincronizzato.
-
-Il `client_id` + indice unico lato server rende l'invio **idempotente**: un batch rinviato dopo un errore di rete non crea duplicati.
-
-## 4. Backend (`pocketbase/` + `docker-compose.yml`)
-
-- Immagine `ghcr.io/muchobien/pocketbase:latest`, porta pubblicata **solo su 127.0.0.1:8090** (l'esposizione pubblica è pensata via tunnel Cloudflare), `restart: unless-stopped`, healthcheck su `/api/health`.
-- Volumi: `./pocketbase/pb_data` (dati) e `./pocketbase/pb_migrations`.
-
-### Migrazioni
-
-**`1700000000_points.js`** – crea la collection `points`:
-
-| Campo | Tipo | Note |
+| Vista | Disegna | Pannello dati |
 |---|---|---|
-| `user` | relation → users | obbligatorio, cascade delete |
-| `client_id` | text | obbligatorio, chiave di idempotenza |
-| `ts` | number | epoch ms |
-| `lat`, `lon` | number | obbligatori |
-| `accuracy` (m), `speed` (m/s), `bearing`, `altitude` | number | opzionali |
-| `provider` | text | gps / network / fused / dead_reckoning |
-| `activity` | text | still / walking / vehicle… (**non ancora inviato dall'app**) |
-| `battery` | number | % |
-| `device_id` | text | |
+| Scratch | mappa coperta con esagoni "grattati" dove sei stato | esagoni grattati, diametro esagono |
+| Heatmap | calore dei punti | nessuno |
+| Percorsi | tracce (colore unico o per frequenza) | nessuno |
+| Mix | heatmap con i percorsi sopra | nessuno |
+| Notti | lune con il numero di notti per luogo | notti trovate, luoghi diversi, notti nel luogo principale |
+| Posti | posti visitati (almeno 20 minuti) | posti totali, visite, rinominati, da rinominare |
+| Notti e posti | posti con sopra le lune | notti, luoghi per dormire, posti, visite |
 
-Indici: `UNIQUE (user, client_id)` e `(user, ts)`.
-Regole: list/view/delete solo per il proprietario; create solo se `body.user` = utente autenticato; **update vietato** (`null`).
+## 3. Backend (`pocketbase/`, `docker-compose.yml`)
 
-**`1700000001_enable_batch.js`** – abilita `/api/batch` (disattivato di default) con `maxRequests = 300`.
+- PocketBase in Docker, porta pubblicata solo su `127.0.0.1:8090` (l'esposizione pubblica è pensata via tunnel Cloudflare).
+- Migrazioni: collection `points` (idempotente grazie all'indice unico `user + client_id`, regole solo per il proprietario),
+  batch API attiva (`/api/batch`, 300 richieste), campo JSON `settings` sugli utenti per il profilo.
+- Le password degli utenti hanno minimo **8 caratteri** (regola di PocketBase, rispettata anche dall'app).
+- `pocketbase/start-local.ps1` e `set-admin.ps1` servono per provarlo su Windows senza Docker (richiedono il binario in
+  `pocketbase/bin/`, escluso da git).
 
-## 5. Build e rilascio
+## 4. Strumenti e pubblicazione
 
-- Versione in `android/app/build.gradle.kts` (`versionName`, `versionCode`), mostrata in cima alla schermata.
-- Procedura (da `CHANGELOG.md`): ad ogni rilascio alzare `versionCode` di 1, aggiornare `versionName` e aggiungere una voce al changelog.
-- La build `release` è firmata con la chiave **debug** (uso personale, sideload); minify disattivato.
+- `tools/setup_server.py`: prepara il server (utente, campi necessari).
+- `tools/import_timeline.py`: importa nel server l'export "Spostamenti" di Google Maps (percorsi, soste, fix GPS).
+- `.github/workflows/pages.yml`: pubblica `web/` su GitHub Pages (versione dimostrativa con dati demo).
 
-## 6. Setup sintetico
+## 5. Sviluppo e prova
 
-1. `docker compose up -d` nella root; creare l'utente in PocketBase (admin UI su `:8090/_/`). Le migrazioni vengono applicate all'avvio.
-2. Esporre il server (es. tunnel Cloudflare verso `127.0.0.1:8090`).
-3. Compilare l'APK da `android/` e installarlo sul telefono.
-4. Nell'app: inserire URL, email e password → "Salva e prova login" → "Avvia tracking" → concedere i permessi (incluso "Consenti sempre") ed escludere l'app dal risparmio batteria.
+1. **Solo grafica:** `cd web && python -m http.server 8123`, poi `http://localhost:8123` (con `?sys=1` per il tema scuro).
+2. **App sul telefono:** con JDK 17 e Android SDK (piattaforma 35), da `android/` eseguire `./gradlew assembleDebug`; l'APK è in
+   `app/build/outputs/apk/debug/`. Si installa con il debug wireless (`adb pair`, `adb connect`, `adb install -r`).
+3. L'APK di debug e quello `release` sono firmati con la chiave di debug (uso personale): gli aggiornamenti si installano sopra
+   solo se compilati dalla stessa macchina.
 
-## 7. Osservazioni e punti aperti
+## 6. Punti aperti
 
-Annotazioni emerse dall'analisi, da valutare nelle prossime versioni:
-
-- **Password in chiaro** in `SharedPreferences` (serve per il re-login); valutare `EncryptedSharedPreferences`/Keystore o solo il token.
-- **`usesCleartextTraffic="true"`**: permette HTTP non cifrato; con il tunnel Cloudflare si può passare a HTTPS obbligatorio.
-- **Nessuna pulizia del buffer**: le righe `synced=1` restano per sempre in SQLite; manca una purga periodica.
-- **`activity` non popolato** (nessun activity recognition) nonostante sia nello schema.
-- **Solo `GPS_PROVIDER`**: in interni/canyon urbani non arrivano fix; nessun fallback network/fused.
-- **`markSynced`** costruisce la query concatenando gli id (sicuro perché sono `Long` interni, ma fragile sopra i limiti SQLite di ~1000 variabili se i blocchi crescessero; oggi il limite è 200).
-- **Fallback punto per punto** dopo un batch fallito può essere lento con molti duplicati (una richiesta per punto).
-- **Nessun test** automatico nel repository.
-- **README disallineato**: cita `worker/` e `web/` che non esistono ancora.
-- Immagine Docker con tag `latest`: conviene fissare una versione di PocketBase per evitare cambi di comportamento nelle migrazioni.
-- Il `BootReceiver` su Android 12+ può non riuscire ad avviare il foreground service da boot.
-
-## 8. Roadmap implicita (dal README)
-
-1. **worker/**: map matching dei punti grezzi sulle strade, rilevamento soste (luoghi), generazione scratch map.
-2. **web/**: dashboard con mappa per visualizzare strade percorse e luoghi.
+- La password dell'account è salvata in chiaro nelle preferenze dell'app (serve per il nuovo login); valutare Keystore.
+- `usesCleartextTraffic` è attivo: con il tunnel HTTPS si può disattivare.
+- Il buffer SQLite non elimina mai i punti già sincronizzati.
+- "Continua con Google" resta spento finché il provider non è attivo in PocketBase (`GOOGLE_ENABLED` in `web/account.js`).
+- Non ci sono test automatici.

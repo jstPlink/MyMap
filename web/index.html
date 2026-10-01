@@ -26,19 +26,20 @@
       <div id="map"></div>
 
       <div class="float top">
-        <div class="seg" id="modes">
-          <button data-mode="scratch" class="active">Scratch</button>
-          <button data-mode="heat">Heatmap</button>
-          <button data-mode="routes">Percorsi</button>
-          <button data-mode="sleep">Notti</button>
-          <button data-mode="places">Posti</button>
-        </div>
         <div class="filters chips2">
-          <button id="f-open" class="chip filterbtn" aria-label="Filtra per periodo">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M8 3v4M16 3v4M3.500 10h17"/></svg>
+          <button id="mode-open" class="chip modebtn" aria-label="Cambia vista della mappa">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></svg>
+            <span id="mode-name">Scratch</span>
+            <svg class="chev" viewBox="0 0 10 6" width="10" height="6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m1 1 4 4 4-4"/></svg>
+          </button>
+          <button id="f-open" class="chip filterbtn" aria-label="Filtra per periodo" title="Filtra per periodo">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.500 5h17l-6.500 7.500V19l-4 2v-8.500L3.500 5Z"/></svg>
             <span id="f-summary">Tutto il periodo</span>
           </button>
           <button id="f-reset" class="chip danger" hidden aria-label="Rimuovi filtri">&#10005;</button>
+          <span id="s-ver" class="verpill" aria-label="Versione dell'app"></span>
+        </div>
+        <div class="filters chips2 row2">
           <button id="trackwarn" class="chip warn" hidden>&#9888; Tracking fermo</button>
           <span id="zoomlevel" class="zoompill" aria-label="Livello di zoom"></span>
         </div>
@@ -48,13 +49,9 @@
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="7.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
       </button>
 
-      <div class="float bottom">
+      <div class="float bottom" id="panel" hidden>
         <div class="modeinfo" id="modeinfo"></div>
         <button id="name-new" class="chip" hidden>Nomina i nuovi posti</button>
-        <div class="chips">
-          <div><b id="s-km">–</b><span>km percorsi</span></div>
-          <div><b id="s-ver">–</b><span>versione</span></div>
-        </div>
       </div>
     </div>
   </section>
@@ -97,7 +94,7 @@
       <button id="pc-open" class="secondary" hidden>Cambia password</button>
       <div id="pc-form" hidden>
         <input id="pc-old" type="password" placeholder="Password attuale" autocomplete="current-password">
-        <input id="pc-new" type="password" placeholder="Nuova password (almeno 5 caratteri)" autocomplete="new-password">
+        <input id="pc-new" type="password" placeholder="Nuova password (almeno 8 caratteri)" autocomplete="new-password">
         <input id="pc-new2" type="password" placeholder="Ripeti la nuova password" autocomplete="new-password">
         <button id="pc-save">Salva nuova password</button>
         <p class="msg" id="pc-msg"></p>
@@ -172,7 +169,7 @@
       </div>
 
       <div id="lm-create" hidden>
-        <p class="hint">Crea un nuovo utente sul tuo database. Usa una password di almeno 5 caratteri.</p>
+        <p class="hint">Crea un nuovo utente sul tuo database. Usa una password di almeno 8 caratteri.</p>
         <button id="l-create">Crea account</button>
       </div>
     </div>
@@ -181,6 +178,21 @@
       <button id="l-local">Usa il database locale</button>
     </div>
     <p id="l-msg" class="msg"></p>
+  </div>
+</div>
+
+<div id="msheet" hidden>
+  <div class="sheet fs">
+    <div class="fhead"><b>Vista della mappa</b><button id="m-close" class="x" aria-label="Chiudi">&#10005;</button></div>
+    <div class="vlist" id="modes">
+      <button class="secondary active" data-mode="scratch"><b>Scratch</b><small>La mappa è coperta: gratti i posti dove sei stato</small></button>
+      <button class="secondary" data-mode="heat"><b>Heatmap</b><small>Calore dei punti: più passi, più è caldo</small></button>
+      <button class="secondary" data-mode="routes"><b>Percorsi</b><small>Le tue tracce, a colore unico o per frequenza</small></button>
+      <button class="secondary" data-mode="mix"><b>Mix</b><small>Heatmap con i percorsi sopra</small></button>
+      <button class="secondary" data-mode="sleep"><b>Notti</b><small>Dove hai dormito, con il numero di notti</small></button>
+      <button class="secondary" data-mode="places"><b>Posti</b><small>Dove ti sei fermato almeno 20 minuti</small></button>
+      <button class="secondary" data-mode="stay"><b>Notti e posti</b><small>I posti visitati con sopra le notti</small></button>
+    </div>
   </div>
 </div>
 

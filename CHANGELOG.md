@@ -4,6 +4,26 @@ Versione app in `android/app/build.gradle.kts` (`versionName` e `versionCode`).
 Ad ogni rilascio: alzare `versionCode` di 1, aggiornare `versionName` e aggiungere una voce qui.
 La versione è mostrata in cima alla schermata dell'app.
 
+## 0.18.0 (build 30) - 2026-10-02
+- Nuovo modo di scegliere la vista della mappa: un pulsante in alto mostra la vista corrente e apre un foglio con l'elenco, ognuna con una riga di spiegazione. Sostituisce la barra scorrevole.
+- Impostazioni condivise sul database: oltre a quelle già salvate nel profilo (esagoni, heatmap, notti, percorsi, aspetto, nomi dei posti) ora ci sono anche la vista corrente e la frequenza dei punti del tracker. Con l'account su un server si ritrovano su ogni dispositivo (vince la modifica più recente); con il database locale restano solo nel telefono. Serve il campo `settings` sul server (`tools/setup_server.py`).
+- Layout in alto: pulsante vista, filtro e versione sulla prima riga; zoom e avviso di tracking fermo sulla seconda.
+
+## 0.17.0 (build 29) - 2026-10-02
+- Tema scuro in scala di grigi: sfondi, schede, pulsanti e mappe scure non hanno più la tinta azzurra (anche le barre di sistema).
+- Nuove viste della mappa: Mix (heatmap con i percorsi sopra) e Notti e posti (i posti visitati con sopra le lune delle notti).
+- Il pannello dati sotto la mappa mostra solo i numeri di ogni vista, senza suggerimenti e senza km:
+  - Scratch: esagoni grattati (su tutto il periodo scelto) e diametro di un esagono;
+  - Notti: notti totali trovate, luoghi diversi e notti nel luogo principale;
+  - Posti: posti totali, visite, rinominati e da rinominare;
+  - Notti e posti: notti, luoghi per dormire, posti e visite;
+  - Heatmap, Percorsi e Mix: nessun pannello.
+- La versione dell'app è una targhetta in alto sulla mappa, accanto allo zoom (non è più nel pannello dati).
+- Il pulsante del filtro è solo un'icona (imbuto); tenendolo premuto compare il periodo attivo.
+- Statistiche: "I 10 giorni più lunghi" e "Dove passi più tempo" si possono comprimere; lo stato si ricorda.
+- Password di almeno 8 caratteri (creazione account, cambio password e messaggi), come impone PocketBase.
+- La barra delle viste scorre per mostrare quella scelta.
+
 ## 0.16.0 (build 28) - 2026-10-01
 - Ritocchi alla mappa di base (Impostazioni → Aspetto → Ritocchi alla mappa): cursori per tonalità, saturazione, luminosità, contrasto, grigio, seppia, inversione e sfocatura, più una tinta di colore con intensità e modo (moltiplica, schermo, sovrapponi, colore, normale). Valgono per tutti gli stili, con anteprima in tempo reale in una mini mappa; si salvano nei preset di Aspetto e nel profilo. Nomi, percorsi e marcatori non cambiano.
 
@@ -61,7 +81,7 @@ La versione è mostrata in cima alla schermata dell'app.
 - Heatmap: i punti si accorpano in celle di pochi pixel (con peso) e i punti intermedi si fanno solo quanto serve allo zoom, così da lontano resta leggera.
 
 ## 0.11.1 (build 17) - 2026-10-01
-- Password di almeno 5 caratteri (creazione account e cambio password). Il minimo lo impone anche PocketBase, che di default vuole 8: va abbassato con `python tools/setup_server.py ...` (o dal pannello: users, campo password, lunghezza minima).
+- Password di almeno 5 caratteri (creazione account e cambio password; dalla 0.17.0 sono 8, come impone PocketBase). Il minimo di PocketBase è 8 di default e si poteva abbassare con `python tools/setup_server.py ...` (o dal pannello: users, campo password, lunghezza minima).
 - Notti: con lo zoom lontano le lune vicine si fondono in un gruppo (totale notti e numero di luoghi); toccandolo la mappa si avvicina e il gruppo si apre.
 
 ## 0.11.0 (build 16) - 2026-10-01

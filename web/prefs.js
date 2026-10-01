@@ -45,6 +45,7 @@ function prefDefaults() {
     // ritocchi alla mappa di base (cursori in Aspetto): filtri di colore e tinta sovrapposta
     mapFx: { hue: 0, sat: 100, bright: 100, contrast: 100, gray: 0, sepia: 0, invert: 0, blur: 0, tint: "#3b82f6", tintOpacity: 0, tintMode: "multiply" },
     presets: {}, // preset salvati dall'utente: { gruppo: { nome: valori } }, gruppi hex, heat, route, sleep, look
+    view: "scratch", // vista della mappa, condivisa tra i dispositivi
     names: true,
   };
 }
@@ -55,7 +56,7 @@ const Prefs = {
   onSaved: null, // () => void, impostato da profile.js: ogni modifica delle impostazioni sale anche sul profilo
   adopt(saved) {
     const d = prefDefaults();
-    this.v = { hex: { ...d.hex, ...saved.hex }, heat: { ...d.heat, ...saved.heat }, sleep: saved.sleep && saved.sleep.v === d.sleep.v ? { ...d.sleep, ...saved.sleep } : d.sleep, route: { ...d.route, ...saved.route }, theme: saved.theme ?? d.theme, mapStyle: saved.mapStyle ?? d.mapStyle, mapFx: { ...d.mapFx, ...saved.mapFx }, presets: saved.presets && typeof saved.presets === "object" ? saved.presets : {}, names: saved.names ?? d.names };
+    this.v = { hex: { ...d.hex, ...saved.hex }, heat: { ...d.heat, ...saved.heat }, sleep: saved.sleep && saved.sleep.v === d.sleep.v ? { ...d.sleep, ...saved.sleep } : d.sleep, route: { ...d.route, ...saved.route }, theme: saved.theme ?? d.theme, mapStyle: saved.mapStyle ?? d.mapStyle, mapFx: { ...d.mapFx, ...saved.mapFx }, presets: saved.presets && typeof saved.presets === "object" ? saved.presets : {}, view: typeof saved.view === "string" ? saved.view : d.view, names: saved.names ?? d.names };
   },
   load() {
     try { this.adopt(JSON.parse(localStorage.getItem("mymap.prefs") || "{}")); } catch { this.v = prefDefaults(); }
