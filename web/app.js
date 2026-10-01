@@ -6,14 +6,61 @@ const map = L.map("map", { zoomSnap: 0.1 }).setView([45.4642, 9.19], 13); // zoo
 let base = [];
 map.createPane("labels").style.zIndex = 450; // nomi sopra a coperta e percorsi, sotto ai marcatori
 map.getPane("labels").style.pointerEvents = "none";
-function setBase() {
-  base.forEach((l) => map.removeLayer(l));
+// Livelli della mappa di base per lo stile scelto, aggiunti alla mappa `m` (anche quella dell'anteprima nelle impostazioni)
+function baseLayers(m) {
   const st = MAP_STYLES[Prefs.v.mapStyle] || MAP_STYLES.color, dark = Prefs.isDark();
   const val = (x) => (typeof x === "function" ? x(dark) : x);
-  base = [L.tileLayer(val(st.url), { maxNativeZoom: st.max, maxZoom: 19, attribution: st.attr, className: st.cls })];
-  if (st.ref) base.push(L.tileLayer(val(st.ref), { maxNativeZoom: 16, maxZoom: 19, pane: "labels", opacity: .9 }));
-  base.forEach((l) => l.addTo(map));
-  base[0].bringToBack();
+  const layers = [L.tileLayer(val(st.url), { maxNativeZoom: st.max, maxZoom: 19, attribution: st.attr, className: st.cls })];
+  if (st.ref) layers.push(L.tileLayer(val(st.ref), { maxNativeZoom: 16, maxZoom: 19, pane: "labels", opacity: .9 }));
+  layers.forEach((l) => l.addTo(m));
+  layers[0].bringToBack();
+  return layers;
+}
+function setBase() {
+  base.forEach((l) => map.removeLayer(l));
+  base = baseLayers(map);
+  applyMapFx();
+}
+
+// Ritocchi alla mappa di base (cursori in Aspetto): filtri CSS sul solo livello delle tessere (nomi, percorsi e marcatori restano
+// com'erano) e, per la tinta, un filtro SVG che mescola un colore con l'immagine.
+function mapFxFilter() {
+  const f = Prefs.v.mapFx, p = [];
+  if (f.hue) p.push(`hue-rotate(${f.hue}deg)`);
+  if (f.sat !== 100) p.push(`saturate(${f.sat}%)`);
+  if (f.bright !== 100) p.push(`brightness(${f.bright}%)`);
+  if (f.contrast !== 100) p.push(`contrast(${f.contrast}%)`);
+  if (f.gray) p.push(`grayscale(${f.gray}%)`);
+  if (f.sepia) p.push(`sepia(${f.sepia}%)`);
+  if (f.invert) p.push(`invert(${f.invert}%)`);
+  if (f.blur) p.push(`blur(${f.blur}px)`);
+  if (f.tintOpacity > 0) {
+    $("tint-flood").setAttribute("flood-color", f.tint);
+    $("tint-flood").setAttribute("flood-opacity", f.tintOpacity / 100);
+    $("tint-blend").setAttribute("mode", f.tintMode);
+    p.push("url(#maptint)");
+  }
+  return p.join(" ");
+}
+function applyMapFx() { map.getPane("tilePane").style.filter = mapFxFilter(); }
+
+// Anteprima dei ritocchi: una mini mappa nelle impostazioni, con lo stesso stile e gli stessi filtri, centrata dove stai guardando
+let fxMap = null, fxBase = [];
+function paintFxPreview() {
+  const el = document.getElementById("fxprev");
+  if (!el || !el.offsetParent) return; // sezione chiusa o scheda nascosta
+  if (fxMap && fxMap.getContainer() !== el) { fxMap.remove(); fxMap = null; fxBase = []; } // le impostazioni sono state ricostruite
+  if (!fxMap) {
+    fxMap = L.map(el, { zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false, touchZoom: false, doubleClickZoom: false, boxZoom: false, keyboard: false, zoomSnap: 0.1 });
+    fxMap.createPane("labels").style.zIndex = 450;
+    fxMap.getPane("labels").style.pointerEvents = "none";
+  }
+  fxMap.invalidateSize();
+  fxBase.forEach((l) => fxMap.removeLayer(l));
+  fxBase = baseLayers(fxMap);
+  const c = map.getCenter();
+  fxMap.setView(c, Math.max(9, Math.min(15, map.getZoom())), { animate: false });
+  fxMap.getPane("tilePane").style.filter = mapFxFilter();
 }
 setBase();
 const layer = L.layerGroup().addTo(map);
@@ -762,7 +809,7 @@ setInterval(() => { if ($("view-settings").classList.contains("active")) refresh
 // preferenze (esagoni, heatmap, notti, nomi): ogni modifica ridisegna la mappa
 buildPrefsUI();
 bindPrefsUI();
-Prefs.onChange = () => { statsFor = ""; render(false); };
+Prefs.onChange = (g) => { if (g === "mapFx") { applyMapFx(); return; } statsFor = ""; render(false); };
 Prefs.applyTheme();
 Native.setTheme(Prefs.v.theme); // l'app lo ricorda per colorare le barre di sistema prima che la pagina si carichi
 $("repull").onclick = () => { Native.repull(); $("repull-msg").textContent = "Scarico avviato: i punti nuovi compaiono al prossimo avvio dell'app."; };

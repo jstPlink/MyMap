@@ -42,6 +42,8 @@ function prefDefaults() {
     route: { mode: "single", color: "#00796b", zooms: [7, 11, 15], widths: [1.5, 2.5, 5], opacity: 30, blur: 2, max: 6, minOpacity: 25, detail: 1.5, preset: "classico", colors: [...HEAT_PRESETS.classico] },
     theme: "system", // system | light | dark
     mapStyle: "color", // una chiave di MAP_STYLES
+    // ritocchi alla mappa di base (cursori in Aspetto): filtri di colore e tinta sovrapposta
+    mapFx: { hue: 0, sat: 100, bright: 100, contrast: 100, gray: 0, sepia: 0, invert: 0, blur: 0, tint: "#3b82f6", tintOpacity: 0, tintMode: "multiply" },
     presets: {}, // preset salvati dall'utente: { gruppo: { nome: valori } }, gruppi hex, heat, route, sleep, look
     names: true,
   };
@@ -53,7 +55,7 @@ const Prefs = {
   onSaved: null, // () => void, impostato da profile.js: ogni modifica delle impostazioni sale anche sul profilo
   adopt(saved) {
     const d = prefDefaults();
-    this.v = { hex: { ...d.hex, ...saved.hex }, heat: { ...d.heat, ...saved.heat }, sleep: saved.sleep && saved.sleep.v === d.sleep.v ? { ...d.sleep, ...saved.sleep } : d.sleep, route: { ...d.route, ...saved.route }, theme: saved.theme ?? d.theme, mapStyle: saved.mapStyle ?? d.mapStyle, presets: saved.presets && typeof saved.presets === "object" ? saved.presets : {}, names: saved.names ?? d.names };
+    this.v = { hex: { ...d.hex, ...saved.hex }, heat: { ...d.heat, ...saved.heat }, sleep: saved.sleep && saved.sleep.v === d.sleep.v ? { ...d.sleep, ...saved.sleep } : d.sleep, route: { ...d.route, ...saved.route }, theme: saved.theme ?? d.theme, mapStyle: saved.mapStyle ?? d.mapStyle, mapFx: { ...d.mapFx, ...saved.mapFx }, presets: saved.presets && typeof saved.presets === "object" ? saved.presets : {}, names: saved.names ?? d.names };
   },
   load() {
     try { this.adopt(JSON.parse(localStorage.getItem("mymap.prefs") || "{}")); } catch { this.v = prefDefaults(); }
@@ -76,10 +78,10 @@ const Prefs = {
     return pts[pts.length - 1][1];
   },
   // Preset: copia dei valori di un gruppo di impostazioni ("look" = tema + stile mappa)
-  groupGet(g) { return g === "look" ? { theme: this.v.theme, mapStyle: this.v.mapStyle } : JSON.parse(JSON.stringify(this.v[g])); },
+  groupGet(g) { return g === "look" ? { theme: this.v.theme, mapStyle: this.v.mapStyle, mapFx: { ...this.v.mapFx } } : JSON.parse(JSON.stringify(this.v[g])); },
   groupSet(g, data) {
     const d = prefDefaults();
-    if (g === "look") { this.v.theme = data.theme ?? d.theme; this.v.mapStyle = data.mapStyle ?? d.mapStyle; }
+    if (g === "look") { this.v.theme = data.theme ?? d.theme; this.v.mapStyle = data.mapStyle ?? d.mapStyle; this.v.mapFx = { ...d.mapFx, ...data.mapFx }; }
     else this.v[g] = { ...d[g], ...JSON.parse(JSON.stringify(data)) };
   },
   reset(group) { const d = prefDefaults(); this.v[group] = d[group]; this.save(); },
@@ -97,6 +99,13 @@ function zoomWidthRows(g, label, maxPx) {
     `<div class="zwrow"><span>Zoom</span><input data-k="${g}.zooms.${i}" type="number" min="3" max="19" step="0.5" value="${o.zooms[i]}"><span>→</span><input data-k="${g}.widths.${i}" type="number" min="0.5" max="${maxPx}" step="0.5" value="${o.widths[i]}"><em>px</em></div>`).join("")}</div>`;
 }
 
+// Cursore dei ritocchi alla mappa, con il valore a destra
+function fxRange(k, label, min, max, step, unit) {
+  const v = Prefs.v.mapFx[k];
+  return `<label class="field fx"><span>${label}</span><input type="range" data-k="mapFx.${k}" min="${min}" max="${max}" step="${step}" value="${v}"><output data-out="${k}" data-unit="${unit}">${v}${unit}</output></label>`;
+}
+function fxLabels(root) { root.querySelectorAll("output[data-out]").forEach((o) => { o.textContent = Prefs.v.mapFx[o.dataset.out] + o.dataset.unit; }); }
+
 function field(label, k, attrs, hint) {
   return `<label class="field"><span>${label}${hint ? `<small>${hint}</small>` : ""}</span><input data-k="${k}" ${attrs}></label>`;
 }
@@ -113,6 +122,7 @@ document.addEventListener("toggle", (e) => {
   if (!d.matches || !d.matches("details[data-fold]")) return;
   const set = new Set(foldOpen());
   d.open ? set.add(d.dataset.fold) : set.delete(d.dataset.fold);
+  if (d.open && d.dataset.fold === "theme" && window.paintFxPreview) setTimeout(paintFxPreview, 60); // l'anteprima si disegna quando la sezione è visibile
   try { localStorage.setItem("mymap.folds", JSON.stringify([...set])); } catch {}
 }, true);
 
@@ -127,7 +137,7 @@ function presetBar(g) {
     <button class="secondary" data-pdel="${g}" ${cur ? "" : "disabled"}>Elimina</button>
   </div>`;
 }
-const presetGroupOf = (k) => { const g = k.split(".")[0]; return g === "theme" || g === "mapStyle" ? "look" : ["hex", "heat", "route", "sleep"].includes(g) ? g : null; };
+const presetGroupOf = (k) => { const g = k.split(".")[0]; return g === "theme" || g === "mapStyle" || g === "mapFx" ? "look" : ["hex", "heat", "route", "sleep"].includes(g) ? g : null; };
 function clearPresetSel(k) { // modificando un valore a mano il gruppo non corrisponde più al preset scelto
   const g = presetGroupOf(k);
   if (!g || !presetSel[g]) return;
@@ -142,7 +152,7 @@ function applyPreset(g, name) {
   Prefs.groupSet(g, data);
   Prefs.save();
   buildPrefsUI();
-  if (g === "look") { Prefs.applyTheme(); Native.setTheme(Prefs.v.theme); if (window.setBase) setBase(); }
+  if (g === "look") { Prefs.applyTheme(); Native.setTheme(Prefs.v.theme); if (window.setBase) setBase(); if (window.paintFxPreview) paintFxPreview(); }
   Prefs.onChange && Prefs.onChange(g);
 }
 async function savePreset(g) {
@@ -180,6 +190,8 @@ function buildPrefsUI() {
     .map(([k, t]) => `<option value="${k}" ${v.route.mode === k ? "selected" : ""}>${t}</option>`).join("");
   const routePresets = Object.keys(HEAT_PRESETS).map((p) => `<option value="${p}" ${v.route.preset === p ? "selected" : ""}>${p[0].toUpperCase() + p.slice(1)}</option>`).join("") +
     `<option value="custom" ${v.route.preset === "custom" ? "selected" : ""}>Personalizzato</option>`;
+  const tintModes = [["multiply", "Moltiplica (scurisce)"], ["screen", "Schermo (schiarisce)"], ["overlay", "Sovrapponi"], ["color", "Colore (ricolora)"], ["normal", "Normale"]]
+    .map(([k, t]) => `<option value="${k}" ${v.mapFx.tintMode === k ? "selected" : ""}>${t}</option>`).join("");
   const mapStyles = Object.entries(MAP_STYLES)
     .map(([k, s]) => `<option value="${k}" ${v.mapStyle === k ? "selected" : ""}>${s.label}</option>`).join("");
 
@@ -189,7 +201,22 @@ function buildPrefsUI() {
       <label class="field"><span>Tema<small>chiaro, scuro o quello impostato nel telefono</small></span>
         <select data-k="theme">${themes}</select></label>
       <label class="field"><span>Mappa<small>stile della mappa di base</small></span>
-        <select data-k="mapStyle">${mapStyles}</select></label>`) +
+        <select data-k="mapStyle">${mapStyles}</select></label>
+      <h3>Ritocchi alla mappa</h3>
+      <p class="hint">Regolano i colori della mappa di base, qualunque stile tu abbia scelto. L'anteprima mostra il risultato.</p>
+      <div class="fxprev" id="fxprev"></div>
+      ${fxRange("hue", "Tonalità", -180, 180, 5, "°")}
+      ${fxRange("sat", "Saturazione", 0, 300, 5, "%")}
+      ${fxRange("bright", "Luminosità", 30, 170, 5, "%")}
+      ${fxRange("contrast", "Contrasto", 30, 170, 5, "%")}
+      ${fxRange("gray", "Grigio", 0, 100, 5, "%")}
+      ${fxRange("sepia", "Seppia", 0, 100, 5, "%")}
+      ${fxRange("invert", "Inversione", 0, 100, 5, "%")}
+      ${fxRange("blur", "Sfocatura", 0, 8, 0.5, " px")}
+      <label class="field"><span>Tinta<small>colore sovrapposto alla mappa; può rallentare i telefoni meno potenti</small></span><input type="color" data-k="mapFx.tint" value="${v.mapFx.tint}" class="colorbtn"></label>
+      ${fxRange("tintOpacity", "Intensità tinta", 0, 80, 5, "%")}
+      <label class="field"><span>Modo della tinta</span><select data-k="mapFx.tintMode">${tintModes}</select></label>
+      <button class="secondary" data-reset="mapFx">Azzera ritocchi</button>`) +
 
     fold("route", "Percorsi · linee", `
       ${presetBar("route")}
@@ -250,6 +277,7 @@ function buildPrefsUI() {
   paintGradbar();
   paintRoutePreview();
   buildNamesCard();
+  if (window.paintFxPreview) setTimeout(paintFxPreview, 30);
 }
 
 // anteprima della linea dei percorsi con colore, spessore e opacità scelti
@@ -272,7 +300,7 @@ function bindPrefsUI() {
   root.addEventListener("input", (e) => {
     const el = e.target, k = el.dataset.k;
     if (!k) return;
-    let val = el.type === "checkbox" ? el.checked : el.type === "number" || el.tagName === "SELECT" && k.startsWith("sleep") ? +el.value : el.value;
+    let val = el.type === "checkbox" ? el.checked : el.type === "number" || el.type === "range" || el.tagName === "SELECT" && k.startsWith("sleep") ? +el.value : el.value;
     if (el.type === "number" && (el.value === "" || isNaN(val))) return;
     const grp = k.split(".")[0]; // heatmap e percorsi hanno lo stesso gradiente: preset e quattro colori
     if ((grp === "heat" || grp === "route") && k === grp + ".preset") {
@@ -288,9 +316,11 @@ function bindPrefsUI() {
     clearPresetSel(k);
     paintGradbar();
     paintRoutePreview();
-    if (k === "theme") { Prefs.applyTheme(); Native.setTheme(val); if (window.setBase) setBase(); }
-    if (k === "mapStyle" && window.setBase) setBase();
+    if (k.startsWith("mapFx.")) { fxLabels(root); if (window.applyMapFx) applyMapFx(); if (window.paintFxPreview) paintFxPreview(); }
+    if (k === "theme") { Prefs.applyTheme(); Native.setTheme(val); if (window.setBase) setBase(); if (window.paintFxPreview) paintFxPreview(); }
+    if (k === "mapStyle" && window.setBase) { setBase(); if (window.paintFxPreview) paintFxPreview(); }
     Prefs.save();
+    if (k.startsWith("mapFx.")) return; // i ritocchi si applicano subito alla mappa di base, senza ridisegnare i dati
     clearTimeout(prefsTimer);
     prefsTimer = setTimeout(() => Prefs.onChange && Prefs.onChange(k.split(".")[0]), 250);
   });

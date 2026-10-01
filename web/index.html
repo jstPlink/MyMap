@@ -132,6 +132,14 @@
   </nav>
 </div>
 
+<!-- filtro SVG per la tinta sulla mappa di base (colore e modo si aggiornano da app.js) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <filter id="maptint" color-interpolation-filters="sRGB">
+    <feFlood id="tint-flood" flood-color="#3b82f6" flood-opacity="0" result="tint"/>
+    <feBlend id="tint-blend" in="tint" in2="SourceGraphic" mode="multiply"/>
+  </filter>
+</defs></svg>
+
 <div id="login" hidden>
   <div class="login-card">
     <div class="logo big"></div>

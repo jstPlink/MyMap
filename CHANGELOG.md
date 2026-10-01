@@ -4,6 +4,9 @@ Versione app in `android/app/build.gradle.kts` (`versionName` e `versionCode`).
 Ad ogni rilascio: alzare `versionCode` di 1, aggiornare `versionName` e aggiungere una voce qui.
 La versione è mostrata in cima alla schermata dell'app.
 
+## 0.16.0 (build 28) - 2026-10-01
+- Ritocchi alla mappa di base (Impostazioni → Aspetto → Ritocchi alla mappa): cursori per tonalità, saturazione, luminosità, contrasto, grigio, seppia, inversione e sfocatura, più una tinta di colore con intensità e modo (moltiplica, schermo, sovrapponi, colore, normale). Valgono per tutti gli stili, con anteprima in tempo reale in una mini mappa; si salvano nei preset di Aspetto e nel profilo. Nomi, percorsi e marcatori non cambiano.
+
 ## 0.15.1 (build 27) - 2026-10-01
 - Tracker → Posizione adesso: pulsante "Registra la posizione adesso" che chiede subito la posizione (GPS e rete in parallelo, fino a 20 secondi) e la salva come punto. Anche il tasto "dove sono" della mappa ora chiede la posizione fresca invece dell'ultima nota.
 - Parametri della frequenza dei punti riscritti a frase ("In movimento: un punto ogni N secondi", "Da fermo: N punti ogni X minuti") con il riepilogo dei punti all'ora.

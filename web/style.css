@@ -312,6 +312,9 @@ details.fold[open] > summary { color: var(--text); }
 .zwrow { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13.5px; color: var(--muted); }
 .zwrow input { width: 78px; margin: 0; padding: 9px 8px; text-align: right; }
 .zwrow em { font-style: normal; font-size: 12px; }
+.fxprev { height: 150px; border-radius: 14px; overflow: hidden; margin-bottom: 12px; background: var(--surface-2); position: relative; z-index: 0; }
+.field.fx input[type="range"] { width: 150px; padding: 0; border: 0; background: none; accent-color: var(--accent); }
+.field.fx output { flex: none; min-width: 52px; text-align: right; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .sent { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin-bottom: 10px; font-size: 14px; }
 .sent input { width: 64px; margin: 0; padding: 9px 6px; text-align: center; }
 .msg.wrap { white-space: normal; overflow: visible; text-overflow: clip; }
