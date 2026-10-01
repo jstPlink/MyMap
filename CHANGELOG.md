@@ -4,6 +4,33 @@ Versione app in `android/app/build.gradle.kts` (`versionName` e `versionCode`).
 Ad ogni rilascio: alzare `versionCode` di 1, aggiornare `versionName` e aggiungere una voce qui.
 La versione è mostrata in cima alla schermata dell'app.
 
+## 0.14.1 (build 25) - 2026-10-01
+- Statistiche: i grafici a barre tornano visibili (le colonne avevano larghezza zero per una regola CSS ereditata da una versione precedente).
+- Percorsi per frequenza: niente più errore se si cambia un'impostazione mentre la mappa non è visibile.
+
+## 0.14.0 (build 24) - 2026-10-01
+- Mappa a tutta larghezza (fino ai bordi destro e sinistro); tolti logo, nome e targhetta "attivo" dall'intestazione.
+- La scheda Tracker è ora una sezione di Impostazioni (aperta di default); la barra in basso ha tre schede.
+- Tolti i punti totali e l'ultimo punto dalla scheda della mappa; restano km e versione.
+- I km sono uguali in tutte le viste: si calcolano sempre sugli stessi dati (prima Percorsi e Heatmap usavano i punti alleggeriti e davano numeri diversi).
+- Nella vista Heatmap non c'è più la descrizione.
+- Riepiloghi di Notti, Posti e Scratch con numeri grandi ed etichette, e un suggerimento breve.
+- Otto stili di mappa tra cui scegliere: Colorata, Pastello, Seppia, OpenStreetMap, Topografica, National Geographic, Satellite, Semplice (grigia).
+- Heatmap e percorsi: lo spessore (raggio per la heatmap) si imposta a tre livelli di zoom, ciascuno con il suo valore in px; tra un livello e l'altro si interpola. Sostituisce raggio e spessore singoli.
+- Preset personalizzati per esagoni, heatmap, percorsi, notti e aspetto (tema e mappa): Salva, Elimina e scelta dal menu in cima a ogni sezione; si salvano anche nel profilo.
+
+## 0.13.2 (build 23) - 2026-10-01
+- Sulla mappa, in tutte le viste, compare il livello di zoom (es. "Zoom 12,8 · 14 km", con la larghezza della mappa in km) e si aggiorna mentre ingrandisci.
+
+## 0.13.1 (build 22) - 2026-10-01
+- Percorsi: gli stessi controlli della heatmap. Nuovo stile "Per frequenza" (più passaggi sullo stesso tratto = più caldo) con sfocatura, quantità di calore, opacità minima e gradiente a quattro colori con i preset della heatmap; "Dettaglio" regola la semplificazione dei tratti. Lo stile "Colore unico" resta quello di prima (colore, spessore, opacità).
+
+## 0.13.0 (build 21) - 2026-10-01
+- Scratch: copertura più scura e contrastata.
+- Mappa di base colorata (Esri Street Map ammorbidita) di default; Impostazioni → Aspetto → Mappa permette di tornare allo stile semplice grigio. Tema scuro incluso.
+- Esagoni della scratch map regolari: angoli arrotondati tutti uguali e lati dritti, al posto del lisciamento che li deformava.
+- Cambiando vista o filtro la mappa si centra sulla tua posizione con 100 km di raggio (200 km di larghezza, zoom frazionario).
+
 ## 0.12.2 (build 20) - 2026-10-01
 - Oltre 365 giorni durate e conteggi si scrivono in anni, mesi e giorni (es. "2 anni, 3 mesi e 12 giorni"; un anno = 365 giorni, le parti a zero si omettono). Sostituisce il formato "anni e giorni" della 0.12.1.
 

@@ -21,12 +21,6 @@
 </head>
 <body>
 <div id="app">
-  <header>
-    <h1><span class="logo"></span>MyMap</h1>
-    <span id="version"></span>
-    <span id="badge" class="badge">fermo</span>
-  </header>
-
   <section id="view-map" class="view active">
     <div id="mapwrap">
       <div id="map"></div>
@@ -45,6 +39,7 @@
             <span id="f-summary">Tutto il periodo</span>
           </button>
           <button id="f-reset" class="chip danger" hidden aria-label="Rimuovi filtri">&#10005;</button>
+          <span id="zoomlevel" class="zoompill" aria-label="Livello di zoom"></span>
         </div>
       </div>
 
@@ -53,12 +48,11 @@
       </button>
 
       <div class="float bottom">
-        <p class="modeinfo" id="modeinfo"></p>
+        <div class="modeinfo" id="modeinfo"></div>
         <button id="name-new" class="chip" hidden>Nomina i nuovi posti</button>
         <div class="chips">
-          <div><b id="s-points">–</b><span>punti</span></div>
-          <div><b id="s-km">–</b><span>km</span></div>
-          <div><b id="s-last">–</b><span>ultimo</span></div>
+          <div><b id="s-km">–</b><span>km percorsi</span></div>
+          <div><b id="s-ver">–</b><span>versione</span></div>
         </div>
       </div>
     </div>
@@ -72,22 +66,18 @@
     <div id="stats"></div>
   </section>
 
-  <section id="view-tracker" class="view">
-    <div class="card hero">
-      <h2>Stato</h2>
+  <section id="view-settings" class="view">
+    <details class="card fold" data-fold="tracker"><summary>Tracker</summary><div class="foldbody">
       <p class="big" id="t-state">Tracking fermo</p>
       <dl>
         <dt>Punti registrati</dt><dd id="t-total">–</dd>
         <dt>Da sincronizzare</dt><dd id="t-pending">–</dd>
         <dt>Ultima sync</dt><dd id="t-sync">–</dd>
       </dl>
-    </div>
-    <button id="toggle">Avvia tracking</button>
-    <button id="sync" class="secondary">Sincronizza ora</button>
-    <button id="battery" class="secondary">Escludi da risparmio batteria</button>
-  </section>
-
-  <section id="view-settings" class="view">
+      <button id="toggle">Avvia tracking</button>
+      <button id="sync" class="secondary">Sincronizza ora</button>
+      <button id="battery" class="secondary">Escludi da risparmio batteria</button>
+    </div></details>
     <details class="card fold" data-fold="account"><summary>Account</summary><div class="foldbody">
       <div id="acct-info"></div>
       <button id="pc-open" class="secondary" hidden>Cambia password</button>
@@ -120,10 +110,6 @@
     <button data-view="stats">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20V11M12 20V4M19 20v-6"/></svg>
       <span>Statistiche</span>
-    </button>
-    <button data-view="tracker">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg>
-      <span>Tracker</span>
     </button>
     <button data-view="settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>

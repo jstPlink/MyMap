@@ -1,19 +1,17 @@
 // Interfaccia di MyMap: mappa, statistiche, tracker, impostazioni. Il motore (Native) è in native.js.
 const $ = (id) => document.getElementById(id);
 
-const map = L.map("map").setView([45.4642, 9.19], 13);
-// Mappa di base semplice: grigio chiaro o scuro con pochissimi dettagli (Esri Canvas) e, sopra, solo i nomi di strade e luoghi
+const map = L.map("map", { zoomSnap: 0.1 }).setView([45.4642, 9.19], 13); // zoom frazionario: serve a inquadrare esattamente 100 km di raggio
+// Mappa di base: lo stile si sceglie in Impostazioni → Aspetto → Mappa (elenco MAP_STYLES in prefs.js).
 let base = [];
 map.createPane("labels").style.zIndex = 450; // nomi sopra a coperta e percorsi, sotto ai marcatori
 map.getPane("labels").style.pointerEvents = "none";
 function setBase() {
   base.forEach((l) => map.removeLayer(l));
-  const tone = Prefs.isDark() ? "Dark" : "Light", url = (n) => `https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_${tone}_Gray_${n}/MapServer/tile/{z}/{y}/{x}`;
-  const opts = { maxNativeZoom: 16, maxZoom: 19 };
-  base = [
-    L.tileLayer(url("Base"), { ...opts, attribution: "Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap" }),
-    L.tileLayer(url("Reference"), { ...opts, pane: "labels", opacity: .9 }),
-  ];
+  const st = MAP_STYLES[Prefs.v.mapStyle] || MAP_STYLES.color, dark = Prefs.isDark();
+  const val = (x) => (typeof x === "function" ? x(dark) : x);
+  base = [L.tileLayer(val(st.url), { maxNativeZoom: st.max, maxZoom: 19, attribution: st.attr, className: st.cls })];
+  if (st.ref) base.push(L.tileLayer(val(st.ref), { maxNativeZoom: 16, maxZoom: 19, pane: "labels", opacity: .9 }));
   base.forEach((l) => l.addTo(map));
   base[0].bringToBack();
 }
@@ -26,13 +24,26 @@ const pin = L.layerGroup().addTo(map);
 let statsFor = "";     // per quali punti e filtro sono state calcolate le statistiche
 let loadedTotal = -1;  // quanti punti c'erano all'ultimo caricamento
 
+// Riepilogo della vista: numeri grandi con etichetta, e sotto un suggerimento breve
+const sumHtml = (items, tip) => `<div class="chips sum">${items.map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join("")}</div>${tip ? `<p class="tip">${tip}</p>` : ""}`;
+
+// ---------- livello di zoom (uguale in tutte le viste): zoom e larghezza della mappa in km ----------
+function showZoom() {
+  const z = map.getZoom(), c = map.getCenter(), w = map.getSize().x;
+  const km = (156543.03 * Math.cos((c.lat * Math.PI) / 180) / 2 ** z) * w / 1000;
+  const kmText = km < 10 ? km.toLocaleString("it-IT", { maximumFractionDigits: 1 }) : Math.round(km).toLocaleString("it-IT");
+  $("zoomlevel").innerHTML = `Zoom <b>${z.toLocaleString("it-IT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</b> · ${kmText} km`;
+}
+map.on("zoom zoomend moveend resize", showZoom);
+showZoom();
+
 // ---------- schede ----------
 function show(view) {
   document.querySelectorAll(".view").forEach((v) => v.classList.toggle("active", v.id === "view-" + view));
   document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
   if (view === "map") { map.invalidateSize(); loadPoints(); }
   if (view === "stats") refreshStats(); // si ricalcola solo se ci sono punti nuovi o è cambiato il filtro
-  if (view === "tracker") refreshStatus();
+  if (view === "settings") refreshStatus();
 }
 document.querySelectorAll("nav button").forEach((b) => (b.onclick = () => show(b.dataset.view)));
 
@@ -206,9 +217,20 @@ function rdp(P, tol) {
   return out;
 }
 
-// Percorsi: la traccia si spezza dove c'è un buco di più di 5 minuti. Ogni tratto si semplifica (RDP, ~1,5 px) allo zoom
+// Palette di 256 colori (indice = intensità 0-255) dal gradiente a quattro colori, come nella heatmap
+function heatPalette(colors) {
+  const c = document.createElement("canvas"); c.width = 256; c.height = 1;
+  const g = c.getContext("2d"), gr = g.createLinearGradient(0, 0, 256, 0);
+  colors.forEach((col, i) => gr.addColorStop(HEAT_STOPS[i], col));
+  g.fillStyle = gr; g.fillRect(0, 0, 256, 1);
+  return g.getImageData(0, 0, 256, 1).data;
+}
+
+// Percorsi: la traccia si spezza dove c'è un buco di più di 5 minuti. Ogni tratto si semplifica (RDP, "Dettaglio" in px) allo zoom
 // corrente: da lontano restano pochi vertici, da vicino il dettaglio pieno. Si disegnano solo i tratti visibili; i puntini
 // isolati (soste) compaiono solo da zoom 12. I tratti semplificati si ricordano per zoom, così spostare la mappa è leggero.
+// Due stili: colore unico (linee vettoriali) oppure per frequenza, con gli stessi controlli della heatmap: i tratti si sommano
+// su una tela (ogni passaggio aggiunge opacità), si sfoca e si colora con il gradiente; più passaggi = più caldo.
 function drawRoutes(pts) {
   let dist = 0;
   const segs = []; let cur = [];
@@ -220,30 +242,80 @@ function drawRoutes(pts) {
   const info = segs.map((s) => { const bb = bbox(s); return { s, a: bb[0][0], b: bb[0][1], c: bb[1][0], d: bb[1][1] }; });
   const cache = new Map();
   const simplified = (z) => {
-    if (cache.has(z)) return cache.get(z);
+    const tol = Prefs.v.route.detail || 1.5, key = z + "|" + tol;
+    if (cache.has(key)) return cache.get(key);
     if (cache.size > 3) cache.delete(cache.keys().next().value);
     const out = info.map((g) => {
       if (g.s.length === 1) return { g, dot: [g.s[0].lat, g.s[0].lon] };
-      const P = g.s.map((p) => mercator(p.lat, p.lon, z)), idx = rdp(P, 1.5);
+      const P = g.s.map((p) => mercator(p.lat, p.lon, z)), idx = rdp(P, tol);
       const tiny = Math.abs(mercator(g.a, g.b, z)[0] - mercator(g.c, g.d, z)[0]) < 3 && Math.abs(mercator(g.a, g.b, z)[1] - mercator(g.c, g.d, z)[1]) < 3;
       return tiny ? { g, dot: [(g.a + g.c) / 2, (g.b + g.d) / 2] } : { g, line: idx.map((k) => [g.s[k].lat, g.s[k].lon]) };
     });
-    cache.set(z, out);
+    cache.set(key, out);
     return out;
   };
+
+  // stile per frequenza: tela con i tratti sommati -> sfocatura -> colori del gradiente
+  const freqLayer = (lines, R) => {
+    const size = map.getSize(), sc = Math.min(2, window.devicePixelRatio || 1), W = Math.round(size.x * sc), Hh = Math.round(size.y * sc);
+    if (!W || !Hh) return L.layerGroup(); // mappa nascosta (altra scheda): niente da disegnare, si ridisegna al ritorno
+    const off = document.createElement("canvas"); off.width = W; off.height = Hh;
+    const o = off.getContext("2d");
+    o.lineCap = o.lineJoin = "round"; o.lineWidth = R.weight * sc; o.strokeStyle = "#000";
+    o.globalAlpha = Math.min(1, 1 / Math.max(1, R.max)); // ogni passaggio aggiunge 1/max di opacità
+    const z = map.getZoom(), min = map.getPixelBounds().min;
+    for (const l of lines) {
+      o.beginPath();
+      l.forEach(([la, lo], i) => { const [x, y] = mercator(la, lo, z); i ? o.lineTo((x - min.x) * sc, (y - min.y) * sc) : o.moveTo((x - min.x) * sc, (y - min.y) * sc); });
+      o.stroke();
+    }
+    let src = off, gain = 1;
+    if (R.blur > 0) {
+      const bl = document.createElement("canvas"); bl.width = W; bl.height = Hh;
+      const b = bl.getContext("2d");
+      if ("filter" in b) {
+        b.filter = `blur(${R.blur * sc}px)`; b.drawImage(off, 0, 0); src = bl;
+        // la sfocatura abbassa il picco di una linea sottile: lo si ricompensa, così i tratti ripetuti arrivano ai colori caldi
+        const x = R.weight / (2 * Math.SQRT2 * R.blur), t = 1 / (1 + .278393 * x + .230389 * x * x + .000972 * x ** 3 + .078108 * x ** 4);
+        gain = 1 / Math.max(.05, 1 - t ** 4);
+      }
+    }
+    const img = src.getContext("2d").getImageData(0, 0, W, Hh), d = img.data, pal = heatPalette(R.colors), floor = Math.round(R.minOpacity * 2.55);
+    for (let i = 0; i < d.length; i += 4) {
+      const a0 = d[i + 3];
+      if (a0 < 2) { d[i + 3] = 0; continue; }
+      const a = Math.min(255, Math.round(a0 * gain)), p = a * 4;
+      d[i] = pal[p]; d[i + 1] = pal[p + 1]; d[i + 2] = pal[p + 2]; d[i + 3] = Math.max(a, floor);
+    }
+    const cv = document.createElement("canvas"); cv.width = W; cv.height = Hh;
+    cv.style.cssText = `width:${size.x}px;height:${size.y}px;pointer-events:none`;
+    cv.className = "leaflet-zoom-hide";
+    cv.getContext("2d").putImageData(img, 0, 0);
+    return new (L.Layer.extend({
+      onAdd(mp) { mp.getPanes().overlayPane.appendChild(cv); L.DomUtil.setPosition(cv, mp.containerPointToLayerPoint([0, 0])); },
+      onRemove() { L.DomUtil.remove(cv); },
+    }))();
+  };
+
   repaint = () => {
     layer.clearLayers();
-    const R = Prefs.v.route, z = Math.round(map.getZoom()), bn = map.getBounds().pad(0.5);
+    const R = { ...Prefs.v.route, weight: Prefs.widthAt("route", map.getZoom()) }, z = Math.round(map.getZoom()), bn = map.getBounds().pad(0.5); // spessore per lo zoom attuale
     const S = bn.getSouth(), N = bn.getNorth(), W = bn.getWest(), E = bn.getEast();
-    let lines = 0, dots = 0;
-    for (const t of simplified(z)) {
-      const g = t.g;
-      if (g.c < S || g.a > N || g.d < W || g.b > E) continue;
-      if (t.line) { L.polyline(t.line, { color: R.color, weight: R.weight, opacity: R.opacity / 100, renderer: canvas, interactive: false, smoothFactor: 0 }).addTo(layer); lines++; }
+    const vis = simplified(z).filter((t) => { const g = t.g; return !(g.c < S || g.a > N || g.d < W || g.b > E); });
+    if (R.mode === "freq") {
+      freqLayer(vis.filter((t) => t.line).map((t) => t.line), R).addTo(layer);
+      return;
+    }
+    let dots = 0;
+    for (const t of vis) {
+      if (t.line) L.polyline(t.line, { color: R.color, weight: R.weight, opacity: R.opacity / 100, renderer: canvas, interactive: false, smoothFactor: 0 }).addTo(layer);
       else if (z >= 12 && dots < 1500) { L.circleMarker(t.dot, { radius: Math.max(2, R.weight), color: R.color, weight: 1, fillOpacity: .8, renderer: canvas, interactive: false }).addTo(layer); dots++; }
     }
   };
-  return { dist, fit: bbox(pts), info: "Il tuo tracciato, semplificato in base allo zoom. Filtra per periodo per vederne una parte; colore e spessore sono nelle impostazioni." };
+  const freq = Prefs.v.route.mode === "freq";
+  return { dist, fit: bbox(pts), info: freq
+    ? "Più volte passi da un tratto, più il colore è caldo. Stile, sfocatura, calore e gradiente sono nelle impostazioni."
+    : "Il tuo tracciato, semplificato in base allo zoom. Filtra per periodo per vederne una parte; colore e spessore sono nelle impostazioni." };
 }
 
 // Heatmap: tra due punti vicini nel tempo si aggiungono punti intermedi, così i percorsi fatti più volte "si scaldano".
@@ -253,7 +325,7 @@ function drawRoutes(pts) {
 function drawHeat(pts) {
   repaint = () => {
     layer.clearLayers();
-    const H = Prefs.v.heat, z = map.getZoom(), cell = Math.max(2, H.radius / 3); // lato della cella in pixel
+    const H = Prefs.v.heat, z = map.getZoom(), rad = Prefs.widthAt("heat", z), cell = Math.max(2, rad / 3); // raggio per questo zoom; lato della cella in pixel
     const mpp = 156543 * Math.cos(map.getCenter().lat * Math.PI / 180) / 2 ** z;
     const stepKm = H.step ? Math.max(H.step, mpp * cell) / 1000 : 0; // da lontano non servono punti più fitti della cella
     const bn = map.getBounds().pad(0.5), bins = new Map();
@@ -277,13 +349,13 @@ function drawHeat(pts) {
     }
     const heat = [];
     bins.forEach((b) => heat.push([b.la / b.n, b.lo / b.n, b.n]));
-    L.heatLayer(heat, { radius: H.radius, blur: H.blur, minOpacity: H.minOpacity / 100, max: H.max, gradient: Prefs.heatGradient() }).addTo(layer);
+    L.heatLayer(heat, { radius: rad, blur: H.blur, minOpacity: H.minOpacity / 100, max: H.max, gradient: Prefs.heatGradient() }).addTo(layer);
   };
-  return { fit: bbox(pts), info: "Più il colore è caldo, più spesso sei passato di lì. Regolazioni in Impostazioni." };
+  return { fit: bbox(pts), info: "" };
 }
 
 // Contorni morbidi: si uniscono gli esagoni adiacenti in zone (si tolgono i lati condivisi), si concatenano i lati
-// rimasti in anelli e si arrotondano gli angoli (Chaikin). Il calcolo è nel piano proiettato, poi si torna a lat/lon.
+// rimasti in anelli e si arrotondano gli angoli con raccordi uguali. Il calcolo è nel piano proiettato, poi si torna a lat/lon.
 function softOutlines(cells, S) {
   const SQ = Math.sqrt(3), key = (x, y) => Math.round(x * 10) + "," + Math.round(y * 10);
   const edges = new Map(); // lato -> {a, b, ka, kb, n}
@@ -312,14 +384,16 @@ function softOutlines(cells, S) {
       nx.used = true;
       if (nx.ka === k) { k = nx.kb; p = nx.b; } else { k = nx.ka; p = nx.a; }
     }
-    let ring = pts;
-    for (let it = 0; it < rounds; it++) {
-      const out = [];
-      for (let i = 0; i < ring.length; i++) {
-        const a = ring[i], b = ring[(i + 1) % ring.length];
-        out.push([a[0] * .75 + b[0] * .25, a[1] * .75 + b[1] * .25], [a[0] * .25 + b[0] * .75, a[1] * .25 + b[1] * .75]);
+    if (k === start.ka && pts.length > 3) pts.pop(); // l'anello si chiude sul primo vertice
+    // angoli arrotondati tutti uguali (raccordo al 30% del lato, curva di Bézier): i lati restano dritti e l'esagono resta regolare
+    const n = pts.length, T = 0.3, steps = rounds > 1 ? 5 : 3, ring = [];
+    for (let i = 0; i < n; i++) {
+      const P = pts[(i + n - 1) % n], V = pts[i], Q = pts[(i + 1) % n];
+      const a = [V[0] + (P[0] - V[0]) * T, V[1] + (P[1] - V[1]) * T], b = [V[0] + (Q[0] - V[0]) * T, V[1] + (Q[1] - V[1]) * T];
+      for (let s = 0; s <= steps; s++) {
+        const u = s / steps, w = 1 - u;
+        ring.push([w * w * a[0] + 2 * w * u * V[0] + u * u * b[0], w * w * a[1] + 2 * w * u * V[1] + u * u * b[1]]);
       }
-      ring = out;
     }
     loops.push(ring.map(([x, y]) => { const ll = L.CRS.EPSG3857.unproject(L.point(x, y)); return [ll.lat, ll.lng]; }));
   }
@@ -339,9 +413,9 @@ function drawScratch(pts) {
     // coperta morbida e semitrasparente, senza bordi: le zone visitate sono "buchi" dai contorni arrotondati
     L.polygon([ring, ...softOutlines(hex.cells, hex.S)], {
       renderer: canvas, fillRule: "evenodd", smoothFactor: 0, interactive: false, stroke: false,
-      fillColor: dark ? "#0b1220" : "#5f6b7e", fillOpacity: dark ? .5 : .34,
+      fillColor: dark ? "#050a14" : "#47536a", fillOpacity: dark ? .66 : .56,
     }).addTo(layer);
-    $("modeinfo").textContent = `${hex.cells.length.toLocaleString("it-IT")} esagoni grattati in vista · esagoni da ${fmtM(diam)}`;
+    $("modeinfo").innerHTML = sumHtml([[hex.cells.length.toLocaleString("it-IT"), "esagoni grattati in vista"], [fmtM(diam), "dimensione esagoni"]]);
   };
   return { fit: bbox(pts), info: "" };
 }
@@ -380,7 +454,8 @@ function drawSleep(pts) {
     });
   };
   const info = sl.places.length
-    ? `${fmtSpan(sl.nights, "notte", "notti")} · ${sl.places.length} ${sl.places.length === 1 ? "luogo" : "luoghi"} · il primo con ${top} notti. Tocca una luna per i dettagli o un gruppo per avvicinarti.`
+    ? sumHtml([[fmtCount(sl.nights, "notte", "notti"), "notti"], [sl.places.length.toLocaleString("it-IT"), sl.places.length === 1 ? "luogo" : "luoghi"], [fmtCount(top, "notte", "notti"), "nel luogo principale"]],
+      "Tocca una luna per i dettagli, un gruppo per avvicinarti.")
     : `Nessuna notte rilevata nel periodo: servono almeno ${Prefs.v.sleep.minPts} punti entro ${Prefs.v.sleep.radius} m tra le ${String(Prefs.v.sleep.from).padStart(2, "0")}:00 e le ${String(Prefs.v.sleep.to).padStart(2, "0")}:00.`;
   return { fit: sl.places.map((p) => [p.lat, p.lon]), info };
 }
@@ -469,19 +544,25 @@ function drawPlaces(pts) {
       }
     });
   };
-  const tot = all.reduce((a, p) => a + p.visits, 0);
+  const tot = all.reduce((a, p) => a + p.visits, 0), named = all.filter((p) => Names.find(p.lat, p.lon)).length;
   $("name-new").hidden = !todo;
   $("name-new").textContent = `Nomina ${todo > 40 ? "i primi 40 dei " + todo : todo} nuovi posti`;
   return {
     fit: shown.map((p) => [p.lat, p.lon]),
-    info: all.length ? `${all.length.toLocaleString("it-IT")} posti visitati · ${tot.toLocaleString("it-IT")} visite${all.length > shown.length ? ` · mostrati i ${shown.length} dove stai di più` : ""}. In verde quelli che hai già nominato; i cerchi viola numerati sono gruppi: toccali per avvicinarti.` : "Nessuna sosta trovata nel periodo.",
+    info: all.length
+      ? sumHtml([[all.length.toLocaleString("it-IT"), "posti"], [tot.toLocaleString("it-IT"), "visite"], [named.toLocaleString("it-IT"), "nominati"]],
+        `Verde: già nominati. Cerchio numerato: gruppo, toccalo per avvicinarti.${all.length > shown.length ? ` Mostrati i ${shown.length} dove stai di più.` : ""}`)
+      : "Nessuna sosta trovata nel periodo.",
   };
 }
 
-// Inquadra la tua posizione (l'ultima nota se manca il GPS) con 300 km di diametro; se non c'è nessuna posizione non muove la mappa
+// Inquadra la tua posizione (l'ultima nota se manca il GPS) con 100 km di raggio, cioè 200 km sulla larghezza della mappa
+// (zoom frazionario); se non c'è nessuna posizione non muove la mappa
 function goHere() {
-  const c = here || (points.length ? points[points.length - 1] : null);
-  if (c) map.fitBounds(L.latLng(c.lat, c.lon).toBounds(300000), { animate: false });
+  const c = here || (points.length ? points[points.length - 1] : null), w = map.getSize().x;
+  if (!c || !w) return;
+  const z = Math.log2(156543.03 * Math.cos((c.lat * Math.PI) / 180) / (200000 / w));
+  map.setView([c.lat, c.lon], Math.max(3, Math.min(17, z)), { animate: false });
 }
 
 // fit = true quando l'utente cambia vista o filtro: allora la mappa inquadra i dati; all'avvio resta su dove sei
@@ -489,25 +570,25 @@ function render(fit) {
   layer.clearLayers();
   $("name-new").hidden = true;
   repaint = null;
-  const pts = applyFilter(mode === "scratch" || mode === "sleep" || mode === "places" ? points : movePts);
-  const last = pts[pts.length - 1];
+  // I km si calcolano sempre sugli stessi dati (tutti i punti del filtro), così sono uguali in ogni vista; percorsi e heatmap
+  // si disegnano invece sui punti alleggeriti (senza soste importate e con almeno 15 m tra due punti)
+  const all = applyFilter(points);
+  const pts = mode === "heat" || mode === "routes" ? applyFilter(movePts) : all;
   const draw = { scratch: drawScratch, heat: drawHeat, routes: drawRoutes, sleep: drawSleep, places: drawPlaces }[mode];
-  const r = pts.length ? draw(pts) : { dist: 0, fit: [], info: "Nessun punto nel periodo scelto." };
+  const r = pts.length ? draw(pts) : { fit: [], info: "Nessun punto nel periodo scelto." };
   updateFilterUI();
   map.invalidateSize();
   if (firstRender && here) {
     map.setView([here.lat, here.lon], 15);
   } else if (fit) {
-    goHere(); // cambiando vista o filtro non si inquadra tutto lo storico: si resta dove sei, con 300 km di diametro
+    goHere(); // cambiando vista o filtro non si inquadra tutto lo storico: si resta dove sei, con 100 km di raggio
   }
   firstRender = false;
-  if (r.info) $("modeinfo").textContent = r.info;
+  $("modeinfo").innerHTML = r.info || "";
   if (repaint) repaint();
-  let dist = r.dist;
-  if (dist === undefined) { dist = 0; for (const s of moveSteps(pts)) dist += s.d; }
-  $("s-points").textContent = pts.length;
-  $("s-km").textContent = dist.toFixed(1);
-  $("s-last").textContent = last ? new Date(last.ts).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "–";
+  let total = 0;
+  for (const s of moveSteps(all)) total += s.d;
+  $("s-km").textContent = total.toLocaleString("it-IT", { maximumFractionDigits: 1 });
 }
 let moveTimer = null;
 map.on("moveend", () => { clearTimeout(moveTimer); moveTimer = setTimeout(() => repaint && repaint(), 120); });
@@ -574,9 +655,7 @@ $("stats").addEventListener("click", (e) => {
 // ---------- tracker ----------
 function refreshStatus() {
   const s = Native.status();
-  $("version").textContent = $("l-version").textContent = /^\d/.test(s.version) ? "v" + s.version : s.version;
-  $("badge").textContent = s.tracking ? "attivo" : "fermo";
-  $("badge").classList.toggle("on", s.tracking);
+  $("s-ver").textContent = $("l-version").textContent = /^\d/.test(s.version) ? "v" + s.version : s.version;
   $("t-state").textContent = s.tracking ? "Tracking ATTIVO" : "Tracking fermo";
   $("t-state").classList.toggle("on", s.tracking);
   $("t-total").textContent = s.total;
@@ -592,7 +671,7 @@ $("toggle").onclick = () => {
 $("sync").onclick = () => { Native.sync(); setTimeout(refreshStatus, 400); };
 $("battery").onclick = () => Native.battery();
 $("battery").hidden = !Native.isApp;
-setInterval(() => { if ($("view-tracker").classList.contains("active")) refreshStatus(); }, 3000);
+setInterval(() => { if ($("view-settings").classList.contains("active")) refreshStatus(); }, 3000);
 
 // preferenze (esagoni, heatmap, notti, nomi): ogni modifica ridisegna la mappa
 buildPrefsUI();

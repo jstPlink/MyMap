@@ -1,5 +1,19 @@
 // Preferenze dell'utente (salvate nel telefono): dimensione degli esagoni per zoom, heatmap, notti, nomi dei luoghi.
 const ZMIN = 5, ZMAX = 17;
+
+// Stili della mappa di base (tutti senza chiave: Esri e OpenStreetMap). `cls` è la classe con i filtri di colore in style.css.
+const ESRI = (p) => `https://server.arcgisonline.com/ArcGIS/rest/services/${p}/MapServer/tile/{z}/{y}/{x}`;
+const ESRI_ATTR = "Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap";
+const MAP_STYLES = {
+  color: { label: "Colorata", url: ESRI("World_Street_Map"), max: 19, cls: "tiles-color", attr: ESRI_ATTR },
+  pastel: { label: "Pastello", url: ESRI("World_Street_Map"), max: 19, cls: "tiles-pastel", attr: ESRI_ATTR },
+  sepia: { label: "Seppia", url: ESRI("World_Street_Map"), max: 19, cls: "tiles-sepia", attr: ESRI_ATTR },
+  osm: { label: "OpenStreetMap", url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", max: 19, cls: "tiles-osm", attr: "&copy; OpenStreetMap contributors" },
+  topo: { label: "Topografica", url: ESRI("World_Topo_Map"), max: 19, cls: "tiles-topo", attr: ESRI_ATTR },
+  natgeo: { label: "National Geographic", url: ESRI("NatGeo_World_Map"), max: 12, cls: "tiles-natgeo", attr: ESRI_ATTR },
+  sat: { label: "Satellite", url: ESRI("World_Imagery"), max: 19, cls: "tiles-sat", attr: ESRI_ATTR, ref: ESRI("Reference/World_Boundaries_and_Places") },
+  simple: { label: "Semplice (grigia)", url: (d) => ESRI(`Canvas/World_${d ? "Dark" : "Light"}_Gray_Base`), max: 16, attr: ESRI_ATTR, ref: (d) => ESRI(`Canvas/World_${d ? "Dark" : "Light"}_Gray_Reference`) },
+};
 const NICE = [100, 150, 200, 300, 500, 800, 1000, 1500, 2000, 3000, 5000, 8000, 10000, 15000, 20000, 30000, 50000, 80000, 100000, 200000, 300000];
 
 // Diametro predefinito per ogni zoom: circa 52 px sullo schermo, arrotondato a un valore "tondo", mai sotto i 100 m
@@ -23,10 +37,12 @@ function prefDefaults() {
   for (let z = ZMIN; z <= ZMAX; z++) hex[z] = defaultHexDiam(z);
   return {
     hex,
-    heat: { radius: 9, blur: 12, max: 30, minOpacity: 35, step: 100, preset: "classico", colors: [...HEAT_PRESETS.classico] },
+    heat: { zooms: [7, 11, 15], widths: [5, 9, 16], blur: 12, max: 30, minOpacity: 35, step: 100, preset: "classico", colors: [...HEAT_PRESETS.classico] },
     sleep: { v: 2, from: 23, to: 9, minPts: 2, radius: 300 }, // v: versione della formula
-    route: { color: "#00796b", weight: 2.5, opacity: 30 },
+    route: { mode: "single", color: "#00796b", zooms: [7, 11, 15], widths: [1.5, 2.5, 5], opacity: 30, blur: 2, max: 6, minOpacity: 25, detail: 1.5, preset: "classico", colors: [...HEAT_PRESETS.classico] },
     theme: "system", // system | light | dark
+    mapStyle: "color", // una chiave di MAP_STYLES
+    presets: {}, // preset salvati dall'utente: { gruppo: { nome: valori } }, gruppi hex, heat, route, sleep, look
     names: true,
   };
 }
@@ -37,7 +53,7 @@ const Prefs = {
   onSaved: null, // () => void, impostato da profile.js: ogni modifica delle impostazioni sale anche sul profilo
   adopt(saved) {
     const d = prefDefaults();
-    this.v = { hex: { ...d.hex, ...saved.hex }, heat: { ...d.heat, ...saved.heat }, sleep: saved.sleep && saved.sleep.v === d.sleep.v ? { ...d.sleep, ...saved.sleep } : d.sleep, route: { ...d.route, ...saved.route }, theme: saved.theme ?? d.theme, names: saved.names ?? d.names };
+    this.v = { hex: { ...d.hex, ...saved.hex }, heat: { ...d.heat, ...saved.heat }, sleep: saved.sleep && saved.sleep.v === d.sleep.v ? { ...d.sleep, ...saved.sleep } : d.sleep, route: { ...d.route, ...saved.route }, theme: saved.theme ?? d.theme, mapStyle: saved.mapStyle ?? d.mapStyle, presets: saved.presets && typeof saved.presets === "object" ? saved.presets : {}, names: saved.names ?? d.names };
   },
   load() {
     try { this.adopt(JSON.parse(localStorage.getItem("mymap.prefs") || "{}")); } catch { this.v = prefDefaults(); }
@@ -49,6 +65,23 @@ const Prefs = {
   sysDark() { const m = /[?&]sys=(\d)/.exec(location.search); return m ? m[1] === "1" : matchMedia("(prefers-color-scheme: dark)").matches; },
   isDark() { return this.v.theme === "dark" || (this.v.theme === "system" && this.sysDark()); },
   applyTheme() { document.documentElement.dataset.theme = this.isDark() ? "dark" : "light"; },
+  // Spessore in px allo zoom `z` per "heat" (raggio) o "route" (linea): tre livelli di zoom, ciascuno col suo valore; tra un livello
+  // e l'altro si interpola, fuori dal primo e dall'ultimo resta il valore più vicino.
+  widthAt(g, z) {
+    const o = this.v[g], pts = o.zooms.map((zz, i) => [+zz, +o.widths[i]]).sort((a, b) => a[0] - b[0]);
+    if (z <= pts[0][0]) return pts[0][1];
+    for (let i = 1; i < pts.length; i++) {
+      if (z <= pts[i][0]) { const [z0, w0] = pts[i - 1], [z1, w1] = pts[i]; return z1 === z0 ? w1 : w0 + (w1 - w0) * (z - z0) / (z1 - z0); }
+    }
+    return pts[pts.length - 1][1];
+  },
+  // Preset: copia dei valori di un gruppo di impostazioni ("look" = tema + stile mappa)
+  groupGet(g) { return g === "look" ? { theme: this.v.theme, mapStyle: this.v.mapStyle } : JSON.parse(JSON.stringify(this.v[g])); },
+  groupSet(g, data) {
+    const d = prefDefaults();
+    if (g === "look") { this.v.theme = data.theme ?? d.theme; this.v.mapStyle = data.mapStyle ?? d.mapStyle; }
+    else this.v[g] = { ...d[g], ...JSON.parse(JSON.stringify(data)) };
+  },
   reset(group) { const d = prefDefaults(); this.v[group] = d[group]; this.save(); },
 };
 Prefs.load();
@@ -57,13 +90,20 @@ Prefs.load();
 const fmtM = (m) => (m >= 1000 ? `${(m / 1000).toLocaleString("it-IT", { maximumFractionDigits: 1 })} km` : `${m} m`);
 const setPath = (o, path, val) => { const k = path.split("."); const last = k.pop(); k.reduce((a, b) => a[b], o)[last] = val; };
 
+// Tre righe "Zoom → spessore": ogni livello di zoom ha il suo spessore in pixel
+function zoomWidthRows(g, label, maxPx) {
+  const o = Prefs.v[g];
+  return `<div class="zw"><p class="zwt">${label}<small>px a tre livelli di zoom (3 lontano, 19 vicino); tra un livello e l'altro si interpola</small></p>${[0, 1, 2].map((i) =>
+    `<div class="zwrow"><span>Zoom</span><input data-k="${g}.zooms.${i}" type="number" min="3" max="19" step="0.5" value="${o.zooms[i]}"><span>→</span><input data-k="${g}.widths.${i}" type="number" min="0.5" max="${maxPx}" step="0.5" value="${o.widths[i]}"><em>px</em></div>`).join("")}</div>`;
+}
+
 function field(label, k, attrs, hint) {
   return `<label class="field"><span>${label}${hint ? `<small>${hint}</small>` : ""}</span><input data-k="${k}" ${attrs}></label>`;
 }
 
 // Sezione richiudibile: lo stato aperto/chiuso si ricorda tra una visita e l'altra
 const fold = (id, title, body) => `<details class="card fold" data-fold="${id}"><summary>${title}</summary><div class="foldbody">${body}</div></details>`;
-const foldOpen = () => { try { return JSON.parse(localStorage.getItem("mymap.folds") || "[]"); } catch { return []; } };
+const foldOpen = () => { try { const s = localStorage.getItem("mymap.folds"); return s ? JSON.parse(s) : ["tracker"]; } catch { return ["tracker"]; } }; // la prima volta è aperto il tracker
 function restoreFolds(root) {
   const open = foldOpen();
   root.querySelectorAll("details[data-fold]").forEach((d) => (d.open = open.includes(d.dataset.fold)));
@@ -75,6 +115,53 @@ document.addEventListener("toggle", (e) => {
   d.open ? set.add(d.dataset.fold) : set.delete(d.dataset.fold);
   try { localStorage.setItem("mymap.folds", JSON.stringify([...set])); } catch {}
 }, true);
+
+// ---------- preset: ogni gruppo (esagoni, heatmap, percorsi, notti, aspetto) può avere i suoi, salvati nel profilo ----------
+const presetSel = {}; // preset applicato per gruppo (solo finché non si modifica un valore)
+function presetBar(g) {
+  const names = Object.keys((Prefs.v.presets || {})[g] || {}).sort((a, b) => a.localeCompare(b, "it"));
+  const cur = presetSel[g] && names.includes(presetSel[g]) ? presetSel[g] : "";
+  return `<div class="presetbar" data-pgroup="${g}">
+    <select data-psel="${g}"><option value="">Preset…</option>${names.map((n) => `<option value="${esc(n)}" ${n === cur ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>
+    <button class="secondary" data-psave="${g}">Salva</button>
+    <button class="secondary" data-pdel="${g}" ${cur ? "" : "disabled"}>Elimina</button>
+  </div>`;
+}
+const presetGroupOf = (k) => { const g = k.split(".")[0]; return g === "theme" || g === "mapStyle" ? "look" : ["hex", "heat", "route", "sleep"].includes(g) ? g : null; };
+function clearPresetSel(k) { // modificando un valore a mano il gruppo non corrisponde più al preset scelto
+  const g = presetGroupOf(k);
+  if (!g || !presetSel[g]) return;
+  presetSel[g] = "";
+  const bar = document.querySelector(`.presetbar[data-pgroup="${g}"]`);
+  if (bar) { bar.querySelector("select").value = ""; bar.querySelector("[data-pdel]").disabled = true; }
+}
+function applyPreset(g, name) {
+  const data = name && ((Prefs.v.presets || {})[g] || {})[name];
+  presetSel[g] = data ? name : "";
+  if (!data) { buildPrefsUI(); return; }
+  Prefs.groupSet(g, data);
+  Prefs.save();
+  buildPrefsUI();
+  if (g === "look") { Prefs.applyTheme(); Native.setTheme(Prefs.v.theme); if (window.setBase) setBase(); }
+  Prefs.onChange && Prefs.onChange(g);
+}
+async function savePreset(g) {
+  const r = await promptDialog({ text: "Nome del preset. Se esiste già viene sostituito.", value: presetSel[g] || "", placeholder: "Es. Città, Mare, Notte…", okLabel: "Salva" });
+  if (r.action !== "save" || !r.value) return;
+  Prefs.v.presets = Prefs.v.presets || {};
+  (Prefs.v.presets[g] = Prefs.v.presets[g] || {})[r.value] = Prefs.groupGet(g);
+  presetSel[g] = r.value;
+  Prefs.save();
+  buildPrefsUI();
+}
+async function deletePreset(g) {
+  const name = presetSel[g];
+  if (!name || !(await confirmDialog(`Eliminare il preset "${name}"?`, "Elimina"))) return;
+  delete Prefs.v.presets[g][name];
+  presetSel[g] = "";
+  Prefs.save();
+  buildPrefsUI();
+}
 
 function buildPrefsUI() {
   const root = document.getElementById("prefs-ui");
@@ -89,25 +176,48 @@ function buildPrefsUI() {
   const themes = [["system", "Come il telefono"], ["light", "Chiaro"], ["dark", "Scuro"]]
     .map(([k, t]) => `<option value="${k}" ${v.theme === k ? "selected" : ""}>${t}</option>`).join("");
 
+  const routeModes = [["single", "Colore unico"], ["freq", "Per frequenza"]]
+    .map(([k, t]) => `<option value="${k}" ${v.route.mode === k ? "selected" : ""}>${t}</option>`).join("");
+  const routePresets = Object.keys(HEAT_PRESETS).map((p) => `<option value="${p}" ${v.route.preset === p ? "selected" : ""}>${p[0].toUpperCase() + p.slice(1)}</option>`).join("") +
+    `<option value="custom" ${v.route.preset === "custom" ? "selected" : ""}>Personalizzato</option>`;
+  const mapStyles = Object.entries(MAP_STYLES)
+    .map(([k, s]) => `<option value="${k}" ${v.mapStyle === k ? "selected" : ""}>${s.label}</option>`).join("");
+
   root.innerHTML =
     fold("theme", "Aspetto", `
+      ${presetBar("look")}
       <label class="field"><span>Tema<small>chiaro, scuro o quello impostato nel telefono</small></span>
-        <select data-k="theme">${themes}</select></label>`) +
+        <select data-k="theme">${themes}</select></label>
+      <label class="field"><span>Mappa<small>stile della mappa di base</small></span>
+        <select data-k="mapStyle">${mapStyles}</select></label>`) +
 
     fold("route", "Percorsi · linee", `
-      <label class="field"><span>Colore</span><input type="color" data-k="route.color" value="${v.route.color}" class="colorbtn"></label>
-      ${field("Spessore", "route.weight", `type="number" min="0.5" max="12" step="0.5" value="${v.route.weight}"`, "px")}
-      ${field("Opacità", "route.opacity", `type="number" min="5" max="100" step="5" value="${v.route.opacity}"`, "%: bassa = i tratti ripetuti si scuriscono")}
+      ${presetBar("route")}
+      <label class="field"><span>Stile<small>colore unico, oppure colori per frequenza come la heatmap</small></span>
+        <select data-k="route.mode">${routeModes}</select></label>
+      <label class="field"><span>Colore<small>solo con colore unico</small></span><input type="color" data-k="route.color" value="${v.route.color}" class="colorbtn"></label>
+      ${zoomWidthRows("route", "Spessore", 20)}
+      ${field("Opacità", "route.opacity", `type="number" min="5" max="100" step="5" value="${v.route.opacity}"`, "% · solo con colore unico: bassa = i tratti ripetuti si scuriscono")}
+      ${field("Sfocatura", "route.blur", `type="number" min="0" max="40" step="1" value="${v.route.blur}"`, "px · solo per frequenza")}
+      ${field("Quantità di calore", "route.max", `type="number" min="1" max="200" step="1" value="${v.route.max}"`, "passaggi sovrapposti per il colore più caldo: più bassa = più caldo · solo per frequenza")}
+      ${field("Opacità minima", "route.minOpacity", `type="number" min="0" max="100" step="5" value="${v.route.minOpacity}"`, "% · solo per frequenza")}
+      ${field("Dettaglio", "route.detail", `type="number" min="0.5" max="8" step="0.5" value="${v.route.detail}"`, "px di semplificazione dei tratti: più alto = più semplice e leggero")}
+      <label class="field"><span>Gradiente<small>colori dal meno al più percorso · solo per frequenza</small></span>
+        <select data-k="route.preset" id="route-preset">${routePresets}</select></label>
+      <div class="colors">${v.route.colors.map((c, i) => `<input type="color" data-k="route.colors.${i}" value="${c}">`).join("")}</div>
+      <div class="gradbar" id="routebar"></div>
       <div class="routeprev" id="routeprev"></div>
-      <button class="secondary" data-reset="route">Ripristina linee</button>`) +
+      <button class="secondary" data-reset="route">Ripristina percorsi</button>`) +
 
     fold("hex", "Scratch map · esagoni", `
+      ${presetBar("hex")}
       <p class="hint">Diametro dell'esagono (da vertice a vertice) per ogni livello di zoom. Più lo zoom è lontano, più gli esagoni crescono per non appesantire la mappa. Il minimo consigliato è 100 m.</p>
       <div class="zgrid">${hexRows}</div>
       <button class="secondary" data-reset="hex">Ripristina dimensioni</button>`) +
 
     fold("heat", "Heatmap", `
-      ${field("Raggio", "heat.radius", `type="number" min="2" max="60" step="1" value="${v.heat.radius}"`, "px di ogni punto")}
+      ${presetBar("heat")}
+      ${zoomWidthRows("heat", "Raggio", 60)}
       ${field("Sfocatura", "heat.blur", `type="number" min="0" max="60" step="1" value="${v.heat.blur}"`, "px")}
       ${field("Quantità di calore", "heat.max", `type="number" min="1" max="300" step="1" value="${v.heat.max}"`, "soglia di saturazione: più bassa = più caldo")}
       ${field("Opacità minima", "heat.minOpacity", `type="number" min="0" max="100" step="5" value="${v.heat.minOpacity}"`, "%")}
@@ -119,6 +229,7 @@ function buildPrefsUI() {
       <button class="secondary" data-reset="heat">Ripristina heatmap</button>`) +
 
     fold("sleep", "Notti", `
+      ${presetBar("sleep")}
       <p class="hint">Una notte viene registrata se, tra queste ore (anche a cavallo della mezzanotte), ci sono almeno N punti entro il raggio scelto uno dall'altro. Il luogo è il centro di quei punti; le notti entro 400 m si contano nello stesso posto.</p>
       <label class="field"><span>Dalle</span><select data-k="sleep.from">${hours(v.sleep.from)}</select></label>
       <label class="field"><span>Alle</span><select data-k="sleep.to">${hours(v.sleep.to)}</select></label>
@@ -144,12 +255,14 @@ function buildPrefsUI() {
 // anteprima della linea dei percorsi con colore, spessore e opacità scelti
 function paintRoutePreview() {
   const el = document.getElementById("routeprev"), r = Prefs.v.route;
-  if (el) el.innerHTML = `<svg viewBox="0 0 240 36" preserveAspectRatio="none"><path d="M6 26 C 50 4, 90 34, 130 14 S 200 6, 234 22" fill="none" stroke="${r.color}" stroke-width="${r.weight}" stroke-opacity="${r.opacity / 100}" stroke-linecap="round"/></svg>`;
+  if (el) el.innerHTML = `<svg viewBox="0 0 240 36" preserveAspectRatio="none"><path d="M6 26 C 50 4, 90 34, 130 14 S 200 6, 234 22" fill="none" stroke="${r.color}" stroke-width="${Prefs.widthAt('route', r.zooms[1])}" stroke-opacity="${r.opacity / 100}" stroke-linecap="round"/></svg>`;
 }
 
 function paintGradbar() {
-  const el = document.getElementById("gradbar");
-  if (el) el.style.background = `linear-gradient(90deg, ${Prefs.v.heat.colors.map((c, i) => `${c} ${Math.round(HEAT_STOPS[i] * 100)}%`).join(", ")})`;
+  [["gradbar", "heat"], ["routebar", "route"]].forEach(([id, g]) => {
+    const el = document.getElementById(id);
+    if (el) el.style.background = `linear-gradient(90deg, ${Prefs.v[g].colors.map((c, i) => `${c} ${Math.round(HEAT_STOPS[i] * 100)}%`).join(", ")})`;
+  });
 }
 
 let prefsTimer = null;
@@ -161,24 +274,31 @@ function bindPrefsUI() {
     if (!k) return;
     let val = el.type === "checkbox" ? el.checked : el.type === "number" || el.tagName === "SELECT" && k.startsWith("sleep") ? +el.value : el.value;
     if (el.type === "number" && (el.value === "" || isNaN(val))) return;
-    if (k === "heat.preset") {
+    const grp = k.split(".")[0]; // heatmap e percorsi hanno lo stesso gradiente: preset e quattro colori
+    if ((grp === "heat" || grp === "route") && k === grp + ".preset") {
       if (val !== "custom") {
-        Prefs.v.heat.colors = [...HEAT_PRESETS[val]];
-        root.querySelectorAll('[data-k^="heat.colors."]').forEach((c, i) => (c.value = Prefs.v.heat.colors[i]));
+        Prefs.v[grp].colors = [...HEAT_PRESETS[val]];
+        root.querySelectorAll(`[data-k^="${grp}.colors."]`).forEach((c, i) => (c.value = Prefs.v[grp].colors[i]));
       }
-    } else if (k.startsWith("heat.colors.")) {
-      Prefs.v.heat.preset = "custom";
-      document.getElementById("heat-preset").value = "custom";
+    } else if ((grp === "heat" || grp === "route") && k.startsWith(grp + ".colors.")) {
+      Prefs.v[grp].preset = "custom";
+      document.getElementById(grp + "-preset").value = "custom";
     }
     setPath(Prefs.v, k, val);
+    clearPresetSel(k);
     paintGradbar();
     paintRoutePreview();
     if (k === "theme") { Prefs.applyTheme(); Native.setTheme(val); if (window.setBase) setBase(); }
+    if (k === "mapStyle" && window.setBase) setBase();
     Prefs.save();
     clearTimeout(prefsTimer);
     prefsTimer = setTimeout(() => Prefs.onChange && Prefs.onChange(k.split(".")[0]), 250);
   });
+  root.addEventListener("change", (e) => { const g = e.target.dataset && e.target.dataset.psel; if (g) applyPreset(g, e.target.value); });
   root.addEventListener("click", (e) => {
+    const t = e.target;
+    if (t.dataset && t.dataset.psave) { savePreset(t.dataset.psave); return; }
+    if (t.dataset && t.dataset.pdel) { deletePreset(t.dataset.pdel); return; }
     const g = e.target.dataset && e.target.dataset.reset;
     if (g) { Prefs.reset(g); buildPrefsUI(); Prefs.onChange && Prefs.onChange(g); }
     const del = e.target.closest && e.target.closest("[data-del]");
