@@ -39,6 +39,7 @@
             <span id="f-summary">Tutto il periodo</span>
           </button>
           <button id="f-reset" class="chip danger" hidden aria-label="Rimuovi filtri">&#10005;</button>
+          <button id="trackwarn" class="chip warn" hidden>&#9888; Tracking fermo</button>
           <span id="zoomlevel" class="zoompill" aria-label="Livello di zoom"></span>
         </div>
       </div>
@@ -77,6 +78,19 @@
       <button id="toggle">Avvia tracking</button>
       <button id="sync" class="secondary">Sincronizza ora</button>
       <button id="battery" class="secondary">Escludi da risparmio batteria</button>
+      <h3>Salute del tracking</h3>
+      <div id="t-health"></div>
+      <h3>Frequenza dei punti</h3>
+      <p class="hint">Ogni quanto l'app registra la posizione. Più punti = percorsi più precisi, ma più batteria.</p>
+      <div class="sent"><span>In movimento: un punto ogni</span><input id="tc-moving" type="number" min="1" max="600" step="1"><span>secondi</span></div>
+      <div class="sent"><span>Da fermo:</span><input id="tc-still-n" type="number" min="1" max="60" step="1"><span>punti ogni</span><input id="tc-still-m" type="number" min="1" max="240" step="1"><span>minuti</span></div>
+      <p class="msg wrap" id="tc-sum"></p>
+      <button id="tc-save" class="secondary">Applica frequenza</button>
+      <p class="msg" id="tc-msg"></p>
+      <h3>Posizione adesso</h3>
+      <p class="hint">Chiede subito la posizione al telefono (GPS e rete) e la registra come punto, senza aspettare il tracking.</p>
+      <button id="fix-now" class="secondary">Registra la posizione adesso</button>
+      <p class="msg wrap" id="fix-msg"></p>
     </div></details>
     <details class="card fold" data-fold="account"><summary>Account</summary><div class="foldbody">
       <div id="acct-info"></div>

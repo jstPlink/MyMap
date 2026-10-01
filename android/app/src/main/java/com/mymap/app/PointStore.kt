@@ -146,6 +146,15 @@ class PointStore(context: Context) : SQLiteOpenHelper(context, "points.db", null
         writableDatabase.execSQL("UPDATE points SET synced=1 WHERE id IN (" + ids.joinToString(",") + ")")
     }
 
+    /** Ora (ms) dell'ultimo punto registrato dal tracking di questo telefono, escludendo importazioni e punti scaricati; 0 se nessuno. */
+    @Synchronized
+    fun lastOwnTs(): Long {
+        readableDatabase.rawQuery("SELECT COALESCE(MAX(ts), 0) FROM points WHERE provider IN ('gps','network','fused','passive')", null).use { c ->
+            c.moveToFirst()
+            return c.getLong(0)
+        }
+    }
+
     /** (totale, da sincronizzare) */
     @Synchronized
     fun counts(): Pair<Int, Int> {

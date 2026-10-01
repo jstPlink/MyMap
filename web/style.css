@@ -312,6 +312,17 @@ details.fold[open] > summary { color: var(--text); }
 .zwrow { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13.5px; color: var(--muted); }
 .zwrow input { width: 78px; margin: 0; padding: 9px 8px; text-align: right; }
 .zwrow em { font-style: normal; font-size: 12px; }
+.sent { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin-bottom: 10px; font-size: 14px; }
+.sent input { width: 64px; margin: 0; padding: 9px 6px; text-align: center; }
+.msg.wrap { white-space: normal; overflow: visible; text-overflow: clip; }
+#locate.busy { animation: pulse .9s ease-in-out infinite; }
+@keyframes pulse { 50% { transform: scale(.88); opacity: .7; } }
+#t-health .kv { align-items: center; }
+#t-health .st.ok { color: var(--ok); }
+#t-health .st.bad { color: var(--danger); }
+#t-health .st.warn { color: #c2750a; }
+.hbtn { width: auto; flex: none; margin: 0 0 0 8px; padding: 6px 11px; font-size: 12px; border-radius: 999px; }
+.chip.warn { background: var(--danger); color: #fff; }
 .presetbar { display: flex; gap: 8px; margin-bottom: 14px; }
 .presetbar select { flex: 1; min-width: 0; padding: 11px 12px; font-size: 14px; font-family: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; }
 .presetbar button { width: auto; margin: 0; padding: 10px 14px; font-size: 13px; }

@@ -27,6 +27,16 @@ let loadedTotal = -1;  // quanti punti c'erano all'ultimo caricamento
 // Riepilogo della vista: numeri grandi con etichetta, e sotto un suggerimento breve
 const sumHtml = (items, tip) => `<div class="chips sum">${items.map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join("")}</div>${tip ? `<p class="tip">${tip}</p>` : ""}`;
 
+// Feedback aptico a ogni tocco su pulsanti, schede e controlli (se il telefono ha attiva la vibrazione al tocco)
+let lastHaptic = 0;
+document.addEventListener("click", (e) => {
+  if (!e.target.closest || !e.target.closest("button, a, summary, select, label, input, [data-view], [data-mode], [data-go], .leaflet-interactive")) return;
+  const t = Date.now();
+  if (t - lastHaptic < 60) return; // un solo impulso anche se un tocco genera più eventi
+  lastHaptic = t;
+  Native.haptic("tap");
+}, true);
+
 // ---------- livello di zoom (uguale in tutte le viste): zoom e larghezza della mappa in km ----------
 function showZoom() {
   const z = map.getZoom(), c = map.getCenter(), w = map.getSize().x;
@@ -172,7 +182,13 @@ function drawMe() {
   if (!here) return;
   L.circleMarker([here.lat, here.lon], { radius: 8, color: "#fff", weight: 3, fillColor: "#1e88e5", fillOpacity: 1 }).addTo(meLayer);
 }
-$("locate").onclick = async () => { await locate(); if (here) { drawMe(); map.setView([here.lat, here.lon], 15); } };
+$("locate").onclick = async () => {
+  $("locate").classList.add("busy");
+  const r = Native.isApp ? await Native.fix(false) : null; // posizione fresca; se non arriva si ripiega sull'ultima nota
+  if (r && r.ok) here = { lat: r.lat, lon: r.lon }; else await locate();
+  $("locate").classList.remove("busy");
+  if (here) { drawMe(); map.setView([here.lat, here.lon], 15); }
+};
 
 // ---------- viste della mappa ----------
 let mode = "scratch"; // vista principale
@@ -663,7 +679,77 @@ function refreshStatus() {
   $("t-sync").textContent = s.lastSync;
   $("toggle").textContent = s.tracking ? "Ferma tracking" : "Avvia tracking";
   $("toggle").classList.toggle("danger", s.tracking);
+  refreshHealth();
 }
+// ---------- salute del tracking e frequenza dei punti ----------
+const agoText = (ms) => { const m = Math.round(ms / 60000); return m < 1 ? "adesso" : m < 60 ? `${m} min fa` : m < 1440 ? `${(m / 60).toFixed(1)} h fa` : `${Math.round(m / 1440)} giorni fa`; };
+function trackHealth() {
+  const h = Native.health(), c = Native.trackerConfig();
+  const stillMs = Math.max(5000, c.stillMinutes * 60000 / Math.max(1, c.stillPoints));
+  const age = h.lastTs ? Date.now() - h.lastTs : Infinity;
+  const stale = h.tracking && (!h.running || age > Math.max(30 * 60000, 3 * stillMs));
+  return { h, c, age, stale };
+}
+function refreshHealth() {
+  const { h, age, stale } = trackHealth();
+  $("trackwarn").hidden = !Native.isApp || !stale;
+  const row = (k, state, text, act, label) => `<div class="kv"><span>${k}</span><b class="st ${state}">${text}</b>${act ? `<button class="hbtn secondary" data-act="${act}">${label}</button>` : ""}</div>`;
+  $("t-health").innerHTML =
+    row("Servizio", h.running ? "ok" : h.tracking ? "bad" : "warn", h.running ? "In esecuzione" : h.tracking ? "Fermo!" : "Spento", h.running ? "" : "start", "Avvia") +
+    row("Ultimo punto", !h.lastTs ? "warn" : h.tracking && age > 30 * 60000 ? "bad" : "ok", h.lastTs ? agoText(age) : "mai") +
+    row("Posizione «sempre»", h.bg ? "ok" : "bad", h.bg ? "Concessa" : "Manca", h.bg ? "" : "settings", "Apri") +
+    row("Risparmio batteria", h.battery ? "ok" : "warn", h.battery ? "Escluso" : "Limitato", h.battery ? "" : "battery", "Escludi") +
+    row("Notifiche", h.notif ? "ok" : "warn", h.notif ? "Attive" : "Disattivate", h.notif ? "" : "settings", "Apri");
+}
+$("t-health").addEventListener("click", (e) => {
+  const a = e.target.dataset && e.target.dataset.act;
+  if (a === "start") { Native.start(); setTimeout(() => { refreshStatus(); refreshHealth(); }, 800); }
+  if (a === "battery") Native.battery();
+  if (a === "settings") Native.openAppSettings();
+});
+$("trackwarn").onclick = () => { show("settings"); const d = document.querySelector('details[data-fold="tracker"]'); if (d) { d.open = true; d.scrollIntoView(); } };
+
+function fillTrackerConfig() {
+  const c = Native.trackerConfig();
+  $("tc-moving").value = c.movingSec; $("tc-still-n").value = c.stillPoints; $("tc-still-m").value = c.stillMinutes;
+}
+$("tc-save").onclick = () => {
+  const n = (id, lo, hi) => Math.min(hi, Math.max(lo, Math.round(+$(id).value) || lo));
+  Native.setTrackerConfig({ movingSec: n("tc-moving", 1, 600), stillPoints: n("tc-still-n", 1, 60), stillMinutes: n("tc-still-m", 1, 240) });
+  fillTrackerConfig();
+  sumTrackerConfig();
+  Native.haptic("ok");
+  $("tc-msg").textContent = "Frequenza applicata.";
+  setTimeout(() => ($("tc-msg").textContent = ""), 3000);
+};
+function sumTrackerConfig() {
+  const mv = Math.max(1, +$("tc-moving").value || 1), n = Math.max(1, +$("tc-still-n").value || 1), m = Math.max(1, +$("tc-still-m").value || 1);
+  const f = (x) => (x >= 10 ? Math.round(x) : Math.round(x * 10) / 10).toLocaleString("it-IT");
+  $("tc-sum").textContent = `Circa ${f(3600 / mv)} punti all'ora in movimento e ${f(n * 60 / m)} all'ora da fermo.`;
+}
+["tc-moving", "tc-still-n", "tc-still-m"].forEach((id) => $(id).addEventListener("input", sumTrackerConfig));
+$("fix-now").onclick = async () => {
+  $("fix-now").disabled = true;
+  $("fix-msg").classList.remove("err");
+  $("fix-msg").textContent = "Cerco la posizione… (fino a 20 secondi)";
+  const r = await Native.fix(true);
+  $("fix-now").disabled = false;
+  if (r.ok) {
+    here = { lat: r.lat, lon: r.lon };
+    $("fix-msg").textContent = `Posizione registrata: precisione ${r.acc == null ? "sconosciuta" : Math.round(r.acc) + " m"}, ${r.provider === "gps" ? "GPS" : r.provider === "network" ? "rete" : r.provider}.`;
+    Native.haptic("ok");
+    refreshStatus();
+  } else {
+    $("fix-msg").classList.add("err");
+    $("fix-msg").textContent = r.error || "Posizione non disponibile";
+    Native.haptic("error");
+  }
+};
+fillTrackerConfig();
+sumTrackerConfig();
+refreshHealth();
+setInterval(refreshHealth, 20000);
+
 $("toggle").onclick = () => {
   Native.status().tracking ? Native.stop() : Native.start();
   setTimeout(refreshStatus, 400);

@@ -36,6 +36,16 @@ class Prefs(context: Context) {
     var theme: String
         get() = sp.getString("theme", "system") ?: "system"
         set(v) = sp.edit().putString("theme", v).apply()
+    /** Frequenza dei punti (Tracker → Frequenza dei punti): in movimento un punto ogni N secondi; da fermo N punti ogni X minuti. */
+    var movingSec: Int
+        get() = sp.getInt("movingSec", 5)
+        set(v) = sp.edit().putInt("movingSec", v.coerceIn(1, 600)).apply()
+    var stillPoints: Int
+        get() = sp.getInt("stillPoints", 1)
+        set(v) = sp.edit().putInt("stillPoints", v.coerceIn(1, 60)).apply()
+    var stillMinutes: Int
+        get() = sp.getInt("stillMinutes", 10)
+        set(v) = sp.edit().putInt("stillMinutes", v.coerceIn(1, 240)).apply()
     var tracking: Boolean
         get() = sp.getBoolean("tracking", false)
         set(v) = sp.edit().putBoolean("tracking", v).apply()

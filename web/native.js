@@ -45,6 +45,12 @@ const Native = (() => {
       logout: (wipe) => real.logout(wipe),
       exportData: (fmt) => real.exportData(fmt),
       setTheme: (t) => real.setTheme(t),
+      haptic: (k) => real.haptic(k || "tap"),
+      fix: (save) => ask((id) => real.requestFix(id, !!save)),
+      health: () => JSON.parse(real.getHealth()),
+      trackerConfig: () => JSON.parse(real.getTrackerConfig()),
+      setTrackerConfig: (c) => real.setTrackerConfig(JSON.stringify(c)),
+      openAppSettings: () => real.openAppSettings(),
     };
   }
 
@@ -68,6 +74,11 @@ const Native = (() => {
     resetPassword: async () => ({ ok: false, error: "Disponibile solo nell'app Android" }),
     loginGoogle: async () => ({ ok: false, error: "Disponibile solo nell'app Android" }),
     cancelGoogle: () => {}, useLocal: () => {}, logout: () => {}, exportData: () => {}, setTheme: () => {},
+    haptic: () => { try { navigator.vibrate && navigator.vibrate(8); } catch {} },
+    fix: async () => ({ ok: false, error: "Disponibile solo nell'app Android" }),
+    health: () => ({ tracking: false, running: false, lastTs: 0, fine: true, bg: true, battery: true, notif: true }),
+    trackerConfig: () => ({ movingSec: 5, stillPoints: 1, stillMinutes: 10 }),
+    setTrackerConfig: () => {}, openAppSettings: () => {},
     points: async () => demo, // nel browser solo dati demo: le credenziali non vanno mai messe nel sito
     start: () => { state.tracking = true; },
     stop: () => { state.tracking = false; },
