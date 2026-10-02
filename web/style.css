@@ -16,6 +16,10 @@
   --shadow: 0 6px 22px rgba(43, 53, 72, .10);
   --radius: 18px;
 }
+/* contorno dei pannelli (Impostazioni → Aspetto): una linea sottile attorno a pannelli, pulsanti e targhette */
+:root { --outline: rgba(43, 53, 72, .30); }
+:root[data-theme="dark"] { --outline: rgba(255, 255, 255, .18); }
+:root[data-outline="thin"] :is(.card, .float.bottom, #psheet, #lsheet, nav, .chip, .verpill, .zoompill, .seg, .sheet, #tune, #locate) { border: 1px solid var(--outline); }
 :root[data-theme="dark"] {
     --bg: #121212;
     --surface: #1d1d1d;
@@ -316,6 +320,47 @@ details.fold[open] > summary { color: var(--text); }
 .fxprev { height: 150px; border-radius: 14px; overflow: hidden; margin-bottom: 12px; background: var(--surface-2); position: relative; z-index: 0; }
 .field.fx input[type="range"] { width: 150px; padding: 0; border: 0; background: none; accent-color: var(--accent); }
 .field.fx output { flex: none; min-width: 52px; text-align: right; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.trips { display: flex; flex-direction: column; margin-bottom: 6px; }
+.trow { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.trow:last-child { border-bottom: 0; }
+.tmain { flex: 1; min-width: 0; }
+.tmain b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 13.5px; font-weight: 600; line-height: 1.25; }
+.tmain span { font-size: 12px; color: var(--muted); }
+.tside { flex: none; text-align: right; }
+.tside b { display: block; font-size: 13.5px; font-weight: 600; white-space: nowrap; }
+.tside span { font-size: 12px; color: var(--muted); white-space: nowrap; }
+#lsheet { position: absolute; inset: 0; z-index: 1500; overflow-y: auto; padding: 14px 16px 20px; background: var(--bg); }
+#lsheet[hidden] { display: none; }
+.hnav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 0 2px; }
+.hnav b { flex: 1; text-align: center; font-size: 15px; }
+.hnav .chip { width: 44px; height: 38px; padding: 0; margin: 0; font-size: 20px; line-height: 1; }
+.hnav .chip:disabled { opacity: .35; }
+.hsub { margin: 0 0 10px; text-align: center; font-size: 12.5px; color: var(--muted); }
+.qfs { display: flex; gap: 6px; }
+.chip.qf { padding: 7px 12px; font-size: 12.5px; }
+.chip.qf:not(.on) { color: var(--muted); }
+.chip.vt { width: 100px; height: 34px; box-sizing: border-box; padding: 0 10px 0 14px; display: flex; align-items: center; justify-content: center; text-align: center; }
+.trips.scroll { max-height: 138px; overflow-y: auto; }
+.trow .rk, .lrow i { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 11px; font-weight: 700; background: var(--accent-soft); color: var(--accent); }
+.lrow { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.lrow:last-child { border-bottom: 0; }
+.lmain { flex: 1; min-width: 0; }
+.lmain b { display: block; font-size: 14px; font-weight: 600; line-height: 1.25; }
+.lmain span { display: block; font-size: 12.5px; color: var(--muted); }
+.lflag { flex: none; width: 26px; font-size: 20px; text-align: center; }
+.lhead { margin: 14px 0 4px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+details.lplace { border-bottom: 1px solid var(--line); }
+details.lplace > summary { list-style: none; display: flex; align-items: center; gap: 10px; padding: 10px 0; cursor: pointer; }
+details.lplace > summary::-webkit-details-marker { display: none; }
+.ldates { padding: 0 0 10px 32px; font-size: 12.5px; line-height: 1.7; color: var(--muted); }
+.ldates .hbtn { margin: 8px 0 0; }
+.srow { display: flex; align-items: center; gap: 6px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.srow:last-of-type { border-bottom: 0; }
+.srow .smain { flex: 1; min-width: 0; }
+.srow .smain b { display: block; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.srow .smain span { display: block; font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.srow .hbtn { margin: 0; }
+.srow.off { opacity: .5; }
 .sent { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin-bottom: 10px; font-size: 14px; }
 .sent input { width: 64px; margin: 0; padding: 9px 6px; text-align: center; }
 .msg.wrap { white-space: normal; overflow: visible; text-overflow: clip; }

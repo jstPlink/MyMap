@@ -4,6 +4,29 @@ Versione app in `android/app/build.gradle.kts` (`versionName` e `versionCode`).
 Ad ogni rilascio: alzare `versionCode` di 1, aggiornare `versionName` e aggiungere una voce qui.
 La versione è mostrata in cima alla schermata dell'app.
 
+## 0.22.1 (build 36) - 2026-10-02
+- Tema chiaro: i pannelli, i pulsanti e le targhette hanno ora un contorno sottile per leggerli meglio. In Aspetto → Contorno dei pannelli: *Automatico* (sottile nel tema chiaro, assente nello scuro; è la scelta di partenza), *Sempre* o *Nessuno*.
+
+## 0.22.0 (build 35) - 2026-10-02
+- Filtri rapidi in alto, sotto la barra: **7 giorni** e **Sempre** (evidenziato quello attivo); per i dettagli resta il filtro (imbuto).
+- Percorsi: il pannello in basso mostra gli spostamenti **di un giorno** (all'inizio l'ultimo con spostamenti) con i pulsanti ‹ › per cambiare giorno (saltano i giorni vuoti); cambiando giorno il filtro diventa quel giorno. Toccando uno spostamento il filtro diventa il suo giorno e la sua fascia oraria, così la mappa mostra solo quel tragitto, evidenziato. Il filtro si toglie con la X o con "Sempre". Tolta la cronologia a parte, ora inutile.
+- Heatmap: nel pannello i **3 posti più visitati** e il pulsante **Elenco posti più visti** (dal più visitato).
+- Notti: pulsante **Elenco notti e luoghi** (luoghi dal più frequente, con le date delle notti). Posti: pulsante **Elenco posti** (dalla visita più recente).
+- Scratch: **stati visitati** ("X di 195", percentuale) e pulsante **Elenco stati visitati** con bandiere e prima data. I confini sono nell'app (Natural Earth 1:50m), funziona offline; un paese conta con almeno 3 punti e ignorando i tratti oltre 400 km/h (aerei). Non contano nella percentuale territori e aree non sovrane, che si elencano a parte.
+- Le targhette delle viste hanno tutte la stessa larghezza e altezza.
+- Aspetto: **Contorno dei pannelli** (Nessuno/Sottile) per avere una linea sottile attorno a pannelli e pulsanti; fa parte dei preset di Aspetto.
+
+## 0.21.0 (build 34) - 2026-10-02
+- Vista Percorsi: sotto la mappa gli **ultimi 3 spostamenti** (da dove a dove, giorno e orario, km e durata) e il pulsante **Cronologia spostamenti**, che apre l'elenco giorno per giorno con le frecce ‹ › (salta i giorni senza spostamenti) e il totale di km del giorno. Toccando uno spostamento il tragitto si evidenzia sulla mappa.
+- Uno spostamento è il tragitto tra due soste di almeno 20 minuti in luoghi diversi (almeno 300 m, entro 12 ore); dopo l'ultima sosta compare quello "in corso". I luoghi usano i nomi dati da te, poi quelli di OpenStreetMap.
+
+## 0.20.0 (build 33) - 2026-10-02
+- Tolte le viste Mix (heatmap + percorsi) e Notti e posti: restano Scratch, Heatmap, Percorsi, Notti e Posti. Se l'ultima vista scelta era una delle due, si apre Scratch.
+- Cambiando vista o filtro la mappa si centra sulla tua posizione con 20 km di raggio (40 km di larghezza).
+- Notti e posti si possono nascondere (i dati restano, perché notti e posti si calcolano dai punti): dal pulsante Nascondi nel popup sulla mappa e dagli elenchi, e con Mostra tornano. Le notti si nascondono per data, i posti per luogo (entro 150 m); si salvano nelle impostazioni, quindi nel profilo, e valgono in mappa, elenchi e statistiche.
+- Elenchi nel pannello di personalizzazione: "Notti salvate" nella vista Notti (data, luogo, Vai, Nascondi/Mostra) e "Posti salvati" nella vista Posti (luogo, visite, tempo, Vai, Nome, Nascondi/Mostra).
+- Ogni vista mostra solo le sue impostazioni: la vista Notti non mostra più i nomi dei posti (restano nella vista Posti).
+
 ## 0.19.0 (build 32) - 2026-10-02
 - Personalizzazione nella mappa: il pulsante con i cursori (sopra "dove sono") apre un pannello in basso con i parametri della vista corrente, così le modifiche si vedono subito sulla mappa ancora visibile. Scratch: dimensioni degli esagoni; Heatmap: raggio, sfocatura, calore, gradiente; Percorsi: linee e stile; Mix: percorsi e heatmap; Notti e Posti: parametri delle notti e nomi dei posti. L'Aspetto (tema, stile della mappa, ritocchi) è in fondo a ogni pannello. I preset restano in ogni sezione.
 - Le Impostazioni mantengono solo Tracker, Account, Dati ed Esportazione.

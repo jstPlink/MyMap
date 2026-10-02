@@ -116,7 +116,7 @@ function fmtHoursLong(h) {
 // `minPts` punti (default 2) entro `radiusM` metri uno dall'altro. La notte porta la data della sera e il luogo è il centro del
 // gruppo di punti più numeroso. Le notti vicine (entro 400 m) si raggruppano nello stesso posto.
 // Finestra, punti minimi e raggio si regolano nelle impostazioni.
-function sleepPlaces(pts, fromH, toH, minPts = 2, radiusM = 300) {
+function sleepPlaces(pts, fromH, toH, minPts = 2, radiusM = 300, hidden = new Set()) {
   const inWin = (h) => (fromH <= toH ? h >= fromH && h < toH : h >= fromH || h < toH);
   const nights = new Map();
   for (const p of pts) {
@@ -127,7 +127,7 @@ function sleepPlaces(pts, fromH, toH, minPts = 2, radiusM = 300) {
     (nights.get(k) || nights.set(k, []).get(k)).push(p);
   }
   const r = radiusM / 1000, found = [];
-  nights.forEach((all) => {
+  nights.forEach((all, key) => {
     if (all.length < minPts) return;
     const step = Math.ceil(all.length / 120), a = step > 1 ? all.filter((_, i) => i % step === 0) : all; // limita il lavoro nelle notti con molti punti
     let best = null;
@@ -137,23 +137,27 @@ function sleepPlaces(pts, fromH, toH, minPts = 2, radiusM = 300) {
     }
     if (!best || best.length < minPts) return;
     const lat = best.reduce((x, q) => x + q.lat, 0) / best.length, lon = best.reduce((x, q) => x + q.lon, 0) / best.length;
-    found.push({ lat, lon, ts: best[0].ts });
+    found.push({ key, lat, lon, ts: best[0].ts });
   });
   const places = [];
-  for (const n of found.sort((x, y) => x.ts - y.ts)) {
+  const shown = found.filter((n) => !hidden.has(n.key)); // le notti nascoste non contano ma restano nell'elenco
+  for (const n of shown.sort((x, y) => x.ts - y.ts)) {
     let best = null, bd = 0.4;
     for (const pl of places) { const d = km(pl, n); if (d < bd) { bd = d; best = pl; } }
-    if (!best) places.push(best = { lat: n.lat, lon: n.lon, nights: 0, first: n.ts, last: n.ts, sl: 0, so: 0 });
+    if (!best) places.push(best = { lat: n.lat, lon: n.lon, nights: 0, first: n.ts, last: n.ts, sl: 0, so: 0, keys: [] });
+    best.keys.push(n.key);
     best.nights++; best.sl += n.lat; best.so += n.lon;
     best.lat = best.sl / best.nights; best.lon = best.so / best.nights; best.last = n.ts;
   }
-  return { places: places.sort((x, y) => y.nights - x.nights), nights: found.length };
+  // list: tutte le notti trovate (anche le nascoste), dalla più recente
+  const list = [...found].sort((x, y) => y.ts - x.ts).map((n) => ({ ...n, hidden: hidden.has(n.key) }));
+  return { places: places.sort((x, y) => y.nights - x.nights), nights: shown.length, list };
 }
 
 // ---------- posti visitati ----------
 // Una visita è un periodo di almeno 20 minuti in cui i punti restano entro 150 m dal primo (con buchi di dati fino a 3 ore).
 // Le visite vicine (entro 150 m) si raggruppano nello stesso posto. Ritorna i posti ordinati per tempo totale.
-function visitPlaces(pts) {
+function visitEpisodes(pts) {
   const episodes = [];
   for (let i = 0; i < pts.length;) {
     const a = pts[i];
@@ -163,6 +167,10 @@ function visitPlaces(pts) {
     if (end - a.ts >= 20 * 60000) episodes.push({ lat: sl / n, lon: so / n, start: a.ts, end });
     i = j;
   }
+  return episodes; // soste singole in ordine di tempo: {lat, lon, start, end}
+}
+function visitPlaces(pts) {
+  const episodes = visitEpisodes(pts);
   const grid = new Map(), places = [], CELL = 0.0015;
   const cellOf = (la, lo) => [Math.round(la / CELL), Math.round(lo / CELL)];
   for (const e of episodes) {
@@ -180,6 +188,36 @@ function visitPlaces(pts) {
     best.lat = best.sl / best.visits; best.lon = best.so / best.visits; best.last = e.end;
   }
   return places.sort((x, y) => y.ms - x.ms);
+}
+
+// ---------- spostamenti ----------
+// Uno spostamento è il tragitto tra due soste consecutive (visitEpisodes: almeno 20 minuti fermo entro 150 m) in luoghi diversi
+// (almeno 300 m) a meno di 12 ore l'una dall'altra. I km sono i passi tra i punti del tragitto (come moveSteps); se in mezzo non ci
+// sono punti, la distanza in linea retta (approx). Dopo l'ultima sosta, se ci si è allontanati di più di 300 m, c'è uno spostamento
+// senza arrivo (open): "in corso" se l'ultimo punto è recente. Ritorna gli spostamenti in ordine di tempo; i0 e i1 sono gli indici
+// dei punti del tragitto in `pts`, che deve essere ordinato per tempo.
+function computeTrips(pts) {
+  const eps = visitEpisodes(pts), trips = [];
+  const lb = (ts) => { let lo = 0, hi = pts.length; while (lo < hi) { const m = (lo + hi) >> 1; if (pts[m].ts < ts) lo = m + 1; else hi = m; } return lo; };
+  const dist = (i0, i1) => { let d = 0; for (const s of moveSteps(pts.slice(i0, i1))) d += s.d; return d; };
+  for (let i = 0; i + 1 < eps.length; i++) {
+    const a = eps[i], b = eps[i + 1], gap = b.start - a.end;
+    if (gap <= 0 || gap > 12 * 36e5 || km(a, b) < 0.3) continue;
+    const i0 = lb(a.end), i1 = lb(b.start), d = i1 - i0 >= 2 ? dist(i0, i1) : 0;
+    trips.push({ from: { lat: a.lat, lon: a.lon }, to: { lat: b.lat, lon: b.lon }, start: a.end, end: b.start, km: d || km(a, b), approx: !d, i0, i1 });
+  }
+  const last = eps[eps.length - 1], lastPt = pts[pts.length - 1];
+  if (last && lastPt && lastPt.ts > last.end && km(last, lastPt) >= 0.3) {
+    const i0 = lb(last.end), d = dist(i0, pts.length);
+    trips.push({ from: { lat: last.lat, lon: last.lon }, to: { lat: lastPt.lat, lon: lastPt.lon }, start: last.end, end: lastPt.ts, km: d || km(last, lastPt), approx: !d, i0, i1: pts.length, open: true, ongoing: Date.now() - lastPt.ts < 30 * 60000 });
+  }
+  return trips;
+}
+
+// Posti visitati senza quelli nascosti dall'utente (un posto nascosto copre i posti entro 150 m)
+function visiblePlaces(pts) {
+  const all = visitPlaces(pts);
+  return Prefs.v.hidden.places.length ? all.filter((p) => !Prefs.isPlaceHidden(p.lat, p.lon)) : all;
 }
 
 // ---------- soste ----------

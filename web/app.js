@@ -72,6 +72,7 @@ let statsFor = "";     // per quali punti e filtro sono state calcolate le stati
 let loadedTotal = -1;  // quanti punti c'erano all'ultimo caricamento
 
 // Riepilogo della vista: numeri grandi con etichetta, e sotto un suggerimento breve
+const lastLists = {}; // dati delle ultime viste disegnate, per gli elenchi completi (posti più visti, notti, posti, stati)
 const sumHtml = (items, tip) => `<div class="chips sum">${items.map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join("")}</div>${tip ? `<p class="tip">${tip}</p>` : ""}`;
 
 // Feedback aptico a ogni tocco su pulsanti, schede e controlli (se il telefono ha attiva la vibrazione al tocco)
@@ -177,6 +178,11 @@ function updateFilterUI() {
   $("f-open").title = on ? "Filtro: " + filterSummary() : "Filtra per periodo"; // il pulsante è solo un'icona
   $("f-open").classList.toggle("on", on);
   $("f-reset").hidden = !on;
+  { // filtri rapidi in alto: evidenzia "7 giorni" o "Sempre" se coincidono con il filtro attivo
+    const f = filterState(), r = quickRange("7");
+    const is7 = f.from === r[0] && f.to === r[1] && !f.y && f.m === "" && !f.d && !f.tf && !f.tt;
+    document.querySelectorAll(".qf").forEach((b) => b.classList.toggle("on", b.dataset.qf === "7" ? is7 : !on));
+  }
   // evidenzia la scorciatoia che coincide con il periodo scelto
   const f = filterState();
   document.querySelectorAll("#f-quick [data-q]").forEach((b) => {
@@ -212,6 +218,11 @@ document.querySelectorAll("#f-quick [data-q]").forEach((b) => (b.onclick = () =>
   $("f-from").value = from; $("f-to").value = to;
   refilter();
 }));
+document.querySelectorAll(".qf").forEach((b) => (b.onclick = () => {
+  clearAllFilters();
+  if (b.dataset.qf === "7") { const [from, to] = quickRange("7"); $("f-from").value = from; $("f-to").value = to; }
+  refilter();
+}));
 $("f-open").onclick = () => { fillFilters(); updateFilterUI(); $("fsheet").hidden = false; };
 $("f-close").onclick = $("f-done").onclick = () => { $("fsheet").hidden = true; };
 $("fsheet").addEventListener("click", (e) => { if (e.target === $("fsheet")) $("fsheet").hidden = true; });
@@ -239,7 +250,8 @@ $("locate").onclick = async () => {
 };
 
 // ---------- viste della mappa ----------
-const MODES = ["scratch", "heat", "routes", "mix", "sleep", "places", "stay"];
+const MODES = ["scratch", "heat", "routes", "sleep", "places"];
+const LIST_STEP = 40, listLimit = { nights: LIST_STEP, places: LIST_STEP }; // righe mostrate negli elenchi di notti e posti salvati
 let mode = MODES.includes(Prefs.v.view) ? Prefs.v.view : "scratch"; // vista corrente: si ricorda ed è condivisa con le altre impostazioni
 let firstRender = true; // all'apertura la mappa si centra su dove sei, non sull'intero storico
 // SVG e non canvas: nella WebView di Android il canvas 2D di Leaflet bloccava l'interfaccia per ~2 secondi a ogni disegno
@@ -416,13 +428,6 @@ function drawHeat(pts) {
   return { fit: bbox(pts), paint, info: "" };
 }
 
-// Mix: la heatmap con sopra i percorsi (sempre come linee, con colore, spessore e opacità scelti per i percorsi)
-function drawMix(pts) {
-  const h = drawHeat(pts), r = drawRoutes(pts);
-  repaint = () => { layer.clearLayers(); h.paint(); r.paint(true); };
-  return { fit: h.fit, info: "" };
-}
-
 // Contorni morbidi: si uniscono gli esagoni adiacenti in zone (si tolgono i lati condivisi), si concatenano i lati
 // rimasti in anelli e si arrotondano gli angoli con raccordi uguali. Il calcolo è nel piano proiettato, poi si torna a lat/lon.
 function softOutlines(cells, S) {
@@ -482,6 +487,19 @@ function scratchTotal(pts, diam) {
   return scratchCache.get(key);
 }
 
+// Stati visitati nel periodo scelto (confini offline in world.js): il calcolo si ricorda finché i punti sono gli stessi
+let worldMemo = { pts: null, v: null };
+function worldHtml(pts) {
+  if (!World.ready()) { // i confini si caricano la prima volta che servono; poi si ridisegna il pannello
+    World.load().then(() => { if (mode === "scratch" && repaint) repaint(); }).catch(() => {});
+    return sumHtml([["…", "stati visitati"]]);
+  }
+  if (worldMemo.pts !== pts) worldMemo = { pts, v: World.visited(pts) };
+  const v = worldMemo.v;
+  lastLists.countries = v;
+  return sumHtml([[`${v.count} di ${v.total}`, "stati visitati"], [v.pctText, "degli stati del mondo"]]) + '<button class="chip" id="list-countries">Elenco stati visitati</button>';
+}
+
 function drawScratch(pts) {
   repaint = () => {
     layer.clearLayers();
@@ -496,7 +514,7 @@ function drawScratch(pts) {
       fillColor: dark ? "#0b0b0b" : "#47536a", fillOpacity: dark ? .66 : .56,
     }).addTo(layer);
     // il totale degli esagoni grattati (su tutto il periodo scelto) si calcola subito dopo il disegno, così la mappa resta fluida
-    const info = (n) => sumHtml([[n, "esagoni grattati"], [fmtM(diam), "diametro esagono"]]);
+    const info = (n) => sumHtml([[n, "esagoni grattati"], [fmtM(diam), "diametro esagono"]]) + worldHtml(pts);
     $("modeinfo").innerHTML = info("…");
     clearTimeout(scratchTimer);
     scratchTimer = setTimeout(() => { if (mode === "scratch") $("modeinfo").innerHTML = info(scratchTotal(pts, diam).toLocaleString("it-IT")); }, 50);
@@ -506,7 +524,7 @@ function drawScratch(pts) {
 
 // Notti: i luoghi in cui hai dormito, con il numero di notti. Il calcolo è spiegato nelle impostazioni.
 function drawSleep(pts) {
-  const sl = sleepPlaces(pts, Prefs.v.sleep.from, Prefs.v.sleep.to, Prefs.v.sleep.minPts, Prefs.v.sleep.radius);
+  const sl = sleepPlaces(pts, Prefs.v.sleep.from, Prefs.v.sleep.to, Prefs.v.sleep.minPts, Prefs.v.sleep.radius, Prefs.hiddenNights());
   const top = sl.places[0] ? sl.places[0].nights : 1;
   // Con lo zoom lontano le lune si sovrapporrebbero: quelle vicine sullo schermo (entro ~60 px) si fondono in un gruppo
   // con il totale delle notti e il numero di luoghi. Toccando un gruppo la mappa si avvicina. Si ricalcola a ogni zoom.
@@ -525,7 +543,7 @@ function drawSleep(pts) {
         const icon = L.divIcon({ className: "", iconSize: [size, size], iconAnchor: [size / 2, size / 2],
           html: `<div class="moon" style="width:${size}px;height:${size}px"><b>${p.nights}</b></div>` });
         const m = L.marker([p.lat, p.lon], { icon }).addTo(layer);
-        m.bindPopup(() => `<div class="pop"><b>${placeSpan(p.lat, p.lon)}</b><br>${fmtSpan(p.nights, "notte", "notti")}<br>${fmtDay(p.first)} – ${fmtDay(p.last)}<br><button class="pop-btn" data-rename>Rinomina</button></div>`);
+        m.bindPopup(() => `<div class="pop"><b>${placeSpan(p.lat, p.lon)}</b><br>${fmtSpan(p.nights, "notte", "notti")}<br>${fmtDay(p.first)} – ${fmtDay(p.last)}<br><button class="pop-btn" data-rename>Rinomina</button> <button class="pop-btn secondary" data-hide>Nascondi</button></div>`);
         m.on("popupopen", (e) => popupReady(e, p));
       } else {
         const lat = g.sl / g.nights, lon = g.so / g.nights;
@@ -538,9 +556,12 @@ function drawSleep(pts) {
   };
   repaint = () => { layer.clearLayers(); paint(); };
   const nights = sl.nights, n = sl.places.length;
-  const info = n
-    ? sumHtml([[nights.toLocaleString("it-IT"), "notti trovate"], [n.toLocaleString("it-IT"), "luoghi diversi"], [top.toLocaleString("it-IT"), "notti nel luogo principale"]])
+  const info = !n && sl.list.length
+    ? "Tutte le notti del periodo sono nascoste: le rimostri da Notti salvate (pulsante con i cursori)."
+    : n
+    ? sumHtml([[nights.toLocaleString("it-IT"), "notti trovate"], [n.toLocaleString("it-IT"), "luoghi diversi"], [top.toLocaleString("it-IT"), "notti nel luogo principale"]]) + '<button class="chip" id="list-nights">Elenco notti e luoghi</button>'
     : `Nessuna notte rilevata nel periodo: servono almeno ${Prefs.v.sleep.minPts} punti entro ${Prefs.v.sleep.radius} m tra le ${String(Prefs.v.sleep.from).padStart(2, "0")}:00 e le ${String(Prefs.v.sleep.to).padStart(2, "0")}:00.`;
+  lastLists.sleep = sl;
   return { fit: sl.places.map((p) => [p.lat, p.lon]), paint, info, nights, n };
 }
 
@@ -550,6 +571,7 @@ const needsName = (p) => !Names.find(p.lat, p.lon) && !Names.isSkipped(p.lat, p.
 function refreshAfterNames() {
   statsFor = "";
   buildNamesCard();
+  buildSavedLists();
   render(false);
   if ($("view-stats").classList.contains("active")) refreshStats();
 }
@@ -560,6 +582,8 @@ function popupReady(e, p) {
   hydratePlaces(el);
   const btn = el.querySelector("[data-rename]");
   if (btn) btn.onclick = () => { map.closePopup(); renamePlace(p.lat, p.lon); };
+  const hb = el.querySelector("[data-hide]");
+  if (hb) hb.onclick = () => { map.closePopup(); p.keys ? hideNights(p.keys) : hidePlace(p); }; // le notti hanno l'elenco delle date
 }
 
 async function renamePlace(lat, lon, suggestion) {
@@ -574,9 +598,221 @@ async function renamePlace(lat, lon, suggestion) {
   return true;
 }
 
+// ---------- spostamenti (vista Percorsi): pannello del giorno con cambio giorno ----------
+// Uno spostamento è il tragitto tra due soste (vedi computeTrips in geo.js). Si calcolano una volta per ogni caricamento dei punti.
+let tripsCache = null;
+function getTrips() {
+  if (!tripsCache || tripsCache.pts !== points) tripsCache = { pts: points, trips: computeTrips(points) };
+  return tripsCache.trips;
+}
+const hhmm = (ts) => new Date(ts).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+function fmtDur(ms) {
+  const m = Math.max(1, Math.round(ms / 60000));
+  return m < 60 ? `${m} min` : m % 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m / 60} h`;
+}
+const fmtDist = (k) => (k < 1 ? `${Math.round(k * 1000)} m` : k < 10 ? `${k.toLocaleString("it-IT", { maximumFractionDigits: 1 })} km` : `${Math.round(k).toLocaleString("it-IT")} km`);
+const c5 = (la, lo) => `${la.toFixed(5)},${lo.toFixed(5)}`;
+const fmtWhen = (ts) => new Date(ts).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+
+// Una riga: "partenza → arrivo", orario e, a destra, km e durata. `i` è l'indice in getTrips() (serve a mostrarlo sulla mappa).
+function tripRow(t, i) {
+  const to = t.ongoing ? "in corso" : placeSpan(t.to.lat, t.to.lon);
+  return `<div class="trow" data-trip="${i}"><div class="tmain"><b>${placeSpan(t.from.lat, t.from.lon)} → ${to}</b><span>${hhmm(t.start)}–${t.ongoing ? "…" : hhmm(t.end)}</span></div>` +
+    `<div class="tside"><b>${t.approx ? "≈ " : ""}${fmtDist(t.km)}</b><span>${fmtDur(t.end - t.start)}</span></div></div>`;
+}
+
+let tripDay = null; // giorno (AAAAMMGG) mostrato nel pannello; all'inizio l'ultimo con spostamenti
+const tripDays = () => [...new Set(getTrips().map((t) => dkey(t.start)))].sort((a, b) => a - b); // dal più vecchio
+function tripsPanelHtml() {
+  const all = getTrips();
+  if (!all.length) return '<p class="tip">Nessuno spostamento trovato: servono due soste di almeno 20 minuti in luoghi diversi.</p>';
+  const days = tripDays();
+  if (tripDay === null || !days.includes(tripDay)) tripDay = days[days.length - 1];
+  const i = days.indexOf(tripDay), idxs = [];
+  all.forEach((t, k) => { if (dkey(t.start) === tripDay) idxs.push(k); });
+  const tot = idxs.reduce((a, k) => a + all[k].km, 0);
+  const label = new Date(dkeyTs(tripDay)).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "long", year: "numeric" });
+  return `<div class="hnav"><button class="chip" id="d-prev" aria-label="Giorno precedente" ${i <= 0 ? "disabled" : ""}>&#8249;</button><b>${label}</b>` +
+    `<button class="chip" id="d-next" aria-label="Giorno successivo" ${i >= days.length - 1 ? "disabled" : ""}>&#8250;</button></div>` +
+    `<p class="hsub">${idxs.length} ${idxs.length === 1 ? "spostamento" : "spostamenti"} · ${fmtDist(tot)} · giorno ${i + 1} di ${days.length}</p>` +
+    `<div class="trips scroll">${idxs.map((k) => tripRow(all[k], k)).join("")}</div>`;
+}
+
+// Cambiando giorno il filtro del periodo diventa quel giorno, così la mappa mostra solo i suoi tragitti
+function stepTripDay(dir) {
+  const days = tripDays(), i = days.indexOf(tripDay) + dir;
+  if (i < 0 || i >= days.length) return;
+  tripDay = days[i];
+  const d = new Date(dkeyTs(tripDay)), all = getTrips(), pts = [];
+  clearAllFilters();
+  $("f-from").value = $("f-to").value = ymd(d);
+  fillFilters();
+  render(false);
+  all.forEach((t) => { if (dkey(t.start) === tripDay) pts.push([t.from.lat, t.from.lon], [t.to.lat, t.to.lon]); });
+  if (pts.length) map.fitBounds(L.latLngBounds(pts), { padding: [60, 60], maxZoom: 15, animate: false });
+}
+
+// Toccando uno spostamento il filtro diventa il suo giorno e la sua fascia oraria (con 2 minuti di margine): la mappa mostra solo quel
+// tragitto, che resta evidenziato per qualche secondo. Il filtro si toglie con la X in alto o con "Sempre".
+function showTrip(i) {
+  const t = getTrips()[i];
+  if (!t) return;
+  const s = new Date(t.start), e = new Date(t.end), sameDay = ymd(s) === ymd(e);
+  clearAllFilters();
+  $("f-from").value = ymd(s); $("f-to").value = ymd(e);
+  if (sameDay) { $("f-tfrom").value = hhmm(t.start - 120000); $("f-tto").value = hhmm(t.end + 120000); }
+  tripDay = dkey(t.start);
+  fillFilters();
+  render(false);
+  const seg = points.slice(t.i0, t.i1).filter((p) => !isStay(p)).map((p) => [p.lat, p.lon]);
+  const line = [[t.from.lat, t.from.lon], ...seg, [t.to.lat, t.to.lon]];
+  pin.clearLayers();
+  L.polyline(line, { color: "#f97316", weight: 5, opacity: .9 }).addTo(pin);
+  L.circleMarker(line[0], { radius: 7, color: "#fff", weight: 2, fillColor: "#16a34a", fillOpacity: 1 }).addTo(pin);
+  L.circleMarker(line[line.length - 1], { radius: 7, color: "#fff", weight: 2, fillColor: "#dc2626", fillOpacity: 1 }).addTo(pin);
+  map.fitBounds(L.latLngBounds(line), { padding: [60, 60], maxZoom: 16, animate: false });
+  setTimeout(() => pin.clearLayers(), 20000);
+}
+
+// ---------- Heatmap: i 3 posti più visitati ----------
+const placesByVisits = (pts) => visiblePlaces(pts).sort((a, b) => b.visits - a.visits || b.ms - a.ms);
+function topVisitsHtml(pts) {
+  const pl = placesByVisits(pts);
+  lastLists.visits = pl;
+  if (!pl.length) return '<p class="tip">Nessun posto trovato nel periodo.</p>';
+  const rows = pl.slice(0, 3).map((p, i) => `<div class="trow" data-go="${c5(p.lat, p.lon)}"><i class="rk">${i + 1}</i><div class="tmain"><b>${placeSpan(p.lat, p.lon)}</b>` +
+    `<span>${p.visits} ${p.visits === 1 ? "visita" : "visite"} · ${fmtHoursLong(p.ms / 36e5)}</span></div></div>`).join("");
+  return `<div class="trips">${rows}</div><button class="chip" id="list-visits">Elenco posti più visti</button>`;
+}
+
+// ---------- elenchi completi (foglio che copre la mappa) ----------
+function openList(title, sub, html) {
+  $("l-title").textContent = title;
+  $("l-sub").textContent = sub || "";
+  $("l-list").innerHTML = html;
+  $("lsheet").hidden = false;
+  $("lsheet").scrollTop = 0;
+  hydratePlaces($("l-list"));
+}
+const lrow = (p, lead, sub) => `<div class="lrow" data-go="${c5(p.lat, p.lon)}">${lead ? `<i>${lead}</i>` : ""}<div class="lmain"><b>${placeSpan(p.lat, p.lon)}</b><span>${sub}</span></div></div>`;
+function listVisits() { // dal più visitato
+  const pl = lastLists.visits || [];
+  openList("Posti più visti", `${pl.length} posti, dal più visitato (nel periodo scelto)`,
+    pl.map((p, i) => lrow(p, i + 1, `${p.visits} ${p.visits === 1 ? "visita" : "visite"} · ${fmtHoursLong(p.ms / 36e5)} · ultima ${fmtWhen(p.last)}`)).join(""));
+}
+function listPlaces() { // dal più recente al più vecchio
+  const pl = [...(lastLists.places || [])].sort((a, b) => b.last - a.last);
+  openList("Posti visitati", `${pl.length} posti, dalla visita più recente (nel periodo scelto)`,
+    pl.map((p) => lrow(p, "", `ultima visita ${fmtWhen(p.last)}, ${hhmm(p.last)} · ${p.visits} ${p.visits === 1 ? "visita" : "visite"} · ${fmtHoursLong(p.ms / 36e5)}`)).join(""));
+}
+function listNights() { // luoghi per numero di notti, ognuno con le sue date
+  const sl = lastLists.sleep, pl = sl ? sl.places : [];
+  const short = (k) => new Date(dkeyTs(k)).toLocaleDateString("it-IT", { day: "numeric", month: "short", year: "numeric" });
+  openList("Notti e luoghi", `${pl.length} luoghi, dal più frequente (nel periodo scelto). Tocca un luogo per vedere le date.`,
+    pl.map((p, i) => `<details class="lplace"><summary><i class="rk">${i + 1}</i><div class="lmain"><b>${placeSpan(p.lat, p.lon)}</b><span>${fmtSpan(p.nights, "notte", "notti")} · ${fmtDay(p.first)} – ${fmtDay(p.last)}</span></div></summary>` +
+      `<div class="ldates">${[...p.keys].sort((a, b) => b - a).map(short).join(" · ")}<br><button class="hbtn secondary" data-go="${c5(p.lat, p.lon)}">Vai</button></div></details>`).join(""));
+}
+function listCountries() {
+  const v = lastLists.countries;
+  if (!v) return;
+  const row = (c) => `<div class="lrow"><span class="lflag">${c.flag}</span><div class="lmain"><b>${esc(c.name)}</b><span>dal ${fmtWhen(c.first)} · ${c.n.toLocaleString("it-IT")} punti</span></div></div>`;
+  openList("Stati visitati", `${v.count} di ${v.total} stati (${v.pctText}) nel periodo scelto`,
+    (v.states.map(row).join("") || '<p class="msg">Nessuno stato visitato nel periodo.</p>') +
+    (v.others.length ? `<p class="lhead">Altre aree (non contano nella percentuale)</p>${v.others.map(row).join("")}` : ""));
+}
+$("l-close").onclick = () => { $("lsheet").hidden = true; };
+$("l-list").addEventListener("click", (e) => {
+  const g = e.target.closest("[data-go]");
+  if (g) { const [la, lo] = g.dataset.go.split(",").map(Number); $("lsheet").hidden = true; gotoPlace(la, lo); }
+});
+
+// Il pannello in basso: cambio giorno, tocco su uno spostamento o su un posto, pulsanti degli elenchi
+$("panel").addEventListener("click", (e) => {
+  const b = e.target.closest("button[id]");
+  if (b) {
+    const act = { "d-prev": () => stepTripDay(-1), "d-next": () => stepTripDay(1), "list-visits": listVisits, "list-places": listPlaces, "list-nights": listNights, "list-countries": listCountries }[b.id];
+    if (act) return act();
+  }
+  const r = e.target.closest("[data-trip]");
+  if (r) return showTrip(+r.dataset.trip);
+  const g = e.target.closest("[data-go]");
+  if (g) { const [la, lo] = g.dataset.go.split(",").map(Number); gotoPlace(la, lo); }
+});
+
+// ---------- nascondere notti e posti ----------
+// Notti e posti si calcolano dai punti, quindi "cancellarli" non avrebbe senso: si nascondono (i dati restano) e dagli elenchi
+// si possono rimostrare. Le notti si nascondono per data, i posti per luogo (entro 150 m). Si salvano nelle impostazioni, quindi nel profilo.
+function afterHide() {
+  Prefs.save();
+  statsFor = "";
+  render(false);
+  buildSavedLists();
+  if ($("view-stats").classList.contains("active")) refreshStats();
+}
+async function hideNights(keys) {
+  if (keys.length > 1 && !(await confirmDialog(`Nascondere ${keys.length} notti di questo luogo? I dati restano e le puoi rimostrare dall'elenco "Notti salvate".`, "Nascondi"))) return;
+  const set = new Set(Prefs.v.hidden.nights);
+  keys.forEach((k) => set.add(k));
+  Prefs.v.hidden.nights = [...set];
+  afterHide();
+}
+function showNights(keys) {
+  const s = new Set(keys);
+  Prefs.v.hidden.nights = Prefs.v.hidden.nights.filter((k) => !s.has(k));
+  afterHide();
+}
+function hidePlace(p) {
+  Prefs.v.hidden.places.push({ lat: p.lat, lon: p.lon, label: (Names.find(p.lat, p.lon) || {}).name || Places.cached(p.lat, p.lon) || "" });
+  afterHide();
+}
+function showPlace(p) {
+  Prefs.v.hidden.places = Prefs.v.hidden.places.filter((h) => km(h, p) >= 0.15);
+  afterHide();
+}
+
+// ---------- elenchi delle notti e dei posti salvati (nel pannello di Notti e Posti) ----------
+const fmtNightKey = (k) => new Date(dkeyTs(k)).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+function buildSavedLists() {
+  const sn = $("saved-nights"), sp = $("saved-places");
+  const c5 = (la, lo) => `${la.toFixed(5)},${lo.toFixed(5)}`;
+  if (sn && mode === "sleep") {
+    const sl = sleepPlaces(points, Prefs.v.sleep.from, Prefs.v.sleep.to, Prefs.v.sleep.minPts, Prefs.v.sleep.radius, Prefs.hiddenNights());
+    const off = sl.list.filter((n) => n.hidden).length;
+    const rows = sl.list.slice(0, listLimit.nights).map((n) => `<div class="srow${n.hidden ? " off" : ""}"><div class="smain"><b>${fmtNightKey(n.key)}</b><span>${placeSpan(n.lat, n.lon)}</span></div>` +
+      `<button class="hbtn secondary" data-go="${c5(n.lat, n.lon)}">Vai</button><button class="hbtn secondary" data-nhide="${n.key}" data-off="${n.hidden ? 1 : 0}">${n.hidden ? "Mostra" : "Nascondi"}</button></div>`).join("");
+    sn.innerHTML = `<p class="hint">${sl.list.length.toLocaleString("it-IT")} notti trovate${off ? `, ${off} nascoste` : ""}. Nascondere non cancella i dati: la notte torna con "Mostra".</p>` +
+      (rows || '<p class="msg">Nessuna notte trovata.</p>') +
+      (sl.list.length > listLimit.nights ? '<button class="secondary" data-more="nights">Mostra altre</button>' : "");
+    hydratePlaces(sn);
+  }
+  if (sp && mode === "places") {
+    const all = visitPlaces(points), off = all.filter((p) => Prefs.isPlaceHidden(p.lat, p.lon)).length;
+    const rows = all.slice(0, listLimit.places).map((p) => {
+      const h = Prefs.isPlaceHidden(p.lat, p.lon), k = c5(p.lat, p.lon);
+      return `<div class="srow${h ? " off" : ""}"><div class="smain"><b>${placeSpan(p.lat, p.lon)}</b><span>${p.visits} ${p.visits === 1 ? "visita" : "visite"} · ${fmtHoursLong(p.ms / 36e5)}</span></div>` +
+        `<button class="hbtn secondary" data-go="${k}">Vai</button><button class="hbtn secondary" data-pren="${k}">Nome</button>` +
+        `<button class="hbtn secondary" data-phide="${k}" data-off="${h ? 1 : 0}">${h ? "Mostra" : "Nascondi"}</button></div>`;
+    }).join("");
+    sp.innerHTML = `<p class="hint">${all.length.toLocaleString("it-IT")} posti trovati${off ? `, ${off} nascosti` : ""}, dal più frequentato. Nascondere non cancella i dati: il posto torna con "Mostra".</p>` +
+      (rows || '<p class="msg">Nessun posto trovato.</p>') +
+      (all.length > listLimit.places ? '<button class="secondary" data-more="places">Mostra altri</button>' : "");
+    hydratePlaces(sp);
+  }
+}
+$("prefs-ui").addEventListener("click", (e) => {
+  const t = e.target.closest && e.target.closest("button");
+  if (!t) return;
+  const d = t.dataset, pair = (s) => s.split(",").map(Number);
+  if (d.nhide) { const k = +d.nhide; d.off === "1" ? showNights([k]) : hideNights([k]); }
+  else if (d.phide) { const [la, lo] = pair(d.phide); d.off === "1" ? showPlace({ lat: la, lon: lo }) : hidePlace({ lat: la, lon: lo }); }
+  else if (d.pren) { const [la, lo] = pair(d.pren); renamePlace(la, lo).then(() => buildSavedLists()); }
+  else if (d.more) { listLimit[d.more] += LIST_STEP; buildSavedLists(); }
+  else if (d.go) { const [la, lo] = pair(d.go); openTune(false); gotoPlace(la, lo); }
+});
+
 // Passa in rassegna i posti scoperti che non hanno ancora un nome (i più frequentati per primi)
 async function nameNewPlaces() {
-  const list = visitPlaces(applyFilter(points)).filter(needsName).slice(0, 40);
+  const list = visiblePlaces(applyFilter(points)).filter(needsName).slice(0, 40);
   for (let i = 0; i < list.length; i++) {
     const p = list[i];
     pin.clearLayers();
@@ -601,7 +837,7 @@ $("name-new").onclick = nameNewPlaces;
 // Con lo zoom lontano i posti vicini sullo schermo (entro ~56 px) si fondono in un gruppo con il totale di visite e il
 // numero di posti; toccandolo la mappa si avvicina. Si ricalcola a ogni zoom.
 function drawPlaces(pts) {
-  const all = visitPlaces(pts), shown = all.slice(0, 1500);
+  const all = visiblePlaces(pts), shown = all.slice(0, 1500);
   const todo = all.filter(needsName).length;
   const paint = () => {
     const z = map.getZoom(), CELL = 56, cells = new Map();
@@ -616,7 +852,7 @@ function drawPlaces(pts) {
         const p = g.items[0], hours = p.ms / 36e5, r = Math.max(6, Math.min(24, 6 + 4 * Math.sqrt(hours)));
         const named = !!Names.find(p.lat, p.lon);
         const m = L.circleMarker([p.lat, p.lon], { radius: r, color: "#fff", weight: 2, fillColor: named ? "#10b981" : p === all[0] ? "#f97316" : "#8b5cf6", fillOpacity: .78 }).addTo(layer);
-        m.bindPopup(() => `<div class="pop"><b>${placeSpan(p.lat, p.lon)}</b><br>${p.visits} ${p.visits === 1 ? "visita" : "visite"} · ${fmtHoursLong(hours)}<br>${fmtDay(p.first)} – ${fmtDay(p.last)}<br><button class="pop-btn" data-rename>${named ? "Rinomina" : "Dai un nome"}</button></div>`);
+        m.bindPopup(() => `<div class="pop"><b>${placeSpan(p.lat, p.lon)}</b><br>${p.visits} ${p.visits === 1 ? "visita" : "visite"} · ${fmtHoursLong(hours)}<br>${fmtDay(p.first)} – ${fmtDay(p.last)}<br><button class="pop-btn" data-rename>${named ? "Rinomina" : "Dai un nome"}</button> <button class="pop-btn secondary" data-hide>Nascondi</button></div>`);
         m.on("popupopen", (e) => popupReady(e, p));
       } else {
         const size = Math.round(30 + 24 * Math.sqrt(g.ms / maxMs)), lat = g.sl / g.ms, lon = g.so / g.ms;
@@ -628,33 +864,23 @@ function drawPlaces(pts) {
     });
   };
   repaint = () => { layer.clearLayers(); paint(); };
+  lastLists.places = all;
   const tot = all.reduce((a, p) => a + p.visits, 0), named = all.filter((p) => Names.find(p.lat, p.lon)).length;
   $("name-new").hidden = !todo;
   $("name-new").textContent = `Nomina ${todo > 40 ? "i primi 40 dei " + todo : todo} nuovi posti`;
   const f = (n) => n.toLocaleString("it-IT");
   return {
     fit: shown.map((p) => [p.lat, p.lon]), paint, n: all.length, tot,
-    info: all.length ? sumHtml([[f(all.length), "posti totali"], [f(tot), "visite"], [f(named), "rinominati"], [f(todo), "da rinominare"]]) : "Nessuna sosta trovata nel periodo.",
+    info: !all.length && visitPlaces(pts).length ? "Tutti i posti del periodo sono nascosti: li rimostri da Posti salvati (pulsante con i cursori)." : all.length ? sumHtml([[f(all.length), "posti totali"], [f(tot), "visite"], [f(named), "rinominati"], [f(todo), "da rinominare"]]) + '<button class="chip" id="list-places">Elenco posti</button>' : "Nessuna sosta trovata nel periodo.",
   };
 }
 
-// Notti e posti insieme: i posti visitati con sopra le lune delle notti
-function drawStay(pts) {
-  const p = drawPlaces(pts), s = drawSleep(pts);
-  repaint = () => { layer.clearLayers(); p.paint(); s.paint(); };
-  const f = (n) => n.toLocaleString("it-IT");
-  const info = p.n || s.n
-    ? sumHtml([[f(s.nights), "notti trovate"], [f(s.n), "luoghi per dormire"], [f(p.n), "posti totali"], [f(p.tot), "visite"]])
-    : "Nessuna sosta né notte trovata nel periodo.";
-  return { fit: [...p.fit, ...s.fit], info };
-}
-
-// Inquadra la tua posizione (l'ultima nota se manca il GPS) con 100 km di raggio, cioè 200 km sulla larghezza della mappa
+// Inquadra la tua posizione (l'ultima nota se manca il GPS) con 20 km di raggio, cioè 40 km sulla larghezza della mappa
 // (zoom frazionario); se non c'è nessuna posizione non muove la mappa
 function goHere() {
   const c = here || (points.length ? points[points.length - 1] : null), w = map.getSize().x;
   if (!c || !w) return;
-  const z = Math.log2(156543.03 * Math.cos((c.lat * Math.PI) / 180) / (200000 / w));
+  const z = Math.log2(156543.03 * Math.cos((c.lat * Math.PI) / 180) / (40000 / w));
   map.setView([c.lat, c.lon], Math.max(3, Math.min(17, z)), { animate: false });
 }
 
@@ -666,20 +892,23 @@ function render(fit) {
   // I km si calcolano sempre sugli stessi dati (tutti i punti del filtro), così sono uguali in ogni vista; percorsi e heatmap
   // si disegnano invece sui punti alleggeriti (senza soste importate e con almeno 15 m tra due punti)
   const all = applyFilter(points);
-  const pts = mode === "heat" || mode === "routes" || mode === "mix" ? applyFilter(movePts) : all;
-  const draw = { scratch: drawScratch, heat: drawHeat, routes: drawRoutes, mix: drawMix, sleep: drawSleep, places: drawPlaces, stay: drawStay }[mode];
+  const pts = mode === "heat" || mode === "routes" ? applyFilter(movePts) : all;
+  const draw = { scratch: drawScratch, heat: drawHeat, routes: drawRoutes, sleep: drawSleep, places: drawPlaces }[mode];
   const r = pts.length ? draw(pts) : { fit: [], info: "Nessun punto nel periodo scelto." };
   updateFilterUI();
   map.invalidateSize();
   if (firstRender && here) {
     map.setView([here.lat, here.lon], 15);
   } else if (fit) {
-    goHere(); // cambiando vista o filtro non si inquadra tutto lo storico: si resta dove sei, con 100 km di raggio
+    goHere(); // cambiando vista o filtro non si inquadra tutto lo storico: si resta dove sei, con 20 km di raggio
   }
   firstRender = false;
   $("modeinfo").innerHTML = r.info || "";
+  if (mode === "routes") $("modeinfo").innerHTML = tripsPanelHtml();       // Percorsi: spostamenti del giorno
+  else if (mode === "heat") $("modeinfo").innerHTML = topVisitsHtml(all);  // Heatmap: i 3 posti più visitati
+  if (mode === "routes" || mode === "heat") hydratePlaces($("modeinfo"));
   if (repaint) repaint();
-  // Heatmap, Percorsi e Mix non mostrano dati: il pannello compare solo se c'è qualcosa da dire
+  // il pannello compare solo se c'è qualcosa da dire
   $("panel").hidden = !$("modeinfo").innerHTML && $("name-new").hidden;
 }
 let moveTimer = null;
@@ -702,11 +931,12 @@ function setMode(m, silent) {
 }
 document.querySelectorAll("#modes button").forEach((b) => (b.onclick = () => setMode(b.dataset.mode)));
 
-// Personalizzazione nella mappa: il pannello mostra solo le sezioni della vista corrente (più l'Aspetto, che vale per tutte),
+// Personalizzazione nella mappa: il pannello mostra solo le sezioni della vista corrente (più l'Aspetto, che vale per tutte;
+// Notti e Posti hanno anche il proprio elenco di notti e posti salvati),
 // così le modifiche si vedono subito sulla parte di mappa ancora visibile.
 const TUNE = {
-  scratch: ["hex"], heat: ["heat"], routes: ["route"], mix: ["route", "heat"],
-  sleep: ["sleep", "places"], places: ["places"], stay: ["sleep", "places"],
+  scratch: ["hex"], heat: ["heat"], routes: ["route"],
+  sleep: ["sleep", "nightslist"], places: ["places", "placeslist"],
 };
 function tuneRefresh() {
   const want = [...(TUNE[mode] || []), "theme"];
@@ -715,6 +945,7 @@ function tuneRefresh() {
     d.hidden = !want.includes(d.dataset.fold);
     if (d.dataset.fold !== "theme") d.open = true; // le sezioni della vista sono sempre aperte; l'Aspetto si apre a richiesta
   });
+  if (mode === "sleep" || mode === "places") buildSavedLists();
 }
 function openTune(on) {
   $("psheet").hidden = !on;

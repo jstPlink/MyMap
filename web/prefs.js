@@ -42,8 +42,10 @@ function prefDefaults() {
     route: { mode: "single", color: "#00796b", zooms: [7, 11, 15], widths: [1.5, 2.5, 5], opacity: 30, blur: 2, max: 6, minOpacity: 25, detail: 1.5, preset: "classico", colors: [...HEAT_PRESETS.classico] },
     theme: "system", // system | light | dark
     mapStyle: "color", // una chiave di MAP_STYLES
+    outline: "auto", // auto (sottile nel tema chiaro) | thin (sempre) | off (mai): linea attorno a pannelli e pulsanti
     // ritocchi alla mappa di base (cursori in Aspetto): filtri di colore e tinta sovrapposta
     mapFx: { hue: 0, sat: 100, bright: 100, contrast: 100, gray: 0, sepia: 0, invert: 0, blur: 0, tint: "#3b82f6", tintOpacity: 0, tintMode: "multiply" },
+    hidden: { places: [], nights: [] }, // posti e notti nascosti dall'utente (i dati restano): posti = {lat, lon, label}, notti = chiavi AAAAMMGG della sera
     presets: {}, // preset salvati dall'utente: { gruppo: { nome: valori } }, gruppi hex, heat, route, sleep, look
     view: "scratch", // vista della mappa, condivisa tra i dispositivi
     names: true,
@@ -56,7 +58,7 @@ const Prefs = {
   onSaved: null, // () => void, impostato da profile.js: ogni modifica delle impostazioni sale anche sul profilo
   adopt(saved) {
     const d = prefDefaults();
-    this.v = { hex: { ...d.hex, ...saved.hex }, heat: { ...d.heat, ...saved.heat }, sleep: saved.sleep && saved.sleep.v === d.sleep.v ? { ...d.sleep, ...saved.sleep } : d.sleep, route: { ...d.route, ...saved.route }, theme: saved.theme ?? d.theme, mapStyle: saved.mapStyle ?? d.mapStyle, mapFx: { ...d.mapFx, ...saved.mapFx }, presets: saved.presets && typeof saved.presets === "object" ? saved.presets : {}, view: typeof saved.view === "string" ? saved.view : d.view, names: saved.names ?? d.names };
+    this.v = { hex: { ...d.hex, ...saved.hex }, heat: { ...d.heat, ...saved.heat }, sleep: saved.sleep && saved.sleep.v === d.sleep.v ? { ...d.sleep, ...saved.sleep } : d.sleep, route: { ...d.route, ...saved.route }, theme: saved.theme ?? d.theme, mapStyle: saved.mapStyle ?? d.mapStyle, outline: ["thin", "off", "auto"].includes(saved.outline) ? saved.outline : "auto", mapFx: { ...d.mapFx, ...saved.mapFx }, presets: saved.presets && typeof saved.presets === "object" ? saved.presets : {}, view: typeof saved.view === "string" ? saved.view : d.view, hidden: { places: Array.isArray(saved.hidden && saved.hidden.places) ? saved.hidden.places : [], nights: Array.isArray(saved.hidden && saved.hidden.nights) ? saved.hidden.nights : [] }, names: saved.names ?? d.names };
   },
   load() {
     try { this.adopt(JSON.parse(localStorage.getItem("mymap.prefs") || "{}")); } catch { this.v = prefDefaults(); }
@@ -67,7 +69,9 @@ const Prefs = {
   // tema effettivo: la scelta dell'utente, oppure quello del telefono (l'app lo passa nell'indirizzo come sys=0/1)
   sysDark() { const m = /[?&]sys=(\d)/.exec(location.search); return m ? m[1] === "1" : matchMedia("(prefers-color-scheme: dark)").matches; },
   isDark() { return this.v.theme === "dark" || (this.v.theme === "system" && this.sysDark()); },
-  applyTheme() { document.documentElement.dataset.theme = this.isDark() ? "dark" : "light"; },
+  // contorno effettivo dei pannelli: "auto" è sottile nel tema chiaro e assente nello scuro
+  effOutline() { const o = this.v.outline; return o === "thin" ? "thin" : o === "off" ? "none" : this.isDark() ? "none" : "thin"; },
+  applyTheme() { document.documentElement.dataset.theme = this.isDark() ? "dark" : "light"; document.documentElement.dataset.outline = this.effOutline(); },
   // Spessore in px allo zoom `z` per "heat" (raggio) o "route" (linea): tre livelli di zoom, ciascuno col suo valore; tra un livello
   // e l'altro si interpola, fuori dal primo e dall'ultimo resta il valore più vicino.
   widthAt(g, z) {
@@ -79,12 +83,14 @@ const Prefs = {
     return pts[pts.length - 1][1];
   },
   // Preset: copia dei valori di un gruppo di impostazioni ("look" = tema + stile mappa)
-  groupGet(g) { return g === "look" ? { theme: this.v.theme, mapStyle: this.v.mapStyle, mapFx: { ...this.v.mapFx } } : JSON.parse(JSON.stringify(this.v[g])); },
+  groupGet(g) { return g === "look" ? { theme: this.v.theme, mapStyle: this.v.mapStyle, outline: this.v.outline, mapFx: { ...this.v.mapFx } } : JSON.parse(JSON.stringify(this.v[g])); },
   groupSet(g, data) {
     const d = prefDefaults();
-    if (g === "look") { this.v.theme = data.theme ?? d.theme; this.v.mapStyle = data.mapStyle ?? d.mapStyle; this.v.mapFx = { ...d.mapFx, ...data.mapFx }; }
+    if (g === "look") { this.v.theme = data.theme ?? d.theme; this.v.mapStyle = data.mapStyle ?? d.mapStyle; this.v.outline = data.outline ?? d.outline; this.v.mapFx = { ...d.mapFx, ...data.mapFx }; }
     else this.v[g] = { ...d[g], ...JSON.parse(JSON.stringify(data)) };
   },
+  hiddenNights() { return new Set(this.v.hidden.nights); },
+  isPlaceHidden(lat, lon) { return this.v.hidden.places.some((h) => km(h, { lat, lon }) < 0.15); },
   reset(group) { const d = prefDefaults(); this.v[group] = d[group]; this.save(); },
 };
 Prefs.load();
@@ -138,7 +144,7 @@ function presetBar(g) {
     <button class="secondary" data-pdel="${g}" ${cur ? "" : "disabled"}>Elimina</button>
   </div>`;
 }
-const presetGroupOf = (k) => { const g = k.split(".")[0]; return g === "theme" || g === "mapStyle" || g === "mapFx" ? "look" : ["hex", "heat", "route", "sleep"].includes(g) ? g : null; };
+const presetGroupOf = (k) => { const g = k.split(".")[0]; return g === "theme" || g === "mapStyle" || g === "mapFx" || g === "outline" ? "look" : ["hex", "heat", "route", "sleep"].includes(g) ? g : null; };
 function clearPresetSel(k) { // modificando un valore a mano il gruppo non corrisponde più al preset scelto
   const g = presetGroupOf(k);
   if (!g || !presetSel[g]) return;
@@ -193,6 +199,8 @@ function buildPrefsUI() {
     `<option value="custom" ${v.route.preset === "custom" ? "selected" : ""}>Personalizzato</option>`;
   const tintModes = [["multiply", "Moltiplica (scurisce)"], ["screen", "Schermo (schiarisce)"], ["overlay", "Sovrapponi"], ["color", "Colore (ricolora)"], ["normal", "Normale"]]
     .map(([k, t]) => `<option value="${k}" ${v.mapFx.tintMode === k ? "selected" : ""}>${t}</option>`).join("");
+  const outlines = [["auto", "Automatico"], ["thin", "Sempre"], ["off", "Nessuno"]]
+    .map(([k, t]) => `<option value="${k}" ${v.outline === k ? "selected" : ""}>${t}</option>`).join("");
   const mapStyles = Object.entries(MAP_STYLES)
     .map(([k, s]) => `<option value="${k}" ${v.mapStyle === k ? "selected" : ""}>${s.label}</option>`).join("");
 
@@ -203,6 +211,8 @@ function buildPrefsUI() {
         <select data-k="theme">${themes}</select></label>
       <label class="field"><span>Mappa<small>stile della mappa di base</small></span>
         <select data-k="mapStyle">${mapStyles}</select></label>
+      <label class="field"><span>Contorno dei pannelli<small>linea sottile attorno a pannelli e pulsanti; automatico = nel tema chiaro</small></span>
+        <select data-k="outline">${outlines}</select></label>
       <h3>Ritocchi alla mappa</h3>
       <p class="hint">Regolano i colori della mappa di base, qualunque stile tu abbia scelto. L'anteprima mostra il risultato.</p>
       <div class="fxprev" id="fxprev"></div>
@@ -265,11 +275,15 @@ function buildPrefsUI() {
       ${field("Raggio", "sleep.radius", `type="number" min="20" max="5000" step="10" value="${v.sleep.radius}"`, "metri entro cui devono stare i punti")}
       <button class="secondary" data-reset="sleep">Ripristina notti</button>`) +
 
+    fold("nightslist", "Notti salvate", `<div id="saved-nights"></div>`) +
+
     fold("places", "Nomi dei posti", `
       <p class="hint">I nomi che hai dato tu hanno la precedenza su quelli di OpenStreetMap. Tocca un posto sulla mappa (vista Posti o Notti) e scegli Rinomina.</p>
       <div id="names-list"></div>
       <label class="field check"><span>Mostra i nomi di OpenStreetMap<small>cerca via e città su OpenStreetMap (Nominatim): invia al servizio le coordinate dei soli luoghi mostrati. Se spento vedi le coordinate.</small></span>
-        <input data-k="names" type="checkbox" ${v.names ? "checked" : ""}></label>`);
+        <input data-k="names" type="checkbox" ${v.names ? "checked" : ""}></label>`) +
+
+    fold("placeslist", "Posti salvati", `<div id="saved-places"></div>`);
   // "Dati" resta nelle Impostazioni (una volta sola, così il pulsante non perde il suo gestore a ogni ricostruzione)
   const dataRoot = document.getElementById("prefs-data");
   if (dataRoot && !dataRoot.firstChild) dataRoot.innerHTML = fold("data", "Dati", `
@@ -320,6 +334,7 @@ function bindPrefsUI() {
     paintGradbar();
     paintRoutePreview();
     if (k.startsWith("mapFx.")) { fxLabels(root); if (window.applyMapFx) applyMapFx(); if (window.paintFxPreview) paintFxPreview(); }
+    if (k === "outline") Prefs.applyTheme();
     if (k === "theme") { Prefs.applyTheme(); Native.setTheme(val); if (window.setBase) setBase(); if (window.paintFxPreview) paintFxPreview(); }
     if (k === "mapStyle" && window.setBase) { setBase(); if (window.paintFxPreview) paintFxPreview(); }
     Prefs.save();

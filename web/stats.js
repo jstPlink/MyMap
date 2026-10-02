@@ -78,7 +78,7 @@ function renderStats(pts, periodo) {
   }
 
   // ---- notti, casa, lontananza, estremi ----
-  const sleep = sleepPlaces(pts, Prefs.v.sleep.from, Prefs.v.sleep.to, Prefs.v.sleep.minPts, Prefs.v.sleep.radius);
+  const sleep = sleepPlaces(pts, Prefs.v.sleep.from, Prefs.v.sleep.to, Prefs.v.sleep.minPts, Prefs.v.sleep.radius, Prefs.hiddenNights());
   const stays = topStays(pts, 5);
   const home = sleep.places[0] || stays[0];
   const nearHome = (p) => home && km(home, p) < 0.4;
@@ -96,7 +96,7 @@ function renderStats(pts, periodo) {
   maxFromHome.forEach((d) => { if (d < 1) daysHome++; if (d > 50) daysAway50++; if (d > 200) daysAway200++; });
   const nightsAway = sleep.nights - (sleep.places[0] ? sleep.places[0].nights : 0);
 
-  const visited = visitPlaces(pts);
+  const visited = visiblePlaces(pts);
 
   // ---- zone nuove per mese (esagoni da 800 m, interpolati) ----
   const z8 = hexVisits(pts, 800);

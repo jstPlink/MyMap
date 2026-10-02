@@ -10,10 +10,13 @@
   // tema: scelta dell'utente (chiaro/scuro) o, se "come il telefono", quello del telefono (l'app lo passa come ?sys=0/1)
   (function () {
     var t = "system";
-    try { t = JSON.parse(localStorage.getItem("mymap.prefs") || "{}").theme || "system"; } catch (e) {}
+    var o = "auto";
+    try { var pr = JSON.parse(localStorage.getItem("mymap.prefs") || "{}"); t = pr.theme || "system"; o = pr.outline === "thin" || pr.outline === "off" ? pr.outline : "auto"; } catch (e) {}
     var m = /[?&]sys=(\d)/.exec(location.search);
     var sys = m ? m[1] === "1" : matchMedia("(prefers-color-scheme: dark)").matches;
-    document.documentElement.dataset.theme = t === "dark" || (t === "system" && sys) ? "dark" : "light";
+    var dark = t === "dark" || (t === "system" && sys);
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+    document.documentElement.dataset.outline = o === "thin" ? "thin" : o === "off" ? "none" : dark ? "none" : "thin"; // contorno dei pannelli (Aspetto)
   })();
 </script>
 <link rel="icon" href="icon.svg">
@@ -38,6 +41,7 @@
           </div>
         </div>
         <div class="filters chips2 row2">
+          <div class="qfs"><button class="chip qf" data-qf="7">7 giorni</button><button class="chip qf" data-qf="all">Sempre</button></div>
           <button id="trackwarn" class="chip warn" hidden>&#9888; Tracking fermo</button>
         </div>
       </div>
@@ -46,15 +50,19 @@
         <button class="chip vt on active" data-mode="scratch" title="La mappa è coperta: gratti i posti dove sei stato">Scratch</button>
         <button class="chip vt" data-mode="heat" title="Calore dei punti: più passi, più è caldo">Heatmap</button>
         <button class="chip vt" data-mode="routes" title="Le tue tracce, a colore unico o per frequenza">Percorsi</button>
-        <button class="chip vt" data-mode="mix" title="Heatmap con i percorsi sopra">Mix</button>
         <button class="chip vt" data-mode="sleep" title="Dove hai dormito, con il numero di notti">Notti</button>
         <button class="chip vt" data-mode="places" title="Dove ti sei fermato almeno 20 minuti">Posti</button>
-        <button class="chip vt" data-mode="stay" title="I posti visitati con sopra le notti">Notti e posti</button>
       </div>
 
       <button id="tune" title="Personalizza la vista" aria-label="Personalizza la vista">
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
       </button>
+
+      <div id="lsheet" hidden>
+        <div class="phead"><b id="l-title"></b><button id="l-close" class="x" aria-label="Chiudi">&#10005;</button></div>
+        <p class="hsub" id="l-sub"></p>
+        <div id="l-list"></div>
+      </div>
 
       <div id="psheet" hidden>
         <div class="phead"><b id="p-title">Personalizza</b><button id="p-close" class="x" aria-label="Chiudi">&#10005;</button></div>
@@ -249,6 +257,7 @@
 <script src="places.js"></script>
 <script src="stats.js"></script>
 <script src="native.js"></script>
+<script src="world.js"></script>
 <script src="app.js"></script>
 <script src="profile.js"></script>
 <script src="account.js"></script>

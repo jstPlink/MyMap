@@ -1,9 +1,17 @@
 # MyMap
 
-App Android personale per registrare la posizione, con backend PocketBase in Docker.
-Scratch map, luoghi salvati, strade percorse. Nessuna parte social.
+App Android **personale** che registra la posizione in background e la mostra come scratch map, heatmap, percorsi, notti e posti
+visitati, con statistiche. Nessuna parte social. I dati restano sul telefono o si sincronizzano con un server PocketBase proprio.
 
-- `android/`   app Kotlin (tracking in background, buffer SQLite, sync)
-- `pocketbase/` migrazioni e dati del backend
-- `worker/`    elaborazioni (map matching, soste, scratch map)
-- `web/`       dashboard mappa
+## Documentazione
+
+- [Guida all'uso e ai parametri](docs/GUIDA.md): viste, personalizzazione, tracker, account, come si calcolano le cose, cosa fare se non registra.
+- [Architettura](ARCHITETTURA.md): com'è fatta l'app, ponte nativo, tracking, dati e calcoli, backend, sviluppo.
+- [Changelog](CHANGELOG.md): cronologia delle versioni.
+
+## Cartelle
+
+- `android/` app Kotlin: tracking in background, buffer SQLite, sincronizzazione, WebView
+- `web/` interfaccia (HTML, CSS, JS senza build), inclusa nell'APK
+- `pocketbase/` migrazioni e script per il backend
+- `tools/` preparazione del server e importazione dello storico di Google Maps
