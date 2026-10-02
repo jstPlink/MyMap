@@ -45,6 +45,7 @@ class LocationService : Service(), LocationListener {
     private var stillCount = 0
     private var sinceSync = 0
     private var lastSavedMs = 0L
+    private var lastWidgetMs = 0L
 
     private val motionTrigger = object : TriggerEventListener() {
         override fun onTrigger(event: TriggerEvent?) {
@@ -181,6 +182,7 @@ class LocationService : Service(), LocationListener {
             )
         )
         lastSavedMs = loc.time
+        if (loc.time - lastWidgetMs >= 60_000L || lastWidgetMs == 0L) { lastWidgetMs = loc.time; LastPointWidget.update(this) }
 
         if (isGps) adapt(loc)
 

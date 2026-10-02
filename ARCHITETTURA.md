@@ -1,4 +1,4 @@
-# MyMap – Architettura (v0.19.0, build 32)
+# MyMap – Architettura (v0.24.0, build 39)
 
 Panoramica tecnica del progetto com'è oggi (per l'uso dell'app vedi [docs/GUIDA.md](docs/GUIDA.md)). La cronologia delle versioni è in [CHANGELOG.md](CHANGELOG.md): va aggiornata a ogni rilascio
 (alzare `versionCode` di 1 e `versionName` in `android/app/build.gradle.kts`, poi aggiungere la voce).
@@ -42,6 +42,7 @@ Google Play Services né librerie HTTP/JSON esterne.
 | `BootReceiver.kt` | Riavvia il tracking dopo il boot e dopo un aggiornamento dell'app. |
 | `PointStore.kt` | Buffer SQLite dei punti; si svuota solo dopo una sincronizzazione riuscita. |
 | `SyncWorker.kt` / `Api.kt` | Invio a batch idempotente (`client_id`), scarico dello storico, login, registrazione, cambio password, accesso con Google. |
+| `LastPointWidget.kt` | Widget home (layout `widget_last_point`, info `xml/last_point_widget_info`): tempo trascorso da `PointStore.lastOwnTs`. Aggiornato da `LocationService` (max 1/min), `TrackerWatchdog` (~15 min), salvataggio manuale, tocco e `updatePeriodMillis` (30 min); rosso oltre 30 min. |
 | `Exporter.kt` | Esportazione in CSV, GPX o JSON. |
 | `Prefs.kt` | Preferenze native (server, account, tracker). |
 
@@ -104,7 +105,7 @@ I risultati asincroni tornano con `window.__nativeResult(id, risposta)` (profilo
 
 - **Punto:** `ts` (ms), `lat`, `lon`, `accuracy`, `speed`, `bearing`, `altitude`, `provider`, `battery`, `client_id` (UUID, rende
   l'invio idempotente), `synced`. Nel server la collection `points` ha lo stesso schema più `user` e `device_id`.
-- **Pulizia (`geo.js`).** `clean`: via i fix con accuratezza > 120 m e i salti impossibili (> 180 km/h per più di 300 m). `movePts`:
+- **Pulizia (`geo.js`).** `clean`: via i fix con accuratezza > 120 m, i salti impossibili (> 180 km/h per più di 300 m) e i picchi (`despike`: punto a > 300 m da precedente e successivo, che distano tra loro meno del 40%, entro 15 min). `dropCoarse` (solo per Percorsi e Heatmap): via i fix con accuratezza ≥ 80 m se c'è un punto più preciso entro 5 min. `movePts`:
   senza le soste importate da Google (`acc = -1`) e con almeno 15 m tra due punti (`thin`); si usa per Percorsi e Heatmap.
   Scratch, Notti e Posti usano tutti i punti.
 - **Km (`moveSteps`).** Passi tra punti consecutivi entro 20 minuti, scartando < 10 m, > 30 km e > 250 km/h. Calcolati sempre su tutti
@@ -140,7 +141,9 @@ I risultati asincroni tornano con `window.__nativeResult(id, risposta)` (profilo
 - **Durate (`fmtSpan`, `fmtCount`, `fmtHoursLong`).** Oltre 365 giorni, anni, mesi e giorni (anno 365 giorni, mese 365/12).
 - **Impostazioni e preset.** `Prefs.v` (esagoni, heatmap, notti, percorsi, tema, stile mappa, ritocchi, vista, preset, nomi) vive in
   `localStorage`; con un account sul server `profile.js` la salva nel campo `settings` dell'utente (vince la modifica più recente, ora
-  in `mymap.profile_t`). I preset hanno cinque gruppi: `hex`, `heat`, `route`, `sleep`, `look` (tema, mappa e ritocchi).
+  in `mymap.profile_t`; su un'installazione nuova o con un altro account, cioè se `mymap.profile_ok` non coincide con `url|email`, vince sempre il server; nessun invio finché il profilo non è stato letto). I preset hanno cinque gruppi: `hex`, `heat`, `route`, `sleep`, `look` (tema, mappa e ritocchi).
+
+- **Pulizia del database (`PointStore.cleanup`, ponte `cleanPoints(apply)`, Tracker → Pulizia dei punti).** Toglie accuratezza > 120 m, picchi (stessa regola di `despike`) e punti da fermo ripetuti (entro 10 m dall'ultimo tenuto e 10 min, seguiti da un punto ancora fermo: restano primo, ultimo e uno ogni 10 min). Le soste importate (acc = -1) non si toccano. I punti già sincronizzati tolti finiscono in `deleted` (database versione 2), che `insertSynced` rispetta; il server non viene modificato. Su 78.817 punti reali la simulazione ne toglie circa 17.000.
 
 ## 3. Backend (`pocketbase/`, `docker-compose.yml`)
 
@@ -155,6 +158,7 @@ I risultati asincroni tornano con `window.__nativeResult(id, risposta)` (profilo
 ## 4. Strumenti e pubblicazione
 
 - `tools/setup_server.py`: prepara il server (utente, campi necessari).
+- `tools/clean_points.py`: stessa pulizia dell'app sul server (conta; con `--apply` cancella dopo conferma, a lotti dall'API batch). Le regole sono duplicate in `PointStore.cleanup` e nello script: vanno tenute uguali.
 - `tools/import_timeline.py`: importa nel server l'export "Spostamenti" di Google Maps (percorsi, soste, fix GPS).
 - `.github/workflows/pages.yml`: pubblica `web/` su GitHub Pages (versione dimostrativa con dati demo).
 
@@ -164,7 +168,35 @@ I risultati asincroni tornano con `window.__nativeResult(id, risposta)` (profilo
 2. **App sul telefono:** con JDK 17 e Android SDK (piattaforma 35), da `android/` eseguire `./gradlew assembleDebug`; l'APK è in
    `app/build/outputs/apk/debug/`. Si installa con il debug wireless (`adb pair`, `adb connect`, `adb install -r`).
 3. L'APK di debug e quello `release` sono firmati con la chiave di debug (uso personale): gli aggiornamenti si installano sopra
-   solo se compilati dalla stessa macchina.
+   solo se compilati con la stessa chiave (`~/.android/debug.keystore`), cioè in pratica sulla stessa macchina.
+4. **Dopo l'installazione:** `adb shell dumpsys package com.mymap.app | grep versionName`; errori all'avvio con `adb logcat -d -b crash`
+   (e, per la pagina, `adb logcat -d | grep -i chromium`); tracking attivo se `adb shell dumpsys activity services com.mymap.app` elenca
+   `LocationService`. Dopo `install -r` il servizio riparte da solo (`MY_PACKAGE_REPLACED`).
+
+### Debug wireless
+
+La porta cambia a ogni riattivazione (il pairing resta valido): `adb mdns services` mostra le porte `_adb-tls-connect` correnti (a volte anche
+una vecchia), poi `adb connect IP:porta`. Il collegamento cade spesso quando il telefono va in pausa: se `adb devices` dice `offline`,
+riattivare *Debug wireless* e rileggere la porta.
+
+### Cambio di firma senza perdere i dati
+
+Se `adb install -r` risponde `INSTALL_FAILED_UPDATE_INCOMPATIBLE` (build di un altro PC), la strada migliore è copiare la stessa
+`debug.keystore`. Altrimenti, disinstallando si perdono i dati dell'app; l'APK di debug è *debuggable*, quindi con `run-as` si possono salvare e
+rimettere. Procedura provata:
+
+1. `adb shell am force-stop com.mymap.app`, poi salvare sul PC con `adb exec-out run-as com.mymap.app cat databases/points.db > points.db` (e
+   `points.db-wal`, `points.db-shm`, `shared_prefs/mymap.xml`) e `adb exec-out run-as com.mymap.app tar cf - -C app_webview/Default "Local Storage" > ls.tar`
+   (le impostazioni della pagina). Verificare il database con `sqlite3` (`integrity_check`) e, meglio, consolidarlo in un solo file con
+   `PRAGMA wal_checkpoint(TRUNCATE)` su una copia.
+2. `adb uninstall com.mymap.app`, `adb install app-debug.apk`, aprire l'app una volta (crea le cartelle) e `force-stop`.
+3. Ripristinare **passando da `/data/local/tmp`**: `adb push file /data/local/tmp/` e poi `adb shell "run-as com.mymap.app cp /data/local/tmp/file databases/file"`
+   (per la cartella, `tar xf` dalla stessa posizione). Con la app ferma e i tre file del database insieme (o il file consolidato senza `-wal`/`-shm`).
+4. Riaprire l'app, controllare numero di punti e account, **cancellare i backup** (contengono le posizioni) sul PC e in `/data/local/tmp`.
+
+Insidie incontrate: (a) sotto Git Bash per Windows impostare `MSYS_NO_PATHCONV=1`, altrimenti `/data/local/tmp/…` diventa `C:/Program Files/Git/data/…`;
+(b) non far passare file binari grandi da `adb shell` con la redirezione dello standard input: arrivano troncati e il database ripristinato
+risulta vuoto o incoerente (l'app può interrompersi all'avvio); (c) la disinstallazione azzera permessi e risparmio batteria, da concedere di nuovo.
 
 ## 6. Punti aperti
 
@@ -173,6 +205,12 @@ I risultati asincroni tornano con `window.__nativeResult(id, risposta)` (profilo
 - Il buffer SQLite non elimina mai i punti già sincronizzati.
 - "Continua con Google" resta spento finché il provider non è attivo in PocketBase (`GOOGLE_ENABLED` in `web/account.js`).
 - Non ci sono test automatici.
+- Gli stati visitati usano confini semplificati (1:50m, 740 KB in `web/countries-data.js`, anche nell'APK): micro-stati sotto i 2 km (Vaticano) e punti
+  esattamente sul bordo di un porto possono non essere riconosciuti; Tuvalu non ha confini nel file. Non misurato il costo sul telefono (nel browser
+  78.000 punti si assegnano in circa 0,3 s, 7 ms con le celle già note).
+- Gli spostamenti (`computeTrips`) e gli elenchi si ricalcolano a ogni caricamento dei punti e si ricordano per riferimento all'array dei punti;
+  con molti anni di dati non è misurato il costo sul telefono.
+- Gli APK compilati su PC diversi non sono intercambiabili per via della firma di debug (vedi sezione 5).
 - Password: il minimo è 5 sul server (dopo `setup_server.py` o la migrazione) ma 8 nell'app: da allineare se si vuole usare 5.
 - La tinta della mappa usa un filtro SVG e la sfocatura un filtro CSS: sui telefoni meno potenti possono rallentare la mappa. Non
   misurato sul dispositivo.

@@ -250,8 +250,9 @@ function thin(pts, meters, gapMs) {
   return out;
 }
 
-// Toglie i fix inutilizzabili: accuratezza peggiore di 120 m (Wi-Fi, celle) e salti impossibili (>180 km/h per più di 300 m),
-// che altrimenti disegnano righe lunghe chilometri e gonfiano i km. Dopo 3 scarti di fila il nuovo punto viene accettato.
+// Toglie i fix inutilizzabili: accuratezza peggiore di 120 m (Wi-Fi, celle), salti impossibili (>180 km/h per più di 300 m) e
+// "picchi" (un punto che salta via di oltre 300 m e torna subito dopo: tipici dei fix di rete), che altrimenti disegnano righe
+// lunghe chilometri attraverso la città e gonfiano i km. Dopo 3 scarti di fila il nuovo punto viene accettato.
 function clean(pts) {
   const out = [];
   let last = null, bad = 0;
@@ -263,7 +264,29 @@ function clean(pts) {
     }
     bad = 0; out.push(p); last = p;
   }
+  return despike(out);
+}
+
+// Picco: B dista più di 300 m dal punto prima (A) e da quello dopo (C), ma A e C sono vicini tra loro (meno del 40%) ed entro 15 minuti.
+// Le soste importate da Google (acc = -1) non si toccano. Stessa regola in PointStore.cleanup (Kotlin).
+function despike(pts) {
+  const out = [];
+  for (let i = 0; i < pts.length; i++) {
+    const a = out[out.length - 1], b = pts[i], c = pts[i + 1];
+    if (a && c && b.acc !== -1 && c.ts - a.ts < 15 * 60000) {
+      const d1 = km(a, b), d2 = km(b, c);
+      if (d1 > 0.3 && d2 > 0.3 && km(a, c) < 0.4 * Math.min(d1, d2)) continue;
+    }
+    out.push(b);
+  }
   return out;
+}
+
+// Un fix grossolano (accuratezza 80 m o peggio) non serve a disegnare i percorsi se un punto preciso è a meno di 5 minuti:
+// altrimenti la linea fa zig-zag tra i due (tipico dei punti grezzi di Google accanto al tracciato).
+function dropCoarse(pts) {
+  const good = (q, p) => q && Math.abs(q.ts - p.ts) <= 5 * 60000 && q.acc < 80;
+  return pts.filter((p, i) => !(p.acc >= 80 && (good(pts[i - 1], p) || good(pts[i + 1], p))));
 }
 
 const isStay = (p) => p.acc === -1; // visita di Google importata come punto ogni 30 minuti: serve per soste e notti, non per percorsi e heatmap

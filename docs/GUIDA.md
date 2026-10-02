@@ -1,6 +1,6 @@
 # MyMap – Guida all'uso e ai parametri
 
-Guida per chi usa l'app (versione 0.19.0). Per come è fatta dentro, vedi [ARCHITETTURA.md](../ARCHITETTURA.md); per la cronologia
+Guida per chi usa l'app (versione 0.24.0). Per come è fatta dentro, vedi [ARCHITETTURA.md](../ARCHITETTURA.md); per la cronologia
 delle modifiche, [CHANGELOG.md](../CHANGELOG.md).
 
 ## 1. Cos'è
@@ -11,7 +11,8 @@ sincronizzano con un **tuo** server (PocketBase, ad esempio sul NAS).
 
 ## 2. Primi passi
 
-1. **Installa l'APK** sul telefono (debug wireless con `adb install -r`, oppure copiandolo sul telefono e aprendolo).
+1. **Installa l'APK** sul telefono (debug wireless con `adb install -r`, oppure copiandolo sul telefono e aprendolo). Un aggiornamento
+   compilato su un altro PC può essere rifiutato per la firma: vedi *Aggiornare l'app* più sotto.
 2. **Accesso.** Alla prima apertura scegli dove tenere i dati:
    - *Su questo telefono*: nessun account, nessuna sincronizzazione (è la scelta predefinita);
    - *Il mio server*: scheda **Accedi** o **Nuovo account** con l'URL del tuo server. "Password dimenticata?" manda un'email di
@@ -69,7 +70,7 @@ Notti la formula delle notti e l'elenco *Notti salvate*, Posti i nomi e l'elenco
 (tema, mappa e ritocchi), che vale per tutte.
 
 Ogni gruppo ha in cima un menu **Preset** con **Salva** ed **Elimina**: salvi la combinazione di valori con un nome e la riapplichi
-quando vuoi. I preset valgono per esagoni, heatmap, percorsi, notti e aspetto (tema e mappa), e viaggiano nel profilo del server.
+quando vuoi. I preset valgono per esagoni, heatmap, percorsi, notti e aspetto (tema, mappa, contorno e ritocchi), e viaggiano nel profilo del server.
 
 **Spessore a tre livelli di zoom** (heatmap e percorsi): per ciascuno dei tre livelli scegli lo zoom e lo spessore in pixel; tra un
 livello e l'altro il valore si interpola, fuori dal primo e dall'ultimo resta il valore più vicino. Valori di partenza: percorsi
@@ -109,13 +110,21 @@ della settimana, zone nuove per mese e curiosità. Toccando una riga con il segn
     Notti hanno bisogno di almeno 2 punti.
   Il passaggio tra i due modi è automatico. Più punti = tracce più precise ma più batteria. Il riepilogo sotto i campi mostra i punti
   all'ora risultanti.
+- **Pulizia dei punti:** *Pulisci i punti* mostra quanti punti sono inutili (troppo imprecisi, picchi isolati, ripetuti da fermo) e, dopo conferma, li toglie
+  dal telefono. Restano il primo, l'ultimo e uno ogni 10 minuti di ogni sosta, quindi soste e notti non cambiano. Non si annulla sul telefono; sul server i
+  punti restano (e non tornano con lo scarico dello storico).
 - **Posizione adesso:** *Registra la posizione adesso* chiede subito il fix (GPS e rete in parallelo, fino a 20 secondi) e lo salva
   come punto.
 
+- **Widget "ultimo punto":** tieni premuta la schermata home → Widget → MyMap. Mostra da quanto tempo è stato salvato l'ultimo punto
+  ("5 min fa"); diventa rosso oltre 30 minuti (segno che il tracking potrebbe essere fermo). Si aggiorna a ogni punto, ogni ~15 minuti e
+  toccandolo.
+
 ## 7. Account e dati
 
-- **Account:** accesso, creazione, *Cambia password* (serve quella attuale), esci.
-- **Impostazioni nel profilo:** con un account sul server, impostazioni, preset, vista corrente, frequenza dei punti e nomi dei posti
+- **Account:** accesso, creazione, *Cambia password* (serve quella attuale), esci. La password deve avere almeno **8 caratteri** nell'app; il
+  server, dopo `tools/setup_server.py`, ne accetta anche 5, ma l'app non lo consente ancora (vedi i punti aperti in ARCHITETTURA.md).
+- **Impostazioni nel profilo:** con un account sul server, impostazioni, preset, vista corrente, frequenza dei punti, nomi dei posti e notti e posti nascosti
   si salvano nel profilo e si ritrovano su un altro telefono o dopo una reinstallazione (vince la modifica più recente). Serve il campo
   `settings` sul server: si crea con `python tools/setup_server.py --url … --admin-email …` (vedi ARCHITETTURA.md).
 - **Esportazione:** tutti i punti del telefono in **CSV, GPX o JSON**, nella cartella che scegli.
@@ -146,7 +155,18 @@ Il tracking gira come servizio in primo piano, che Android lascia vivere a scher
 L'app si riavvia da sola dopo un aggiornamento o un riavvio del telefono; un controllo ogni ~15 minuti la rilancia se Android la ferma o,
 se non può, manda una notifica. Gli aggiornamenti installati dal PC chiudono l'app: se non riparte, aprila una volta.
 
-## 10. Servizi esterni e privacy
+## 10. Aggiornare l'app
+
+- **Dal PC:** `adb install -r app-debug.apk` aggiorna l'app e **conserva i dati**; l'app non si riapre da sola, ma il tracking riparte da solo. Serve il debug
+  wireless (*Opzioni sviluppatore → Debug wireless*): la porta cambia a ogni riattivazione, quindi serve l'IP:porta mostrato dal telefono.
+- **Firma diversa:** se l'aggiornamento è compilato su un altro PC, Android risponde `INSTALL_FAILED_UPDATE_INCOMPATIBLE`. La soluzione pulita
+  è usare la stessa chiave di firma su entrambi i PC (copiare `C:\Users\<utente>\.android\debug.keystore`, senza metterla nel repo né
+  condividerla). Altrimenti si disinstalla e si reinstalla: **si perdono i dati locali** (punti non ancora sincronizzati, impostazioni), che con un
+  account sul server si riscaricano. Per conservarli c'è una procedura di backup e ripristino in ARCHITETTURA.md.
+- Dopo una reinstallazione Android azzera i permessi e l'esclusione dal risparmio batteria: vanno concessi di nuovo (*Tracker → Avvia
+  tracking*, poi *Salute del tracking → Escludi*).
+
+## 11. Servizi esterni e privacy
 
 - **Mappe:** tessere di Esri (stili colorati, topografico, satellite, grigio) e di OpenStreetMap; i loro termini d'uso valgono per un
   uso personale. Le tessere CARTO richiedono una chiave e non sono usate.

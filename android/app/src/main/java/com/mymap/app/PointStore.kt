@@ -20,7 +20,7 @@ data class TrackPoint(
 )
 
 /** Buffer locale dei punti: sopravvive a assenza di rete e riavvii, si svuota solo dopo sync riuscita. */
-class PointStore(context: Context) : SQLiteOpenHelper(context, "points.db", null, 1) {
+class PointStore(context: Context) : SQLiteOpenHelper(context, "points.db", null, 2) {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -32,9 +32,12 @@ class PointStore(context: Context) : SQLiteOpenHelper(context, "points.db", null
                 "provider TEXT, battery INTEGER, synced INTEGER NOT NULL DEFAULT 0)"
         )
         db.execSQL("CREATE INDEX idx_synced ON points(synced, id)")
+        db.execSQL(TOMBSTONES)
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {}
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) db.execSQL(TOMBSTONES)
+    }
 
     init { setWriteAheadLoggingEnabled(true) } // l'esportazione legge mentre il tracking continua a scrivere
 
@@ -56,7 +59,7 @@ class PointStore(context: Context) : SQLiteOpenHelper(context, "points.db", null
 
     /** Svuota il buffer: si fa uscendo da un account, così i punti di un utente non finiscono in quello di un altro. */
     @Synchronized
-    fun clear() { writableDatabase.delete("points", null, null) }
+    fun clear() { writableDatabase.delete("points", null, null); writableDatabase.delete("deleted", null, null) }
 
     @Synchronized
     fun insert(p: TrackPoint) {
@@ -126,6 +129,7 @@ class PointStore(context: Context) : SQLiteOpenHelper(context, "points.db", null
         db.beginTransaction()
         try {
             for (p in points) {
+                if (isDeleted(db, p.clientId)) continue // tolto con la pulizia: il server può averlo ancora
                 val v = ContentValues().apply {
                     put("client_id", p.clientId); put("ts", p.ts); put("lat", p.lat); put("lon", p.lon)
                     put("accuracy", p.accuracy); put("speed", p.speed); put("bearing", p.bearing)
@@ -162,5 +166,78 @@ class PointStore(context: Context) : SQLiteOpenHelper(context, "points.db", null
             c.moveToFirst()
             return c.getInt(0) to c.getInt(1)
         }
+    }
+
+    private fun isDeleted(db: SQLiteDatabase, clientId: String): Boolean =
+        db.rawQuery("SELECT 1 FROM deleted WHERE client_id=?", arrayOf(clientId)).use { it.moveToFirst() }
+
+    /**
+     * Pulizia dei punti inutili (stesse regole di `clean`/`despike` in geo.js, più la sosta): (1) accuratezza peggiore di 120 m,
+     * (2) picchi: un punto a più di 300 m dal precedente e dal successivo mentre questi due sono vicini (meno del 40%, entro 15 min),
+     * (3) sosta: punti a meno di 10 m dall'ultimo tenuto, a meno di 10 minuti da esso e seguiti da un punto ancora fermo; restano
+     * il primo, l'ultimo e uno ogni 10 minuti, quindi durata di soste e notti non cambiano. Le soste importate (accuratezza -1) non si toccano.
+     * Con `apply` falso conta soltanto. I punti già sincronizzati tolti finiscono in `deleted`, così lo scarico dello storico non li riporta.
+     * Restituisce (totale, accuratezza, picchi, soste).
+     */
+    @Synchronized
+    fun cleanup(apply: Boolean): IntArray {
+        val ids = ArrayList<Long>(); val ts = ArrayList<Long>(); val lat = ArrayList<Double>(); val lon = ArrayList<Double>()
+        val acc = ArrayList<Double>(); val synced = ArrayList<Boolean>()
+        readableDatabase.rawQuery("SELECT id,ts,lat,lon,COALESCE(accuracy,0),synced FROM points ORDER BY ts,id", null).use { c ->
+            while (c.moveToNext()) {
+                ids += c.getLong(0); ts += c.getLong(1); lat += c.getDouble(2); lon += c.getDouble(3); acc += c.getDouble(4); synced += c.getInt(5) == 1
+            }
+        }
+        val n = ids.size
+        val reason = IntArray(n) // 0 tenuto, 1 accuratezza, 2 picco, 3 sosta
+        fun dist(i: Int, j: Int): Double { // km
+            val p = Math.PI / 180
+            val a = Math.sin((lat[j] - lat[i]) * p / 2).let { it * it } +
+                Math.cos(lat[i] * p) * Math.cos(lat[j] * p) * Math.sin((lon[j] - lon[i]) * p / 2).let { it * it }
+            return 12742 * Math.asin(Math.sqrt(a))
+        }
+        for (i in 0 until n) if (acc[i] > 120) reason[i] = 1
+        // picchi, sui punti rimasti
+        val kept = (0 until n).filter { reason[it] == 0 }
+        var prev = -1
+        for (k in kept.indices) {
+            val b = kept[k]
+            val c = if (k + 1 < kept.size) kept[k + 1] else -1
+            if (prev >= 0 && c >= 0 && acc[b] != -1.0 && ts[c] - ts[prev] < 15 * 60_000) {
+                val d1 = dist(prev, b); val d2 = dist(b, c)
+                if (d1 > 0.3 && d2 > 0.3 && dist(prev, c) < 0.4 * minOf(d1, d2)) { reason[b] = 2; continue }
+            }
+            prev = b
+        }
+        // soste, sui punti rimasti
+        val rest = (0 until n).filter { reason[it] == 0 }
+        var anchor = -1
+        for (k in rest.indices) {
+            val p = rest[k]
+            if (acc[p] == -1.0) { anchor = -1; continue }
+            if (anchor < 0) { anchor = p; continue }
+            val next = if (k + 1 < rest.size) rest[k + 1] else -1
+            if (next >= 0 && acc[next] != -1.0 && ts[p] - ts[anchor] < 10 * 60_000 && dist(anchor, p) < 0.01 && dist(anchor, next) < 0.01) reason[p] = 3
+            else anchor = p
+        }
+        val counts = IntArray(4)
+        for (r in reason) counts[r]++
+        if (apply && n > counts[0]) {
+            val db = writableDatabase
+            db.beginTransaction()
+            try {
+                for (i in 0 until n) if (reason[i] != 0) {
+                    if (synced[i]) db.execSQL("INSERT OR IGNORE INTO deleted(client_id) SELECT client_id FROM points WHERE id=?", arrayOf<Any>(ids[i]))
+                    db.execSQL("DELETE FROM points WHERE id=?", arrayOf<Any>(ids[i]))
+                }
+                db.setTransactionSuccessful()
+            } finally { db.endTransaction() }
+            db.execSQL("VACUUM")
+        }
+        return intArrayOf(n, counts[1], counts[2], counts[3])
+    }
+
+    private companion object {
+        const val TOMBSTONES = "CREATE TABLE IF NOT EXISTS deleted(client_id TEXT PRIMARY KEY)"
     }
 }

@@ -4,17 +4,19 @@
 // Con il database locale restano solo nel telefono.
 const Profile = (() => {
   const T_KEY = "mymap.profile_t";
+  const OK_KEY = "mymap.profile_ok"; // account (server|email) con cui questa installazione ha già fatto una sincronizzazione riuscita
   let state = "off"; // off | busy | ok | old (il server non ha il campo) | err
   let detail = "";
-  let timer = null, applying = false, busy = false, again = false;
+  let timer = null, applying = false, busy = false, again = false, pulled = false, syncing = false; // pulled: il profilo del server è già stato letto in questa sessione
 
   const localT = () => +store.get(T_KEY) || 0;
   const online = () => Native.isApp && session && session.mode === "server";
+  const acct = () => (session ? `${session.url}|${session.email}` : "");
   const snapshot = () => ({ t: localT(), prefs: { ...Prefs.v, tracker: Native.isApp ? Native.trackerConfig() : undefined }, names: Names.snapshot() });
   const set = (s, d = "") => { state = s; detail = d; if (api.onState) api.onState(); };
 
   async function push() {
-    if (!online()) return;
+    if (!online() || !pulled) return; // mai inviare prima di aver letto il profilo: su un'installazione nuova cancellerebbe quello del server con i valori di partenza
     if (busy) { again = true; return; }
     busy = true;
     set("busy");
@@ -30,7 +32,7 @@ const Profile = (() => {
     store.set(T_KEY, String(Date.now()));
     if (!online()) return;
     clearTimeout(timer);
-    timer = setTimeout(push, 1500);
+    timer = setTimeout(() => (pulled ? push() : sync()), 1500); // se la lettura iniziale non è riuscita (rete assente) si riprova ora
   }
 
   function apply(remote) {
@@ -55,15 +57,25 @@ const Profile = (() => {
 
   async function sync() {
     if (!online()) { set("off"); return; }
-    set("busy");
-    const r = await Native.pullSettings();
-    if (!r.ok) return set("err", r.error || "");
-    if (!r.supported) return set("old");
-    let remote = null;
-    try { remote = r.settings ? JSON.parse(r.settings) : null; } catch {}
-    if (remote && (remote.t || 0) > localT()) { apply(remote); set("ok"); }
-    else if (localT() > 0 || !remote) { if (localT() === 0) store.set(T_KEY, String(Date.now())); await push(); }
-    else set("ok");
+    if (syncing) return;
+    syncing = true;
+    pulled = false; // fino alla lettura del profilo non si invia nulla
+    try {
+      set("busy");
+      const r = await Native.pullSettings();
+      if (!r.ok) return set("err", r.error || "");
+      if (!r.supported) return set("old");
+      let remote = null;
+      try { remote = r.settings ? JSON.parse(r.settings) : null; } catch {}
+      pulled = true;
+      // installazione nuova (o altro account): il profilo del server vince sempre, qualunque ora abbiano le modifiche locali
+      const known = store.get(OK_KEY) === acct();
+      if (remote && (!known || (remote.t || 0) > localT())) apply(remote);
+      else if (localT() > 0 || !remote) { if (localT() === 0) store.set(T_KEY, String(Date.now())); await push(); }
+      if (state === "err") return;
+      store.set(OK_KEY, acct());
+      set("ok");
+    } finally { syncing = false; }
   }
 
   const api = {

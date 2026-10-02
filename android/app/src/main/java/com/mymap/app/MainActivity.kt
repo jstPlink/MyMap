@@ -219,6 +219,13 @@ class MainActivity : Activity() {
         fun syncNow() { SyncWorker.enqueue(this@MainActivity) }
 
         /** Rilegge dal server tutto lo storico (i punti già presenti restano, i nuovi si aggiungono). */
+        /** Pulizia dei punti inutili: con `apply` falso conta soltanto. Risposta: {total, accuracy, spikes, stays}. */
+        @JavascriptInterface
+        fun cleanPoints(apply: Boolean): String {
+            val r = store.cleanup(apply)
+            return JSONObject().put("total", r[0]).put("accuracy", r[1]).put("spikes", r[2]).put("stays", r[3]).toString()
+        }
+
         @JavascriptInterface
         fun repullHistory() { prefs.historyPulled = false; SyncWorker.enqueue(this@MainActivity) }
 
@@ -299,6 +306,7 @@ class MainActivity : Activity() {
                                 )
                             )
                             SyncWorker.enqueue(this@MainActivity)
+                            LastPointWidget.update(this@MainActivity)
                         }
                         reply(
                             JSONObject().put("ok", true).put("lat", loc.latitude).put("lon", loc.longitude)

@@ -973,7 +973,7 @@ async function loadPoints() {
   if (total === loadedTotal && points.length) return; // niente ricarico se non ci sono punti nuovi
   points = clean(await Native.points());
   loadedTotal = total;
-  movePts = thin(points.filter((p) => !isStay(p)), 15, 5 * 60000);
+  movePts = thin(dropCoarse(points.filter((p) => !isStay(p))), 15, 5 * 60000);
   if (firstRender) { await locate(); drawMe(); }
   fillFilters();
   render(false);
@@ -1072,6 +1072,25 @@ function sumTrackerConfig() {
   $("tc-sum").textContent = `Circa ${f(3600 / mv)} punti all'ora in movimento e ${f(n * 60 / m)} all'ora da fermo.`;
 }
 ["tc-moving", "tc-still-n", "tc-still-m"].forEach((id) => $(id).addEventListener("input", sumTrackerConfig));
+// Pulizia dei punti inutili: prima si conta, poi si chiede conferma
+$("clean-pts").onclick = async () => {
+  const btn = $("clean-pts"), msg = $("clean-msg"), f = (n) => n.toLocaleString("it-IT");
+  btn.disabled = true; msg.textContent = "Conto i punti inutili…";
+  await new Promise((r) => setTimeout(r, 50)); // lascia disegnare il messaggio prima del calcolo
+  try {
+    const r = Native.cleanPoints(false), tot = r.accuracy + r.spikes + r.stays;
+    if (!tot) { msg.textContent = `Nessun punto da togliere (${f(r.total)} punti).`; return; }
+    const detail = `${f(r.accuracy)} troppo imprecisi, ${f(r.spikes)} picchi, ${f(r.stays)} ripetuti da fermo`;
+    if (!(await confirmDialog(`Togliere ${f(tot)} punti su ${f(r.total)} (${detail})? Sul telefono non si può annullare; sul server i punti restano.`, "Togli"))) { msg.textContent = `Annullato (${f(tot)} punti da togliere: ${detail}).`; return; }
+    msg.textContent = "Pulizia in corso…";
+    await new Promise((res) => setTimeout(res, 50));
+    const d = Native.cleanPoints(true), gone = d.accuracy + d.spikes + d.stays;
+    msg.textContent = `Tolti ${f(gone)} punti (${detail}). Rimasti ${f(d.total - gone)}.`;
+    loadedTotal = -1; statsFor = ""; loadPoints();
+    Native.haptic("ok");
+  } catch (e) { msg.textContent = "Pulizia non riuscita: " + e; } finally { btn.disabled = false; }
+};
+
 $("fix-now").onclick = async () => {
   $("fix-now").disabled = true;
   $("fix-msg").classList.remove("err");

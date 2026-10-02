@@ -4,6 +4,17 @@ Versione app in `android/app/build.gradle.kts` (`versionName` e `versionCode`).
 Ad ogni rilascio: alzare `versionCode` di 1, aggiornare `versionName` e aggiungere una voce qui.
 La versione è mostrata in cima alla schermata dell'app.
 
+## 0.24.0 (build 39) - 2026-10-02
+- Script `tools/clean_points.py` per fare la stessa pulizia sul server (conta; con `--apply` cancella dopo conferma).
+- **Percorsi meno storti:** `clean` scarta anche i *picchi* (un punto che salta via di oltre 300 m e torna subito dopo, entro 15 minuti) e i percorsi ignorano i fix grossolani (accuratezza 80 m o peggio) quando c'è un punto preciso a meno di 5 minuti (zig-zag tra punti grezzi e tracciato importati da Google).
+- **Pulizia dei punti** (Tracker → Pulizia dei punti): conta e, dopo conferma, toglie dal telefono i punti con accuratezza oltre 120 m, i picchi e i punti ripetuti da fermo (restano il primo, l'ultimo e uno ogni 10 minuti, quindi soste e notti non cambiano). I punti già sincronizzati che si tolgono sono ricordati (tabella `deleted`) per non rientrare con lo scarico dello storico; sul server restano.
+
+## 0.23.1 (build 38) - 2026-10-02
+- Impostazioni nel profilo, più sicure alla reinstallazione: su un'installazione nuova (o con un altro account) vince sempre il profilo del server, e le impostazioni non vengono più inviate prima di averlo letto, così i valori di partenza non possono sovrascrivere quelli salvati. Se la lettura fallisce (niente rete) si riprova alla modifica successiva.
+
+## 0.23.0 (build 37) - 2026-10-02
+- **Widget** per la schermata home (*MyMap – ultimo punto*): mostra da quanto tempo è stato salvato l'ultimo punto del tracking ("5 min fa", "2 h 10 min fa"); diventa rosso oltre 30 minuti. Si aggiorna a ogni punto salvato (al massimo una volta al minuto), ogni ~15 minuti dal controllo del tracking e al tocco.
+
 ## 0.22.1 (build 36) - 2026-10-02
 - Tema chiaro: i pannelli, i pulsanti e le targhette hanno ora un contorno sottile per leggerli meglio. In Aspetto → Contorno dei pannelli: *Automatico* (sottile nel tema chiaro, assente nello scuro; è la scelta di partenza), *Sempre* o *Nessuno*.
 

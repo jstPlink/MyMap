@@ -28,6 +28,7 @@ class TrackerWatchdog(ctx: Context, params: WorkerParameters) : Worker(ctx, para
                 alert()
             }
         }
+        LastPointWidget.update(applicationContext)
         return Result.success()
     }
 

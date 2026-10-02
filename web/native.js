@@ -31,6 +31,7 @@ const Native = (() => {
       stop: () => real.stopTracking(),
       sync: () => real.syncNow(),
       repull: () => real.repullHistory(),
+      cleanPoints: (apply) => JSON.parse(real.cleanPoints(!!apply)),
       location: async () => { const t = real.getLocation(); return t ? JSON.parse(t) : null; },
       battery: () => real.requestIgnoreBattery(),
       session: () => JSON.parse(real.getSession()),
@@ -79,6 +80,7 @@ const Native = (() => {
     health: () => ({ tracking: false, running: false, lastTs: 0, fine: true, bg: true, battery: true, notif: true }),
     trackerConfig: () => ({ movingSec: 5, stillPoints: 1, stillMinutes: 10 }),
     setTrackerConfig: () => {}, openAppSettings: () => {},
+    cleanPoints: () => ({ total: 0, accuracy: 0, spikes: 0, stays: 0 }),
     points: async () => demo, // nel browser solo dati demo: le credenziali non vanno mai messe nel sito
     start: () => { state.tracking = true; },
     stop: () => { state.tracking = false; },
