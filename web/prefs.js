@@ -269,16 +269,18 @@ function buildPrefsUI() {
       <p class="hint">I nomi che hai dato tu hanno la precedenza su quelli di OpenStreetMap. Tocca un posto sulla mappa (vista Posti o Notti) e scegli Rinomina.</p>
       <div id="names-list"></div>
       <label class="field check"><span>Mostra i nomi di OpenStreetMap<small>cerca via e città su OpenStreetMap (Nominatim): invia al servizio le coordinate dei soli luoghi mostrati. Se spento vedi le coordinate.</small></span>
-        <input data-k="names" type="checkbox" ${v.names ? "checked" : ""}></label>`) +
-
-    fold("data", "Dati", `
+        <input data-k="names" type="checkbox" ${v.names ? "checked" : ""}></label>`);
+  // "Dati" resta nelle Impostazioni (una volta sola, così il pulsante non perde il suo gestore a ogni ricostruzione)
+  const dataRoot = document.getElementById("prefs-data");
+  if (dataRoot && !dataRoot.firstChild) dataRoot.innerHTML = fold("data", "Dati", `
       <button class="secondary" id="repull">Riscarica lo storico dal server</button>
       <p class="msg" id="repull-msg"></p>`);
-  restoreFolds(document.getElementById("view-settings"));
+  restoreFolds(document);
   paintGradbar();
   paintRoutePreview();
   buildNamesCard();
   if (window.paintFxPreview) setTimeout(paintFxPreview, 30);
+  if (window.tuneRefresh) tuneRefresh();
 }
 
 // anteprima della linea dei percorsi con colore, spessore e opacità scelti

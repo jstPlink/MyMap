@@ -685,11 +685,13 @@ function render(fit) {
 let moveTimer = null;
 map.on("moveend", () => { clearTimeout(moveTimer); moveTimer = setTimeout(() => repaint && repaint(), 120); });
 
-// Vista corrente: il pulsante in alto la mostra e apre l'elenco. silent = arriva dalle impostazioni condivise (non si risalva).
+// Vista corrente: le targhette a destra la mostrano e la cambiano. silent = arriva dalle impostazioni condivise (non si risalva).
+const MODE_LABEL = {};
+document.querySelectorAll("#modes [data-mode]").forEach((b) => (MODE_LABEL[b.dataset.mode] = b.textContent.trim()));
 function showModeUI() {
   document.querySelectorAll("#modes button").forEach((x) => x.classList.toggle("active", x.dataset.mode === mode));
-  const b = document.querySelector(`#modes [data-mode="${mode}"] b`);
-  if (b) $("mode-name").textContent = b.textContent;
+  document.querySelectorAll("#modes button").forEach((x) => x.classList.toggle("on", x.dataset.mode === mode));
+  tuneRefresh();
 }
 function setMode(m, silent) {
   if (!MODES.includes(m) || (silent && m === mode)) return;
@@ -698,10 +700,31 @@ function setMode(m, silent) {
   if (!silent) { Prefs.v.view = m; Prefs.save(); }
   render(!silent);
 }
-document.querySelectorAll("#modes button").forEach((b) => (b.onclick = () => { $("msheet").hidden = true; setMode(b.dataset.mode); }));
-$("mode-open").onclick = () => { $("msheet").hidden = false; };
-$("m-close").onclick = () => { $("msheet").hidden = true; };
-$("msheet").addEventListener("click", (e) => { if (e.target === $("msheet")) $("msheet").hidden = true; });
+document.querySelectorAll("#modes button").forEach((b) => (b.onclick = () => setMode(b.dataset.mode)));
+
+// Personalizzazione nella mappa: il pannello mostra solo le sezioni della vista corrente (più l'Aspetto, che vale per tutte),
+// così le modifiche si vedono subito sulla parte di mappa ancora visibile.
+const TUNE = {
+  scratch: ["hex"], heat: ["heat"], routes: ["route"], mix: ["route", "heat"],
+  sleep: ["sleep", "places"], places: ["places"], stay: ["sleep", "places"],
+};
+function tuneRefresh() {
+  const want = [...(TUNE[mode] || []), "theme"];
+  $("p-title").textContent = "Personalizza · " + (MODE_LABEL[mode] || "");
+  document.querySelectorAll("#prefs-ui details[data-fold]").forEach((d) => {
+    d.hidden = !want.includes(d.dataset.fold);
+    if (d.dataset.fold !== "theme") d.open = true; // le sezioni della vista sono sempre aperte; l'Aspetto si apre a richiesta
+  });
+}
+function openTune(on) {
+  $("psheet").hidden = !on;
+  $("mapwrap").classList.toggle("tuning", on);
+  $("tune").classList.toggle("on", on);
+  if (on) { tuneRefresh(); $("psheet").scrollTop = 0; setTimeout(() => window.paintFxPreview && paintFxPreview(), 80); }
+  setTimeout(() => map.invalidateSize(), 50);
+}
+$("tune").onclick = () => openTune($("psheet").hidden);
+$("p-close").onclick = () => openTune(false);
 showModeUI();
 
 let lastLoad = 0, lastSeen = -1;

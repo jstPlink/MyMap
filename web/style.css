@@ -407,3 +407,23 @@ details[data-sfold] .rank { margin: 0; }
 .row1 .verpill, .row1 .zoompill { margin-left: 0; }
 .row1 .modebtn { margin-left: auto; }
 .fgroup { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+
+/* ---------- viste come targhette in verticale a destra, e pannello di personalizzazione nella mappa ---------- */
+.vtabs { position: absolute; right: 0; top: 64px; z-index: 1000; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.chip.vt { border-radius: 999px 0 0 999px; padding: 8px 14px 8px 16px; font-size: 12.5px; }
+.chip.vt:not(.on) { color: var(--muted); }
+#tune { position: absolute; right: 10px; bottom: 66px; z-index: 1000; width: 48px; height: 48px; margin: 0; padding: 0;
+  border-radius: 16px; display: grid; place-items: center; background: var(--surface); color: var(--accent); box-shadow: var(--shadow); text-transform: none; }
+#tune.on { background: var(--accent-soft); }
+#psheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 1100; max-height: 46%; overflow-y: auto; padding: 12px 14px 16px;
+  background: var(--surface); border-radius: 22px 22px 0 0; box-shadow: 0 -8px 28px rgba(0, 0, 0, .28); }
+#psheet[hidden] { display: none; }
+.phead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-size: 15px; }
+.phead .x { width: 34px; height: 34px; margin: 0; padding: 0; border-radius: 50%; background: var(--surface-2); color: var(--muted); box-shadow: none; }
+#prefs-ui { display: flex; flex-direction: column; }
+#prefs-ui details.fold[hidden] { display: none; }
+#prefs-ui details.fold[data-fold="theme"] { order: 9; }
+#psheet .card { background: var(--surface-2); box-shadow: none; margin-bottom: 10px; }
+#psheet details.fold:not([data-fold="theme"]) > summary { pointer-events: none; }
+#psheet details.fold:not([data-fold="theme"]) > summary::after { display: none; }
+.tuning .float.bottom, .tuning #locate, .tuning #tune { display: none; }

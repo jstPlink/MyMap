@@ -4,6 +4,11 @@ Versione app in `android/app/build.gradle.kts` (`versionName` e `versionCode`).
 Ad ogni rilascio: alzare `versionCode` di 1, aggiornare `versionName` e aggiungere una voce qui.
 La versione è mostrata in cima alla schermata dell'app.
 
+## 0.19.0 (build 32) - 2026-10-02
+- Personalizzazione nella mappa: il pulsante con i cursori (sopra "dove sono") apre un pannello in basso con i parametri della vista corrente, così le modifiche si vedono subito sulla mappa ancora visibile. Scratch: dimensioni degli esagoni; Heatmap: raggio, sfocatura, calore, gradiente; Percorsi: linee e stile; Mix: percorsi e heatmap; Notti e Posti: parametri delle notti e nomi dei posti. L'Aspetto (tema, stile della mappa, ritocchi) è in fondo a ogni pannello. I preset restano in ogni sezione.
+- Le Impostazioni mantengono solo Tracker, Account, Dati ed Esportazione.
+- Le viste sono targhette in verticale sul lato destro della mappa (al posto dell'elenco a comparsa); la vista scelta è evidenziata. Il filtro del periodo torna in alto a destra, accanto a versione e zoom.
+
 ## 0.18.1 (build 31) - 2026-10-02
 - Barra in alto: versione e livello di zoom a sinistra, lista delle viste a destra; il filtro del periodo passa sulla seconda riga, a destra.
 

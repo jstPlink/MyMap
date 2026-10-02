@@ -29,14 +29,6 @@
         <div class="filters chips2 row1">
           <span id="s-ver" class="verpill" aria-label="Versione dell'app"></span>
           <span id="zoomlevel" class="zoompill" aria-label="Livello di zoom"></span>
-          <button id="mode-open" class="chip modebtn" aria-label="Cambia vista della mappa">
-            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></svg>
-            <span id="mode-name">Scratch</span>
-            <svg class="chev" viewBox="0 0 10 6" width="10" height="6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m1 1 4 4 4-4"/></svg>
-          </button>
-        </div>
-        <div class="filters chips2 row2">
-          <button id="trackwarn" class="chip warn" hidden>&#9888; Tracking fermo</button>
           <div class="fgroup">
             <button id="f-reset" class="chip danger" hidden aria-label="Rimuovi filtri">&#10005;</button>
             <button id="f-open" class="chip filterbtn" aria-label="Filtra per periodo" title="Filtra per periodo">
@@ -45,6 +37,28 @@
             </button>
           </div>
         </div>
+        <div class="filters chips2 row2">
+          <button id="trackwarn" class="chip warn" hidden>&#9888; Tracking fermo</button>
+        </div>
+      </div>
+
+      <div class="vtabs" id="modes" role="tablist" aria-label="Vista della mappa">
+        <button class="chip vt on active" data-mode="scratch" title="La mappa è coperta: gratti i posti dove sei stato">Scratch</button>
+        <button class="chip vt" data-mode="heat" title="Calore dei punti: più passi, più è caldo">Heatmap</button>
+        <button class="chip vt" data-mode="routes" title="Le tue tracce, a colore unico o per frequenza">Percorsi</button>
+        <button class="chip vt" data-mode="mix" title="Heatmap con i percorsi sopra">Mix</button>
+        <button class="chip vt" data-mode="sleep" title="Dove hai dormito, con il numero di notti">Notti</button>
+        <button class="chip vt" data-mode="places" title="Dove ti sei fermato almeno 20 minuti">Posti</button>
+        <button class="chip vt" data-mode="stay" title="I posti visitati con sopra le notti">Notti e posti</button>
+      </div>
+
+      <button id="tune" title="Personalizza la vista" aria-label="Personalizza la vista">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
+      </button>
+
+      <div id="psheet" hidden>
+        <div class="phead"><b id="p-title">Personalizza</b><button id="p-close" class="x" aria-label="Chiudi">&#10005;</button></div>
+        <div id="prefs-ui"></div>
       </div>
 
       <button id="locate" title="Dove sono" aria-label="Dove sono">
@@ -103,7 +117,7 @@
       </div>
       <button id="logout" class="secondary">Esci dall'account</button>
     </div></details>
-    <div id="prefs-ui"></div>
+    <div id="prefs-data"></div>
     <details class="card fold" data-fold="export"><summary>Esporta i dati</summary><div class="foldbody">
       <p class="hint">Salva tutti i punti di questo telefono in un file, dove vuoi tu.</p>
       <div class="exp">
@@ -180,21 +194,6 @@
       <button id="l-local">Usa il database locale</button>
     </div>
     <p id="l-msg" class="msg"></p>
-  </div>
-</div>
-
-<div id="msheet" hidden>
-  <div class="sheet fs">
-    <div class="fhead"><b>Vista della mappa</b><button id="m-close" class="x" aria-label="Chiudi">&#10005;</button></div>
-    <div class="vlist" id="modes">
-      <button class="secondary active" data-mode="scratch"><b>Scratch</b><small>La mappa è coperta: gratti i posti dove sei stato</small></button>
-      <button class="secondary" data-mode="heat"><b>Heatmap</b><small>Calore dei punti: più passi, più è caldo</small></button>
-      <button class="secondary" data-mode="routes"><b>Percorsi</b><small>Le tue tracce, a colore unico o per frequenza</small></button>
-      <button class="secondary" data-mode="mix"><b>Mix</b><small>Heatmap con i percorsi sopra</small></button>
-      <button class="secondary" data-mode="sleep"><b>Notti</b><small>Dove hai dormito, con il numero di notti</small></button>
-      <button class="secondary" data-mode="places"><b>Posti</b><small>Dove ti sei fermato almeno 20 minuti</small></button>
-      <button class="secondary" data-mode="stay"><b>Notti e posti</b><small>I posti visitati con sopra le notti</small></button>
-    </div>
   </div>
 </div>
 

@@ -1,4 +1,4 @@
-# MyMap – Architettura (v0.18.1, build 31)
+# MyMap – Architettura (v0.19.0, build 32)
 
 Panoramica del progetto com'è oggi. La cronologia delle versioni è in [CHANGELOG.md](CHANGELOG.md): va aggiornata a ogni rilascio
 (alzare `versionCode` di 1 e `versionName` in `android/app/build.gradle.kts`, poi aggiungere la voce).
@@ -50,10 +50,10 @@ Google Play Services né librerie HTTP/JSON esterne.
 | File | Ruolo |
 |---|---|
 | `index.html`, `style.css` | Struttura e stile (tema chiaro, o scuro in scala di grigi). |
-| `app.js` | Mappa Leaflet, viste (Scratch, Heatmap, Percorsi, Mix, Notti, Posti, Notti e posti) scelte da un pulsante che apre un foglio, filtro del periodo, pannello dati, tracker. |
+| `app.js` | Mappa Leaflet, viste (Scratch, Heatmap, Percorsi, Mix, Notti, Posti, Notti e posti) scelte con targhette verticali a destra, pannello di personalizzazione della vista corrente, filtro del periodo, pannello dati, tracker. |
 | `stats.js` | Scheda Statistiche (sezioni comprimibili incluse). |
 | `geo.js`, `places.js` | Calcoli geografici (esagoni, notti, visite) e nomi dei luoghi (OpenStreetMap Nominatim + nomi dati dall'utente). |
-| `prefs.js`, `profile.js` | Impostazioni, preset (vista corrente e frequenza dei punti inclusi) e loro salvataggio nel profilo del server, condiviso tra i dispositivi. |
+| `prefs.js`, `profile.js` | Parametri di personalizzazione (mostrati nel pannello della mappa), preset (vista corrente e frequenza dei punti inclusi) e loro salvataggio nel profilo del server, condiviso tra i dispositivi. |
 | `account.js` | Schermata di accesso, account, cambio password, esportazione. |
 | `native.js` | Adattatore verso il motore nativo (o simulazione nel browser). |
 
