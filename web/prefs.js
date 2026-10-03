@@ -33,8 +33,7 @@ const HEAT_PRESETS = {
 const HEAT_STOPS = [0.2, 0.45, 0.7, 1];
 
 function prefDefaults() {
-  const hex = {};
-  for (let z = ZMIN; z <= ZMAX; z++) hex[z] = defaultHexDiam(z);
+  const hex = { zooms: [6, 11, 16], diams: [6, 11, 16].map(defaultHexDiam) }; // tre livelli di zoom; in mezzo si interpola
   return {
     hex,
     heat: { zooms: [7, 11, 15], widths: [5, 9, 16], blur: 12, max: 30, minOpacity: 35, step: 100, preset: "classico", colors: [...HEAT_PRESETS.classico] },
@@ -52,19 +51,43 @@ function prefDefaults() {
   };
 }
 
+// Esagoni della scratch map: tre coppie zoom → diametro. Il vecchio formato (un diametro per ogni zoom da 5 a 17) si converte
+// prendendo i valori agli zoom di partenza.
+function hexAdopt(s, d) {
+  if (s && Array.isArray(s.zooms) && Array.isArray(s.diams) && s.zooms.length === 3 && s.diams.length === 3) {
+    return { zooms: s.zooms.map(Number), diams: s.diams.map(Number) };
+  }
+  if (s && typeof s === "object") return { zooms: [...d.zooms], diams: d.zooms.map((z, i) => +s[z] || d.diams[i]) };
+  return d;
+}
+
 const Prefs = {
   v: prefDefaults(),
   onChange: null, // (gruppo) => void, impostato da app.js
   onSaved: null, // () => void, impostato da profile.js: ogni modifica delle impostazioni sale anche sul profilo
   adopt(saved) {
     const d = prefDefaults();
-    this.v = { hex: { ...d.hex, ...saved.hex }, heat: { ...d.heat, ...saved.heat }, sleep: saved.sleep && saved.sleep.v === d.sleep.v ? { ...d.sleep, ...saved.sleep } : d.sleep, route: { ...d.route, ...saved.route }, theme: saved.theme ?? d.theme, mapStyle: saved.mapStyle ?? d.mapStyle, outline: ["thin", "off", "auto"].includes(saved.outline) ? saved.outline : "auto", mapFx: { ...d.mapFx, ...saved.mapFx }, presets: saved.presets && typeof saved.presets === "object" ? saved.presets : {}, view: typeof saved.view === "string" ? saved.view : d.view, hidden: { places: Array.isArray(saved.hidden && saved.hidden.places) ? saved.hidden.places : [], nights: Array.isArray(saved.hidden && saved.hidden.nights) ? saved.hidden.nights : [] }, names: saved.names ?? d.names };
+    this.v = { hex: hexAdopt(saved.hex, d.hex), heat: { ...d.heat, ...saved.heat }, sleep: saved.sleep && saved.sleep.v === d.sleep.v ? { ...d.sleep, ...saved.sleep } : d.sleep, route: { ...d.route, ...saved.route }, theme: saved.theme ?? d.theme, mapStyle: saved.mapStyle ?? d.mapStyle, outline: ["thin", "off", "auto"].includes(saved.outline) ? saved.outline : "auto", mapFx: { ...d.mapFx, ...saved.mapFx }, presets: saved.presets && typeof saved.presets === "object" ? saved.presets : {}, view: typeof saved.view === "string" ? saved.view : d.view, hidden: { places: Array.isArray(saved.hidden && saved.hidden.places) ? saved.hidden.places : [], nights: Array.isArray(saved.hidden && saved.hidden.nights) ? saved.hidden.nights : [] }, names: saved.names ?? d.names };
   },
   load() {
     try { this.adopt(JSON.parse(localStorage.getItem("mymap.prefs") || "{}")); } catch { this.v = prefDefaults(); }
   },
   save() { try { localStorage.setItem("mymap.prefs", JSON.stringify(this.v)); } catch {} if (this.onSaved) this.onSaved(); },
-  hexDiam(zoom) { return Math.max(20, +this.v.hex[Math.max(ZMIN, Math.min(ZMAX, Math.round(zoom)))] || 100); },
+  // Diametro dell'esagono allo zoom dato: tra due livelli si interpola (in scala logaritmica, perché i diametri crescono di
+  // molto), fuori dal primo e dall'ultimo resta il valore più vicino. Si arrotonda a due cifre per non cambiare griglia a ogni frazione di zoom.
+  hexDiam(zoom) {
+    const o = this.v.hex, P = o.zooms.map((z, i) => [+z, Math.max(20, +o.diams[i] || 100)]).sort((a, b) => a[0] - b[0]);
+    let d = P[P.length - 1][1];
+    if (zoom <= P[0][0]) d = P[0][1];
+    else for (let i = 1; i < P.length; i++) {
+      if (zoom <= P[i][0]) {
+        const [z0, d0] = P[i - 1], [z1, d1] = P[i];
+        d = z1 === z0 ? d1 : Math.exp(Math.log(d0) + (Math.log(d1) - Math.log(d0)) * (zoom - z0) / (z1 - z0));
+        break;
+      }
+    }
+    return Math.max(20, Number(d.toPrecision(2)));
+  },
   heatGradient() { const g = {}; this.v.heat.colors.forEach((c, i) => (g[HEAT_STOPS[i]] = c)); return g; },
   // tema effettivo: la scelta dell'utente, oppure quello del telefono (l'app lo passa nell'indirizzo come sys=0/1)
   sysDark() { const m = /[?&]sys=(\d)/.exec(location.search); return m ? m[1] === "1" : matchMedia("(prefers-color-scheme: dark)").matches; },
@@ -87,6 +110,7 @@ const Prefs = {
   groupSet(g, data) {
     const d = prefDefaults();
     if (g === "look") { this.v.theme = data.theme ?? d.theme; this.v.mapStyle = data.mapStyle ?? d.mapStyle; this.v.outline = data.outline ?? d.outline; this.v.mapFx = { ...d.mapFx, ...data.mapFx }; }
+    else if (g === "hex") this.v.hex = hexAdopt(data, d.hex);
     else this.v[g] = { ...d[g], ...JSON.parse(JSON.stringify(data)) };
   },
   hiddenNights() { return new Set(this.v.hidden.nights); },
@@ -184,8 +208,8 @@ function buildPrefsUI() {
   const root = document.getElementById("prefs-ui");
   if (!root) return;
   const v = Prefs.v;
-  const hexRows = Object.keys(v.hex).map((z) =>
-    `<label class="zrow"><span>Zoom ${z}${+z === ZMAX ? "+" : +z === ZMIN ? "−" : ""}</span><input data-k="hex.${z}" type="number" min="20" step="10" value="${v.hex[z]}"><em>m</em></label>`).join("");
+  const hexRows = `<div class="zw"><p class="zwt">Diametro<small>metri a tre livelli di zoom (3 lontano, 19 vicino); tra un livello e l'altro si interpola</small></p>${[0, 1, 2].map((i) =>
+    `<div class="zwrow"><span>Zoom</span><input data-k="hex.zooms.${i}" type="number" min="3" max="19" step="0.5" value="${v.hex.zooms[i]}"><span>→</span><input data-k="hex.diams.${i}" type="number" min="20" step="10" value="${v.hex.diams[i]}"><em>m</em></div>`).join("")}</div>`;
   const presets = Object.keys(HEAT_PRESETS).map((p) => `<option value="${p}" ${v.heat.preset === p ? "selected" : ""}>${p[0].toUpperCase() + p.slice(1)}</option>`).join("") +
     `<option value="custom" ${v.heat.preset === "custom" ? "selected" : ""}>Personalizzato</option>`;
   const hours = (sel) => Array.from({ length: 24 }, (_, h) => `<option value="${h}" ${h === sel ? "selected" : ""}>${String(h).padStart(2, "0")}:00</option>`).join("");
@@ -249,8 +273,8 @@ function buildPrefsUI() {
 
     fold("hex", "Scratch map · esagoni", `
       ${presetBar("hex")}
-      <p class="hint">Diametro dell'esagono (da vertice a vertice) per ogni livello di zoom. Più lo zoom è lontano, più gli esagoni crescono per non appesantire la mappa. Il minimo consigliato è 100 m.</p>
-      <div class="zgrid">${hexRows}</div>
+      <p class="hint">Diametro dell'esagono (da vertice a vertice). Scegli lo zoom e la dimensione per tre livelli: agli zoom intermedi la dimensione si calcola da sola. Più lo zoom è lontano, più gli esagoni devono crescere per non appesantire la mappa. Il minimo consigliato è 100 m.</p>
+      ${hexRows}
       <button class="secondary" data-reset="hex">Ripristina dimensioni</button>`) +
 
     fold("heat", "Heatmap", `

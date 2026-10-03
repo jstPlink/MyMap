@@ -4,6 +4,90 @@ Versione app in `android/app/build.gradle.kts` (`versionName` e `versionCode`).
 Ad ogni rilascio: alzare `versionCode` di 1, aggiornare `versionName` e aggiungere una voce qui.
 La versione è mostrata in cima alla schermata dell'app.
 
+## 0.29.7 (build 56) - 2026-10-03
+- **Widget, margini:** il contenuto è avvicinato ai bordi del 5% su tutti i lati: da 20 a 19 dp (8 dp di margine del widget + 11 dp attorno ai dati, prima 12).
+
+## 0.29.6 (build 55) - 2026-10-03
+- **Widget, testi piccoli uguali:** *oggi*, *7g*, i titoli delle sezioni (*km*, *posti*, *movimento*) e *tracker* hanno la stessa dimensione (11,2 sp) e lo stesso colore grigio dei dati dei 7 giorni.
+- **Widget, distanze uguali:** in ogni colonna lo spazio tra il titolo e il dato di oggi è uguale a quello tra il dato di oggi e il dato della settimana (spazi elastici tra le tre righe); titolo e dato della settimana restano a 20 dp dai bordi. *oggi* e *7g* stanno sulle stesse righe dei dati. Nella cella tracker icona e tempo sono centrati nello spazio sotto il titolo.
+- **Widget, icona del tracker:** ridotta del 10% (25,7 → 23,1 dp).
+
+## 0.29.5 (build 54) - 2026-10-03
+- **Widget, "7g" letto come "/g":** la parte alta del "7" era tagliata. La riga dei 7 giorni (valori e etichetta *7g*) prendeva solo una quota proporzionale dell'altezza e, con il margine inferiore raddoppiato, al testo restava meno spazio del necessario. Ora quella riga ha un'altezza garantita (testo + margine, almeno 30 dp) e la riga di oggi prende lo spazio che resta.
+- **Cella tracker:** il titolo e i dati (icona e tempo) sono al **centro** della cella, con margini uguali a destra e a sinistra (12 dp).
+- **Cella tracker:** distanza tra l'icona e il tempo aumentata da 1 a 5 dp (circa il 5% della larghezza della cella).
+
+## 0.29.4 (build 53) - 2026-10-03
+- **Widget, testi:** ridotti ancora del 5% *oggi*, i titoli delle sezioni e *tracker* (12,6 → 12,0 sp), i valori di oggi e il tempo del tracker (17,7 → 16,8 sp); aumentati ancora del 5% i testi della settimana: i valori (10,7 → 11,2 sp) e l'etichetta *7g* (14,0 → 14,7 sp).
+- **Widget, icona del tracker:** ridotta del 10% (28,5 → 25,7 dp).
+
+## 0.29.3 (build 52) - 2026-10-03
+- **Widget, testi:** ridotti del 5% *oggi* (13,3 → 12,6 sp), i titoli delle sezioni e *tracker* (13,3 → 12,6 sp), i valori di oggi e il tempo del tracker (18,6 → 17,7 sp); aumentati del 5% i testi della settimana: i valori (10,2 → 10,7 sp) e l'etichetta *7g* (13,3 → 14,0 sp).
+- **Widget, icona del tracker:** ridotta del 5% (30 → 28,5 dp).
+
+## 0.29.2 (build 51) - 2026-10-03
+- **Widget:** la distanza tra i bordi del widget e tutti i contenuti è raddoppiata, da 10 a 20 dp su ogni lato (8 dp di margine del widget + 12 dp attorno ai dati). Con la riga di celle bassa, i testi hanno meno spazio in altezza: se risultano tagliati si può ridurre il margine verticale.
+- **Documentazione:** nuovo `CLAUDE.md` con le regole di lavoro, tra cui **aggiornare sempre l'app sul telefono dopo ogni modifica se la connessione di debug wireless è aperta**; la stessa regola è in ARCHITETTURA.md → Sviluppo e prova.
+
+## 0.29.1 (build 50) - 2026-10-03
+- **Widget:** i dati della settimana sono più grandi del 10% (9,3 → 10,2 sp).
+- **Cella tracker:** l'icona è vicina al tempo (prima il tempo era centrato nello spazio rimasto). La cella è larga quanto il contenuto (minimo 88 dp) e il suo contenuto è allineato a destra.
+- **Margini uguali:** tra i bordi del widget e i dati c'è lo stesso spazio su tutti i lati (4 dp del widget + 6 dp attorno ai dati): in alto sopra i titoli, a sinistra davanti a *oggi* e *7g* (allineati a sinistra), in basso sotto i valori dei 7 giorni (appoggiati in basso) e a destra dopo il tempo del tracker. Il rosso della cella tracker resta dentro il margine di 4 dp.
+
+## 0.29.0 (build 49) - 2026-10-03
+- **Widget, cella tracker:** niente più testo di stato (*Fermo* / *In movimento*): resta solo l'**icona colorata e animata**, con accanto il tempo dall'ultimo punto in minuti e secondi ("3:20"), grande come i dati di oggi (18,6 sp). L'icona è un pallino con anelli che si allargano e svaniscono (fermo) oppure due impronte di scarpe che camminano, un piede dopo l'altro (in movimento). Nei widget l'unica animazione possibile è alternare dei fotogrammi con un `ViewFlipper` (4 fotogrammi, uno ogni mezzo secondo, con dissolvenza), quindi è un'animazione a scatti e non fluida. Colore: verde in movimento, bianco sul fondo rosso, come il testo altrimenti.
+- **Widget, titoli** (*km*, *posti*, *movimento*, *tracker*): più spazio sopra (3 dp) e sotto (5 dp).
+- **Impostazioni:** nel tema scuro la scritta *Tracking ATTIVO* era scura su fondo scuro: ora è verde acqua.
+- **Pulsanti secondari** (*Applica frequenza*, *Pulisci i punti*, *Registra la posizione adesso* e gli altri): avevano lo stesso fondo della scheda e nessun bordo, quindi sembravano solo testo; ora hanno un fondo diverso, un contorno e una leggera ombra.
+
+## 0.28.0 (build 48) - 2026-10-03
+- **Widget, valori della settimana:** grigi (con il 15% di trasparenza) e grandi la metà (18,6 → 9,3 sp). Le righe di oggi e dei 7 giorni hanno ora altezze diverse, 5 a 4, per far stare tutto in una riga di celle.
+- **Titoli delle categorie** (*km*, *posti*, *movimento*, *tracker*) alla stessa dimensione di *oggi* e *7g* (13,3 sp). Per farli stare nella colonna i testi sono più corti: *km*, *posti*, *movimento* al posto di *km percorsi*, *posti visitati*, *in movimento*.
+- **Spazi e allineamenti:** margini laterali più ampi (12 dp) per i bordi arrotondati; *oggi* e *7g* allineati alle rispettive righe di valori; più spazio tra *oggi* e la riga che lo separa dalla prima categoria (10 dp); titoli tutti alla stessa altezza.
+- **Cella tracker:** il tempo dall'ultimo punto ha i **secondi** ("45 s fa", "3 min 20 s fa") e la cella si **aggiorna ogni 20 secondi** (e subito all'accensione dello schermo) dal servizio di tracking, solo a schermo acceso e con un aggiornamento leggero (due righe di database, senza ricalcolare i km): così si vede che non è fermo. Il resto del widget resta ogni ~5 minuti.
+- **Icone nella cella tracker:** un **pallino con anelli che si allargano**, come le onde nell'acqua, se sei fermo; **due impronte di scarpe che camminano** se sei in movimento. Sono colorate come il testo (verde in movimento, bianche sul fondo rosso).
+
+## 0.27.4 (build 47) - 2026-10-03
+- **Widget, estetica:**
+  - il **nome della sezione** (*km percorsi*, *posti visitati*, *in movimento*, *tracker*) è in alto, sopra i valori di oggi e dei 7 giorni;
+  - tutti i testi sono più grandi del 10% (valori 16,9 → 18,6 sp, stato del tracker 15,7 → 17,3 sp, tempo dall'ultimo punto 12,1 → 13,3 sp) e i testi delle sezioni e dei giorni (*oggi*, *7g*) di un altro 10% (9 → 10,9 sp e 11 → 13,3 sp);
+  - la cella **tracker diventa rossa** quando l'ultimo punto ha più di 6 minuti (o non ci sono punti), con testi bianchi. Con la frequenza di partenza da fermo (1 punto ogni 10 minuti) tra un punto e l'altro supera i 6 minuti: per averla rossa solo quando c'è un vero problema conviene una frequenza da fermo di almeno un punto ogni 5-6 minuti;
+  - i **dati della settimana** sono più grigi e più trasparenti del 15% (colore mescolato al grigio, opacità 85%);
+  - margini verticali ridotti e senza spazio extra attorno ai caratteri (`includeFontPadding`), per far stare i testi più grandi in una riga.
+
+## 0.27.3 (build 46) - 2026-10-03
+- Widget: caratteri ancora più grandi del 10% per i numeri (15,4 → 16,9 sp), lo stato del tracker (14,3 → 15,7 sp) e il tempo dall'ultimo punto (11 → 12,1 sp).
+
+## 0.27.2 (build 45) - 2026-10-03
+- Widget: caratteri più grandi del 10% per i numeri (14 → 15,4 sp), per lo stato del tracker (13 → 14,3 sp) e per il tempo dall'ultimo punto (10 → 11 sp). Le etichette restano invariate.
+
+## 0.27.1 (build 44) - 2026-10-03
+- **Widget:** tra la riga di oggi e quella dei 7 giorni c'è di nuovo il nome del dato (*km percorsi*, *posti visitati*, *in movimento*), quindi i numeri sono senza unità (tranne il tempo, "2h 10m").
+- **Cella tracker:** niente più coordinate, solo se si è **Fermo** o **In movimento** e da quanto tempo è stato registrato l'ultimo punto; la cella è più stretta del 15%. Toccandola si aprono le **impostazioni dell'app, sezione Tracker**.
+- **Widget scuro piatto:** un solo colore pieno con angoli arrotondati, senza riflesso né bordo. La versione chiara resta plastificata.
+
+## 0.27.0 (build 43) - 2026-10-03
+- **Widget 4×1 rifatto (chiaro e scuro):** a sinistra le etichette **oggi** (riga in alto) e **7g** (riga in basso); in alto i dati di oggi e in basso quelli degli ultimi 7 giorni, con la stessa dimensione: km, posti visitati e tempo in movimento. Toccando un dato si apre la vista (Percorsi, Posti, Heatmap) con il filtro su oggi (riga in alto) o sugli ultimi 7 giorni (riga in basso).
+- **Nuova cella "ultima posizione tracciata":** stato **Fermo** o **In movimento** (velocità del punto, oppure spostamento dal punto precedente), da quanto tempo è stato registrato e le coordinate. Oltre 20 minuti senza punti diventa rossa ("Nessun punto"). Toccandola si apre la mappa sul punto in cui sei.
+- **Avviso sonoro:** se il tracking dovrebbe essere attivo ma l'ultimo punto ha più di 20 minuti, parte una notifica con suono e vibrazione ("Nessun punto da N minuti"). Avvisa una volta per ogni buco, sparisce quando i punti riprendono e non parte se hai fermato tu il tracking. Il controllo gira ogni ~5 minuti dal servizio di tracking e ogni ~15 dal cane da guardia (se Android ha ucciso il servizio l'avviso può arrivare fino a ~35 minuti dopo l'ultimo punto). I widget si aggiornano ora anche ogni ~5 minuti.
+- **Widget scuro più saturo:** sfondo quasi opaco (94%), grafite con una punta di blu, bordo chiaro e netto, riflesso più visibile: non si confonde più con lo sfondo.
+
+## 0.26.1 (build 42) - 2026-10-02
+- **Widget "oggi" che non si caricava, corretto:** i separatori tra le colonne erano elementi `View`, che i widget non permettono ("Class not allowed to be inflated android.view.View"); ora sono immagini.
+- **Widget 4×1 con oggi e ultimi 7 giorni:** sotto ogni numero di oggi (km, posti visitati, tempo in movimento) compare lo stesso dato degli ultimi 7 giorni ("7 g · 63 km"). Toccando il numero di oggi si apre la vista (Percorsi, Posti, Heatmap) con il filtro su oggi; toccando la riga "7 g" con il filtro sugli ultimi 7 giorni. Le dimensioni dichiarate erano quelle di 4 celle anche per il "3×1": ora sono davvero 4×1. I widget si chiamano *MyMap · oggi e 7 giorni (chiaro)* e *(scuro)*.
+
+## 0.26.0 (build 41) - 2026-10-02
+- **Widget "oggi" rifatto (3×1):** targhetta semitrasparente effetto plastificato (riflesso lucido sulla parte alta, bordo e filo interno chiari), in **due versioni**, *MyMap · oggi (chiaro)* e *MyMap · oggi (scuro)*, che trovi entrambe nell'elenco dei widget. Si ridimensiona solo in larghezza, per restare di una riga.
+- **Ogni numero si tocca:** i **km** aprono la vista **Percorsi**, i **posti visitati** la vista **Posti** e il tempo **in movimento** la **Heatmap**, tutte con il filtro su oggi; il resto del widget apre l'app. Funziona sia ad app chiusa (la richiesta viaggia nell'indirizzo della pagina, `?open=`) sia ad app già aperta (`onNewIntent` → `openFromWidget`).
+- Heatmap: niente più errore se la mappa è nascosta mentre si ridisegna.
+
+## 0.25.0 (build 40) - 2026-10-02
+- **Nuovo widget "MyMap – oggi"** (3×1): km percorsi oggi, posti visitati oggi (soste di almeno 20 minuti, unite entro 150 m) e tempo in movimento oggi. Stesse regole dell'interfaccia (scarta i fix oltre 120 m e i salti impossibili; passi entro 20 minuti, da 10 m a 30 km, al massimo 250 km/h). Si aggiorna a ogni punto (al massimo una volta al minuto), ogni ~15 minuti dal controllo del tracking e ogni 30 minuti. **Il tocco apre l'app, anche sul widget "ultimo punto"** (prima lo aggiornava soltanto).
+- **Scratch: tre livelli di zoom.** Gli esagoni non si impostano più per ogni zoom da 5 a 17, ma con tre coppie *zoom → diametro* (come heatmap e percorsi); agli zoom intermedi il diametro si interpola da solo (scala logaritmica, arrotondato a due cifre). Valori di partenza: zoom 6 → 100 km, 11 → 3 km, 16 → 100 m. Le impostazioni e i preset salvati con il vecchio formato si convertono prendendo i valori a quegli zoom.
+- **Scratch nel tema scuro:** la coperta è una nebbia grigia chiara (non più nera sulla mappa scura) e le zone grattate hanno un filo luminoso attorno, così si capisce subito cosa è grattato.
+- **Filtro alla sincronizzazione:** prima di inviare i punti al server, quelli ancora da inviare vengono ripuliti con le regole della pulizia manuale: fix con accuratezza oltre 120 m, picchi e punti ripetuti da fermo (restano il primo, l'ultimo e uno ogni 10 minuti). I punti tolti non vengono inviati e si cancellano dal telefono; quelli già inviati non si toccano. Il filtro guarda anche i punti già inviati nelle 3 ore precedenti, per non lasciare doppioni al confine tra due invii.
+- Corretto un arresto all'avvio dopo una reinstallazione: senza il permesso di posizione (che Android revoca) il servizio di tracking non viene più avviato dal controllo periodico né al riavvio; basta riconcedere i permessi e riavviare il tracking.
+
 ## 0.24.0 (build 39) - 2026-10-02
 - Script `tools/clean_points.py` per fare la stessa pulizia sul server (conta; con `--apply` cancella dopo conferma).
 - **Percorsi meno storti:** `clean` scarta anche i *picchi* (un punto che salta via di oltre 300 m e torna subito dopo, entro 15 minuti) e i percorsi ignorano i fix grossolani (accuratezza 80 m o peggio) quando c'è un punto preciso a meno di 5 minuti (zig-zag tra punti grezzi e tracciato importati da Google).

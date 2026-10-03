@@ -398,6 +398,7 @@ function drawRoutes(pts) {
 // Raggio, sfocatura, quantità di calore, densità e gradiente si regolano nelle impostazioni.
 function drawHeat(pts) {
   const paint = () => {
+    if (!map.getSize().x || !map.getSize().y) return; // mappa nascosta (altra scheda): si ridisegna al ritorno
     const H = Prefs.v.heat, z = map.getZoom(), rad = Prefs.widthAt("heat", z), cell = Math.max(2, rad / 3); // raggio per questo zoom; lato della cella in pixel
     const mpp = 156543 * Math.cos(map.getCenter().lat * Math.PI / 180) / 2 ** z;
     const stepKm = H.step ? Math.max(H.step, mpp * cell) / 1000 : 0; // da lontano non servono punti più fitti della cella
@@ -510,8 +511,10 @@ function drawScratch(pts) {
     const ring = [[cover.getSouth(), cover.getWest()], [cover.getNorth(), cover.getWest()], [cover.getNorth(), cover.getEast()], [cover.getSouth(), cover.getEast()]];
     // coperta morbida e semitrasparente, senza bordi: le zone visitate sono "buchi" dai contorni arrotondati
     L.polygon([ring, ...softOutlines(hex.cells, hex.S)], {
-      renderer: canvas, fillRule: "evenodd", smoothFactor: 0, interactive: false, stroke: false,
-      fillColor: dark ? "#0b0b0b" : "#47536a", fillOpacity: dark ? .66 : .56,
+      renderer: canvas, fillRule: "evenodd", smoothFactor: 0, interactive: false,
+      // tema scuro: la coperta è una nebbia grigia chiara con un filo luminoso attorno alle zone grattate, così si leggono bene sulla mappa scura
+      stroke: dark, color: "#f2f2f2", weight: 1.3, opacity: .8,
+      fillColor: dark ? "#8a8a8a" : "#47536a", fillOpacity: dark ? .55 : .56,
     }).addTo(layer);
     // il totale degli esagoni grattati (su tutto il periodo scelto) si calcola subito dopo il disegno, così la mappa resta fluida
     const info = (n) => sumHtml([[n, "esagoni grattati"], [fmtM(diam), "diametro esagono"]]) + worldHtml(pts);
@@ -1130,5 +1133,29 @@ Prefs.applyTheme();
 Native.setTheme(Prefs.v.theme); // l'app lo ricorda per colorare le barre di sistema prima che la pagina si carichi
 $("repull").onclick = () => { Native.repull(); $("repull-msg").textContent = "Scarico avviato: i punti nuovi compaiono al prossimo avvio dell'app."; };
 
+// ---------- aperture dai widget ----------
+// Il widget "oggi" apre l'app su una vista con il filtro su oggi: km → Percorsi, posti → Posti, tempo in movimento → Heatmap.
+// All'avvio la richiesta arriva nell'indirizzo (?open=routes), con l'app già aperta da una chiamata (onNewIntent).
+function openFromWidget(view, range) {
+  if (view === "here") { show("map"); $("locate").click(); return; } // la mappa sul punto in cui sei
+  if (view === "tracker") { // cella tracker: impostazioni, sezione Tracker aperta
+    show("settings");
+    const d = document.querySelector('details[data-fold="tracker"]');
+    if (d) { d.open = true; d.scrollIntoView(); }
+    return;
+  }
+  if (!["routes", "places", "heat"].includes(view)) return;
+  show("map");
+  const [from, to] = quickRange(range === "7" ? "7" : "today"); // oggi, o gli ultimi 7 giorni
+  YMD.forEach((x) => ($(x).value = ""));
+  $("f-from").value = from; $("f-to").value = to;
+  $("f-tfrom").value = ""; $("f-tto").value = "";
+  fillFilters();
+  setMode(view);
+}
+
 refreshStatus();
-loadPoints();
+loadPoints().then(() => {
+  const m = /[?&]open=(\w+)/.exec(location.search), r = /[?&]range=(\w+)/.exec(location.search);
+  if (m) openFromWidget(m[1], r ? r[1] : "");
+});

@@ -13,3 +13,4 @@ pocketbase/local-credentials.txt
 # dati personali esportati (posizioni, Google Takeout)
 takeout/
 TAKEOUT/
+android/.kotlin/

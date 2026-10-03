@@ -8,7 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
 
-/** Widget della schermata home: da quanto tempo è stato salvato l'ultimo punto. Si aggiorna a ogni punto (al massimo una volta al minuto), ogni ~15 minuti dal cane da guardia e al tocco. */
+/** Widget della schermata home: da quanto tempo è stato salvato l'ultimo punto. Si aggiorna a ogni punto (al massimo una volta al minuto) e ogni ~15 minuti dal cane da guardia; al tocco apre l'app. */
 class LastPointWidget : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
@@ -36,10 +36,7 @@ class LastPointWidget : AppWidgetProvider() {
             views.setTextViewText(R.id.w_value, if (ts == 0L) "—" else ago(age))
             views.setTextViewText(R.id.w_label, if (ts == 0L) "nessun punto salvato" else "dall'ultimo punto")
             views.setTextColor(R.id.w_value, if (ts != 0L && age > STALE_MS) 0xFFD32F2F.toInt() else 0xFF212121.toInt())
-            val refresh = PendingIntent.getBroadcast(
-                context, 0, Intent(context, LastPointWidget::class.java).setAction(ACTION_REFRESH), PendingIntent.FLAG_IMMUTABLE
-            )
-            views.setOnClickPendingIntent(R.id.w_root, refresh)
+            views.setOnClickPendingIntent(R.id.w_root, TodayWidget.openApp(context, null, null)) // il tocco apre l'app
             manager.updateAppWidget(ids, views)
         }
 

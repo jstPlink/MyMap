@@ -46,6 +46,30 @@ class LocationService : Service(), LocationListener {
     private var sinceSync = 0
     private var lastSavedMs = 0L
     private var lastWidgetMs = 0L
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+
+    /** Ogni 20 secondi, a schermo acceso: aggiorna la cella tracker dei widget (il tempo trascorso con i secondi), così si vede che non è fermo. */
+    private val fastTick = object : Runnable {
+        override fun run() {
+            try {
+                if ((getSystemService(Context.POWER_SERVICE) as PowerManager).isInteractive) TodayWidget.updateTracker(this@LocationService)
+            } catch (_: Exception) {}
+            handler.postDelayed(this, FAST_TICK_MS)
+        }
+    }
+
+    /** All'accensione dello schermo la cella tracker si aggiorna subito, senza aspettare i 20 secondi. */
+    private val screenOn = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) { try { TodayWidget.updateTracker(context) } catch (_: Exception) {} }
+    }
+
+    /** Ogni ~5 minuti: avviso se non arrivano punti da più di 20 minuti e aggiornamento dei widget (il tempo trascorso cambia anche senza punti). */
+    private val tick = object : Runnable {
+        override fun run() {
+            try { StaleAlert.check(this@LocationService); LastPointWidget.update(this@LocationService); TodayWidget.update(this@LocationService) } catch (_: Exception) {}
+            handler.postDelayed(this, TICK_MS)
+        }
+    }
 
     private val motionTrigger = object : TriggerEventListener() {
         override fun onTrigger(event: TriggerEvent?) {
@@ -65,6 +89,8 @@ class LocationService : Service(), LocationListener {
         wake = (getSystemService(Context.POWER_SERVICE) as PowerManager)
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "mymap:location").apply { setReferenceCounted(false) }
         sensors = getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(screenOn, android.content.IntentFilter(Intent.ACTION_SCREEN_ON), Context.RECEIVER_NOT_EXPORTED)
+        else registerReceiver(screenOn, android.content.IntentFilter(Intent.ACTION_SCREEN_ON))
         motion = sensors?.getDefaultSensor(Sensor.TYPE_SIGNIFICANT_MOTION)
     }
 
@@ -74,6 +100,9 @@ class LocationService : Service(), LocationListener {
                 prefs.tracking = false
                 running = false
                 TrackerWatchdog.cancel(this)
+                handler.removeCallbacks(tick)
+                handler.removeCallbacks(fastTick)
+                StaleAlert.check(this) // tracking fermato dall'utente: toglie l'avviso eventuale
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
                 return START_NOT_STICKY
@@ -89,6 +118,10 @@ class LocationService : Service(), LocationListener {
         getSystemService(NotificationManager::class.java).cancel(TrackerWatchdog.ALERT_ID)
         TrackerWatchdog.schedule(this)
         request(fast = true)
+        handler.removeCallbacks(tick)
+        handler.postDelayed(tick, TICK_MS)
+        handler.removeCallbacks(fastTick)
+        handler.postDelayed(fastTick, FAST_TICK_MS)
         return START_STICKY
     }
 
@@ -182,7 +215,7 @@ class LocationService : Service(), LocationListener {
             )
         )
         lastSavedMs = loc.time
-        if (loc.time - lastWidgetMs >= 60_000L || lastWidgetMs == 0L) { lastWidgetMs = loc.time; LastPointWidget.update(this) }
+        if (loc.time - lastWidgetMs >= 60_000L || lastWidgetMs == 0L) { lastWidgetMs = loc.time; LastPointWidget.update(this); TodayWidget.update(this) }
 
         if (isGps) adapt(loc)
 
@@ -213,6 +246,9 @@ class LocationService : Service(), LocationListener {
     }
 
     override fun onDestroy() {
+        handler.removeCallbacks(tick)
+        handler.removeCallbacks(fastTick)
+        try { unregisterReceiver(screenOn) } catch (_: Exception) {}
         lm.removeUpdates(this)
         armMotion(false)
         if (wake.isHeld) wake.release()
@@ -227,11 +263,16 @@ class LocationService : Service(), LocationListener {
         private const val CHANNEL = "tracking"
         private const val MAX_ACCURACY_M = 60f
         private const val SYNC_EVERY = 20
+        private const val TICK_MS = 5 * 60_000L
+        private const val FAST_TICK_MS = 20_000L
 
         /** true mentre il servizio di tracking è vivo in questo processo (si azzera se Android lo uccide). */
         @Volatile var running = false
 
         fun start(ctx: Context) {
+            // senza il permesso di posizione un servizio in primo piano di tipo location si ferma con un errore (succede dopo una
+            // reinstallazione, che revoca i permessi): meglio non avviarlo, l'utente li riconcede e riavvia il tracking dall'app
+            if (ctx.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED) return
             ctx.startForegroundService(Intent(ctx, LocationService::class.java))
         }
 

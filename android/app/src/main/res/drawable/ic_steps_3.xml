@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- in movimento, fotogramma 3: impronte di scarpe che camminano -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:fillAlpha="1.0"
+        android:pathData="M13.5,5.5a2.5,3.6 0 1,0 5,0a2.5,3.6 0 1,0 -5,0z" />
+    <path
+        android:fillColor="#FF000000"
+        android:fillAlpha="1.0"
+        android:pathData="M14.3,11.4a1.7,1.7 0 1,0 3.4,0a1.7,1.7 0 1,0 -3.4,0z" />
+</vector>

@@ -23,6 +23,9 @@ class SyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, 
         val store = PointStore(applicationContext)
         val api = Api(prefs)
         return try {
+            // Filtro prima dell'invio: dai punti ancora da inviare si tolgono quelli inutili (fix troppo imprecisi, picchi, punti ripetuti
+            // da fermo) e non si mandano al server. Stesse regole della pulizia manuale (Tracker → Pulizia dei punti).
+            try { store.cleanup(true, true) } catch (_: Exception) {}
             while (true) {
                 val batch = store.pending(200)
                 if (batch.isEmpty()) break

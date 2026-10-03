@@ -56,6 +56,10 @@ class Prefs(context: Context) {
     var historyPulled: Boolean
         get() = sp.getBoolean("historyPulled", false)
         set(v) = sp.edit().putBoolean("historyPulled", v).apply()
+    /** Ora dell'ultimo punto per cui è già partito l'avviso "nessun punto da 20 minuti" (0 = nessun avviso attivo). */
+    var staleAlertFor: Long
+        get() = sp.getLong("staleAlertFor", 0L)
+        set(v) = sp.edit().putLong("staleAlertFor", v).apply()
     val deviceId: String
         get() = sp.getString("device", null) ?: java.util.UUID.randomUUID().toString().also {
             sp.edit().putString("device", it).apply()

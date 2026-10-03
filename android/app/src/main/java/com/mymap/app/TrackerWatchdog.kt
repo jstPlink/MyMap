@@ -28,7 +28,9 @@ class TrackerWatchdog(ctx: Context, params: WorkerParameters) : Worker(ctx, para
                 alert()
             }
         }
+        StaleAlert.check(applicationContext)
         LastPointWidget.update(applicationContext)
+        TodayWidget.update(applicationContext)
         return Result.success()
     }
 

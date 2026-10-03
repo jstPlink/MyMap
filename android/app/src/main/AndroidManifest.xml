@@ -48,5 +48,19 @@
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/last_point_widget_info" />
         </receiver>
+
+        <receiver android:name=".TodayWidget" android:exported="false" android:label="MyMap · oggi e 7 giorni (chiaro)">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/today_widget_info" />
+        </receiver>
+
+        <receiver android:name=".TodayWidgetDark" android:exported="false" android:label="MyMap · oggi e 7 giorni (scuro)">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/today_widget_dark_info" />
+        </receiver>
     </application>
 </manifest>

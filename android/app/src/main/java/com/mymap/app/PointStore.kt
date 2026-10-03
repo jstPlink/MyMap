@@ -159,6 +159,29 @@ class PointStore(context: Context) : SQLiteOpenHelper(context, "points.db", null
         }
     }
 
+    data class LastFix(val ts: Long, val lat: Double, val lon: Double, val moving: Boolean)
+
+    /**
+     * Ultima posizione registrata dal tracking di questo telefono (non importazioni) e se in quel momento si era in movimento:
+     * velocità misurata dal punto di almeno 1 m/s, oppure spostamento dal punto precedente (entro 15 minuti) a più di 0,8 m/s.
+     * null se non c'è nessun punto.
+     */
+    @Synchronized
+    fun lastFix(): LastFix? {
+        readableDatabase.rawQuery(
+            "SELECT ts,lat,lon,speed FROM points WHERE provider IN ('gps','network','fused','passive') ORDER BY ts DESC LIMIT 2", null
+        ).use { c ->
+            if (!c.moveToFirst()) return null
+            val ts = c.getLong(0); val lat = c.getDouble(1); val lon = c.getDouble(2)
+            var moving = !c.isNull(3) && c.getFloat(3) >= 1.0f
+            if (!moving && c.moveToNext()) {
+                val dt = ts - c.getLong(0)
+                if (dt in 1..(15 * 60_000L)) moving = haversineKm(c.getDouble(1), c.getDouble(2), lat, lon) * 1000 / (dt / 1000.0) >= 0.8
+            }
+            return LastFix(ts, lat, lon, moving)
+        }
+    }
+
     /** (totale, da sincronizzare) */
     @Synchronized
     fun counts(): Pair<Int, Int> {
@@ -180,10 +203,13 @@ class PointStore(context: Context) : SQLiteOpenHelper(context, "points.db", null
      * Restituisce (totale, accuratezza, picchi, soste).
      */
     @Synchronized
-    fun cleanup(apply: Boolean): IntArray {
+    fun cleanup(apply: Boolean, onlyPending: Boolean = false): IntArray {
         val ids = ArrayList<Long>(); val ts = ArrayList<Long>(); val lat = ArrayList<Double>(); val lon = ArrayList<Double>()
         val acc = ArrayList<Double>(); val synced = ArrayList<Boolean>()
-        readableDatabase.rawQuery("SELECT id,ts,lat,lon,COALESCE(accuracy,0),synced FROM points ORDER BY ts,id", null).use { c ->
+        // onlyPending (filtro alla sincronizzazione): si guardano i punti da inviare più un po' di contesto precedente (anche già inviato), ma si cancellano solo quelli non ancora inviati
+        val since = if (onlyPending) pendingSince() else 0L
+        if (since == Long.MAX_VALUE) return intArrayOf(0, 0, 0, 0)
+        readableDatabase.rawQuery("SELECT id,ts,lat,lon,COALESCE(accuracy,0),synced FROM points WHERE ts >= ? ORDER BY ts,id", arrayOf(since.toString())).use { c ->
             while (c.moveToNext()) {
                 ids += c.getLong(0); ts += c.getLong(1); lat += c.getDouble(2); lon += c.getDouble(3); acc += c.getDouble(4); synced += c.getInt(5) == 1
             }
@@ -226,15 +252,74 @@ class PointStore(context: Context) : SQLiteOpenHelper(context, "points.db", null
             val db = writableDatabase
             db.beginTransaction()
             try {
-                for (i in 0 until n) if (reason[i] != 0) {
+                for (i in 0 until n) if (reason[i] != 0 && (!onlyPending || !synced[i])) {
                     if (synced[i]) db.execSQL("INSERT OR IGNORE INTO deleted(client_id) SELECT client_id FROM points WHERE id=?", arrayOf<Any>(ids[i]))
                     db.execSQL("DELETE FROM points WHERE id=?", arrayOf<Any>(ids[i]))
                 }
                 db.setTransactionSuccessful()
             } finally { db.endTransaction() }
-            db.execSQL("VACUUM")
+            if (!onlyPending) db.execSQL("VACUUM")
         }
         return intArrayOf(n, counts[1], counts[2], counts[3])
+    }
+
+    /** Ora del primo punto non ancora inviato meno 3 ore (contesto per il filtro); Long.MAX_VALUE se non ce ne sono. */
+    private fun pendingSince(): Long {
+        readableDatabase.rawQuery("SELECT MIN(ts) FROM points WHERE synced=0", null).use { c ->
+            c.moveToFirst()
+            return if (c.isNull(0)) Long.MAX_VALUE else c.getLong(0) - 3 * 3_600_000L
+        }
+    }
+
+    data class DayStats(val km: Double, val moveMs: Long, val places: Int)
+
+    /**
+     * Numeri di oggi per il widget, con le stesse regole dell'interfaccia: scarta i fix oltre 120 m e i salti impossibili; i km sono
+     * i passi tra punti consecutivi entro 20 minuti (da 10 m a 30 km, al massimo 250 km/h), il tempo in movimento la loro durata;
+     * un posto è una sosta di almeno 20 minuti entro 150 m dal primo punto (buchi fino a 3 ore), con le soste entro 150 m unite.
+     */
+    @Synchronized
+    fun dayStats(since: Long): DayStats {
+        val ts = ArrayList<Long>(); val lat = ArrayList<Double>(); val lon = ArrayList<Double>()
+        readableDatabase.rawQuery("SELECT ts,lat,lon,COALESCE(accuracy,0) FROM points WHERE ts >= ? ORDER BY ts", arrayOf(since.toString())).use { c ->
+            var bad = 0
+            while (c.moveToNext()) {
+                if (c.getDouble(3) > 120) continue
+                val t = c.getLong(0); val la = c.getDouble(1); val lo = c.getDouble(2)
+                if (ts.isNotEmpty()) {
+                    val h = (t - ts.last()) / 3_600_000.0; val d = haversineKm(lat.last(), lon.last(), la, lo)
+                    if (h > 0 && d > 0.3 && d / h > 180 && bad < 3) { bad++; continue } // salto impossibile: fix sbagliato
+                }
+                bad = 0; ts += t; lat += la; lon += lo
+            }
+        }
+        var km = 0.0; var moveMs = 0L
+        for (i in 1 until ts.size) {
+            val dt = ts[i] - ts[i - 1]
+            if (dt <= 0 || dt > 20 * 60_000) continue
+            val d = haversineKm(lat[i - 1], lon[i - 1], lat[i], lon[i])
+            if (d < 0.01 || d > 30 || d / (dt / 3_600_000.0) > 250) continue
+            km += d; moveMs += dt
+        }
+        // posti: soste di almeno 20 minuti, unite entro 150 m
+        val places = ArrayList<DoubleArray>()
+        var i = 0
+        while (i < ts.size) {
+            var j = i + 1; var sl = lat[i]; var so = lon[i]
+            while (j < ts.size && ts[j] - ts[j - 1] <= 3 * 3_600_000L && haversineKm(lat[i], lon[i], lat[j], lon[j]) < 0.15) { sl += lat[j]; so += lon[j]; j++ }
+            if (ts[j - 1] - ts[i] >= 20 * 60_000) {
+                val cl = sl / (j - i); val co = so / (j - i)
+                if (places.none { haversineKm(it[0], it[1], cl, co) < 0.15 }) places += doubleArrayOf(cl, co)
+            }
+            i = j
+        }
+        return DayStats(km, moveMs, places.size)
+    }
+
+    private fun haversineKm(la1: Double, lo1: Double, la2: Double, lo2: Double): Double {
+        val p = Math.PI / 180
+        val a = Math.sin((la2 - la1) * p / 2).let { it * it } + Math.cos(la1 * p) * Math.cos(la2 * p) * Math.sin((lo2 - lo1) * p / 2).let { it * it }
+        return 12742 * Math.asin(Math.sqrt(a))
     }
 
     private companion object {

@@ -8,6 +8,7 @@ visitati, con statistiche. Nessuna parte social. I dati restano sul telefono o s
 - [Guida all'uso e ai parametri](docs/GUIDA.md): viste, personalizzazione, tracker, account, come si calcolano le cose, cosa fare se non registra.
 - [Architettura](ARCHITETTURA.md): com'è fatta l'app, ponte nativo, tracking, dati e calcoli, backend, sviluppo.
 - [Changelog](CHANGELOG.md): cronologia delle versioni.
+- [Regole di lavoro](CLAUDE.md): cosa fare dopo ogni modifica (versione, documenti, aggiornare l'app sul telefono).
 
 ## Cartelle
 

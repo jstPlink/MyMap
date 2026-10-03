@@ -472,3 +472,9 @@ details[data-sfold] .rank { margin: 0; }
 #psheet details.fold:not([data-fold="theme"]) > summary { pointer-events: none; }
 #psheet details.fold:not([data-fold="theme"]) > summary::after { display: none; }
 .tuning .float.bottom, .tuning #locate, .tuning #tune { display: none; }
+
+/* ---------- pulsanti secondari con contorno e testo "Tracking ATTIVO" leggibile ---------- */
+/* il fondo dei pulsanti secondari era uguale a quello delle schede e senza bordo: sembravano solo testo */
+button.secondary { background: var(--surface-2); border: 1px solid rgba(127, 127, 127, .55); box-shadow: 0 1px 2px rgba(0, 0, 0, .12); }
+/* nel tema scuro il testo era scuro su fondo scuro */
+:root[data-theme="dark"] .foldbody .big.on { color: var(--ok); }

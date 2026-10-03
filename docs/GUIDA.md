@@ -78,7 +78,7 @@ livello e l'altro il valore si interpola, fuori dal primo e dall'ultimo resta il
 
 | Gruppo | Parametri |
 |---|---|
-| **Scratch · esagoni** | diametro dell'esagono per ogni livello di zoom (da 5 a 17), minimo consigliato 100 m |
+| **Scratch · esagoni** | diametro dell'esagono a tre livelli di zoom (zoom → metri); agli zoom intermedi si interpola da solo. Partenza: zoom 6 → 100 km, 11 → 3 km, 16 → 100 m; minimo consigliato 100 m |
 | **Heatmap** | raggio (a tre zoom), sfocatura, quantità di calore (più bassa = più caldo), opacità minima, densità dei percorsi (un punto ogni N metri tra due fix; 0 = nessuno), gradiente a quattro colori con preset |
 | **Percorsi** | stile (*colore unico* oppure *per frequenza*); colore, spessore (a tre zoom) e opacità per il colore unico; per frequenza: sfocatura, quantità di calore (passaggi sovrapposti per il colore più caldo), opacità minima, gradiente; **dettaglio** (semplificazione dei tratti in px: più alto = più leggero) |
 | **Notti** | dalle/alle (default 23–09), punti minimi (default 2), raggio (default 300 m) |
@@ -117,8 +117,24 @@ della settimana, zone nuove per mese e curiosità. Toccando una riga con il segn
   come punto.
 
 - **Widget "ultimo punto":** tieni premuta la schermata home → Widget → MyMap. Mostra da quanto tempo è stato salvato l'ultimo punto
-  ("5 min fa"); diventa rosso oltre 30 minuti (segno che il tracking potrebbe essere fermo). Si aggiorna a ogni punto, ogni ~15 minuti e
-  toccandolo.
+  ("5 min fa"); diventa rosso oltre 30 minuti (segno che il tracking potrebbe essere fermo). Si aggiorna a ogni punto e ogni ~15 minuti;
+  toccandolo si apre l'app.
+- **Widget "oggi e 7 giorni" (4×1):** stesso menu dei widget, in due versioni: *MyMap · oggi e 7 giorni (chiaro)*, su una targhetta
+  semitrasparente effetto plastificato, e *(scuro)*, piatto e a tinta unita.
+  - **Cosa mostra:** a sinistra le etichette **oggi** (riga con i valori grandi) e **7g** (riga con i valori grigi); poi tre colonne con il titolo in alto,
+    **km** percorsi, **posti** visitati (soste di almeno 20 minuti) e tempo in **movimento**, con sotto il valore di oggi e il valore degli ultimi 7 giorni.
+  - **Cella tracker** (a destra): un'**icona animata** (**onde** che si allargano se sei fermo, **impronte di scarpe** che camminano se sei in movimento; verde
+    in movimento) e, accanto, da quanto tempo è stato registrato l'ultimo punto in **minuti e secondi** ("3:20"). Si aggiorna ogni 20 secondi a schermo
+    acceso, con il tracking attivo. La cella diventa **rossa** se l'ultimo punto ha più di 6 minuti: con la frequenza di partenza da fermo (un punto ogni 10
+    minuti) succede anche a telefono fermo, quindi per averla rossa solo quando c'è un problema conviene un punto ogni 5-6 minuti da fermo.
+  - **Tocchi:** un dato apre la vista (**Percorsi** per i km, **Posti** per i posti, **Heatmap** per il tempo in movimento) con il filtro su oggi (riga grande) o
+    sugli ultimi 7 giorni (riga grigia); la cella tracker apre le **impostazioni sulla sezione Tracker**; altrove si apre l'app.
+  - **Se un testo risulta tagliato:** una riga di celle ha poca altezza; i margini e i testi sono già al limite per molti launcher.
+- **Avviso sonoro "nessun punto":** se il tracking è attivo ma l'ultimo punto ha più di 20 minuti, arriva una notifica con suono e vibrazione. Avvisa
+  una sola volta per ogni buco e sparisce quando i punti riprendono; se fermi tu il tracking non parte. Può arrivare con qualche minuto di ritardo (il controllo
+  è ogni ~5 minuti, e ogni ~15 se Android ha ucciso il servizio).
+- **Filtro alla sincronizzazione:** prima di inviare i punti al server l'app toglie quelli inutili (fix troppo imprecisi, picchi, punti
+  ripetuti da fermo) con le stesse regole della pulizia manuale: non vengono inviati e si cancellano dal telefono.
 
 ## 7. Account e dati
 

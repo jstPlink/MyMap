@@ -45,7 +45,7 @@ class MainActivity : Activity() {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             addJavascriptInterface(Bridge(), "MyMapNative")
-            loadUrl("file:///android_asset/index.html?sys=" + (if (systemNight()) 1 else 0))
+            loadUrl("file:///android_asset/index.html?sys=" + (if (systemNight()) 1 else 0) + (widgetView(intent)?.let { "&open=$it" + (widgetRange(intent)?.let { r -> "&range=$r" } ?: "") } ?: ""))
         }
         // da Android 15 l'app disegna sotto barra di stato, notch e barra di navigazione: lasciamo lo spazio
         val root = FrameLayout(this).apply {
@@ -74,6 +74,19 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         resumeTracking()
+    }
+
+    /** Vista chiesta da un widget (extra "open"): solo i valori noti, per non passare testo libero alla pagina. */
+    private fun widgetView(i: Intent?): String? = i?.getStringExtra(EXTRA_OPEN)?.takeIf { it in listOf("routes", "places", "heat", "here", "tracker") }
+
+    /** Intervallo chiesto dal widget: solo "7" (ultimi 7 giorni); altrimenti oggi. */
+    private fun widgetRange(i: Intent?): String? = i?.getStringExtra(EXTRA_RANGE)?.takeIf { it == "7" }
+
+    /** App già aperta e widget toccato: la pagina cambia vista e filtra su oggi. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        widgetView(intent)?.let { web.evaluateJavascript("window.openFromWidget && openFromWidget('$it', '${widgetRange(intent) ?: ""}')", null) }
     }
 
     /** Se il tracking doveva essere attivo ma il servizio non gira (aggiornamento, kill di Android), lo riavvia. */
@@ -307,6 +320,7 @@ class MainActivity : Activity() {
                             )
                             SyncWorker.enqueue(this@MainActivity)
                             LastPointWidget.update(this@MainActivity)
+                            TodayWidget.update(this@MainActivity)
                         }
                         reply(
                             JSONObject().put("ok", true).put("lat", loc.latitude).put("lon", loc.longitude)
@@ -509,6 +523,9 @@ class MainActivity : Activity() {
     }
 
     companion object {
+        /** Extra dell'intent dei widget: vista da aprire (routes, places, heat) con il filtro su oggi. */
+        const val EXTRA_OPEN = "open"
+        const val EXTRA_RANGE = "range"
         private const val REQ_FG = 1
         private const val REQ_BG = 2
         private const val REQ_NOTIF = 3
