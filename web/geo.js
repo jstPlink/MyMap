@@ -116,12 +116,17 @@ function fmtHoursLong(h) {
 // `minPts` punti (default 2) entro `radiusM` metri uno dall'altro. La notte porta la data della sera e il luogo è il centro del
 // gruppo di punti più numeroso. Le notti vicine (entro 400 m) si raggruppano nello stesso posto.
 // Finestra, punti minimi e raggio si regolano nelle impostazioni.
-function sleepPlaces(pts, fromH, toH, minPts = 2, radiusM = 300, hidden = new Set()) {
+// `opt` (tutti facoltativi, 0 = disattivato): accMax = ignora i punti con accuratezza peggiore (m); minSpan = durata minima del gruppo,
+// dal primo all'ultimo punto (minuti); coreMin = punti minimi nella fascia centrale coreFrom–coreTo (ore); merge = distanza sotto cui
+// due notti contano nello stesso posto (m, default 400).
+function sleepPlaces(pts, fromH, toH, minPts = 2, radiusM = 300, hidden = new Set(), opt = {}) {
   const inWin = (h) => (fromH <= toH ? h >= fromH && h < toH : h >= fromH || h < toH);
+  const inCore = (h) => (opt.coreFrom <= opt.coreTo ? h >= opt.coreFrom && h < opt.coreTo : h >= opt.coreFrom || h < opt.coreTo);
   const nights = new Map();
   for (const p of pts) {
     const d = new Date(p.ts), h = d.getHours();
     if (!inWin(h)) continue;
+    if (opt.accMax > 0 && p.acc > opt.accMax) continue;
     if (fromH > toH && h < toH) d.setDate(d.getDate() - 1); // dopo la mezzanotte: è la notte iniziata la sera prima
     const k = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
     (nights.get(k) || nights.set(k, []).get(k)).push(p);
@@ -137,12 +142,22 @@ function sleepPlaces(pts, fromH, toH, minPts = 2, radiusM = 300, hidden = new Se
     }
     if (!best || best.length < minPts) return;
     const lat = best.reduce((x, q) => x + q.lat, 0) / best.length, lon = best.reduce((x, q) => x + q.lon, 0) / best.length;
+    if (opt.minSpan > 0 || opt.coreMin > 0) { // controlli extra su tutti i punti vicini al centro del gruppo
+      let t0 = Infinity, t1 = -Infinity, core = 0;
+      for (const q of all) {
+        if (km({ lat, lon }, q) > r) continue;
+        if (q.ts < t0) t0 = q.ts; if (q.ts > t1) t1 = q.ts;
+        if (opt.coreMin > 0 && inCore(new Date(q.ts).getHours())) core++;
+      }
+      if (opt.minSpan > 0 && t1 - t0 < opt.minSpan * 60000) return;
+      if (opt.coreMin > 0 && core < opt.coreMin) return;
+    }
     found.push({ key, lat, lon, ts: best[0].ts });
   });
   const places = [];
   const shown = found.filter((n) => !hidden.has(n.key)); // le notti nascoste non contano ma restano nell'elenco
   for (const n of shown.sort((x, y) => x.ts - y.ts)) {
-    let best = null, bd = 0.4;
+    let best = null, bd = (opt.merge || 400) / 1000;
     for (const pl of places) { const d = km(pl, n); if (d < bd) { bd = d; best = pl; } }
     if (!best) places.push(best = { lat: n.lat, lon: n.lon, nights: 0, first: n.ts, last: n.ts, sl: 0, so: 0, keys: [] });
     best.keys.push(n.key);

@@ -16,7 +16,7 @@
     var sys = m ? m[1] === "1" : matchMedia("(prefers-color-scheme: dark)").matches;
     var dark = t === "dark" || (t === "system" && sys);
     document.documentElement.dataset.theme = dark ? "dark" : "light";
-    document.documentElement.dataset.outline = o === "thin" ? "thin" : o === "off" ? "none" : dark ? "none" : "thin"; // contorno dei pannelli (Aspetto)
+    document.documentElement.dataset.outline = o === "thin" ? "thin" : o === "off" ? "none" : "thin"; // contorno dei pannelli (Aspetto)
   })();
 </script>
 <link rel="icon" href="icon.svg">
@@ -41,7 +41,7 @@
           </div>
         </div>
         <div class="filters chips2 row2">
-          <div class="qfs"><button class="chip qf" data-qf="7">7 giorni</button><button class="chip qf" data-qf="all">Sempre</button></div>
+          <div class="qfs"><button class="chip qf" data-qf="today">Oggi</button><button class="chip qf" data-qf="7">7 giorni</button><button class="chip qf" data-qf="all">Sempre</button></div>
           <button id="trackwarn" class="chip warn" hidden>&#9888; Tracking fermo</button>
         </div>
       </div>
@@ -50,8 +50,8 @@
         <button class="chip vt on active" data-mode="scratch" title="La mappa è coperta: gratti i posti dove sei stato">Scratch</button>
         <button class="chip vt" data-mode="heat" title="Calore dei punti: più passi, più è caldo">Heatmap</button>
         <button class="chip vt" data-mode="routes" title="Le tue tracce, a colore unico o per frequenza">Percorsi</button>
-        <button class="chip vt" data-mode="sleep" title="Dove hai dormito, con il numero di notti">Notti</button>
-        <button class="chip vt" data-mode="places" title="Dove ti sei fermato almeno 20 minuti">Posti</button>
+        <button class="chip vt" data-mode="both" title="Sperimentale: notti (pallini) e posti (triangolini) insieme">Luoghi</button>
+        <button class="chip vt" data-mode="points" title="Prova: tutti i punti salvati, con filtri per ora e accuratezza">Punti</button>
       </div>
 
       <button id="tune" title="Personalizza la vista" aria-label="Personalizza la vista">
@@ -74,6 +74,7 @@
       </button>
 
       <div class="float bottom" id="panel" hidden>
+        <button id="panel-fold" type="button" title="Comprimi o espandi" aria-label="Comprimi o espandi" aria-expanded="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
         <div class="modeinfo" id="modeinfo"></div>
         <button id="name-new" class="chip" hidden>Nomina i nuovi posti</button>
       </div>

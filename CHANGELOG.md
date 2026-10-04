@@ -4,6 +4,58 @@ Versione app in `android/app/build.gradle.kts` (`versionName` e `versionCode`).
 Ad ogni rilascio: alzare `versionCode` di 1, aggiornare `versionName` e aggiungere una voce qui.
 La versione è mostrata in cima alla schermata dell'app.
 
+## 0.29.21 (build 70) - 2026-10-04
+- **Viste Notti e Posti tolte:** resta la vista accorpata *Luoghi* (le viste salvate Notti e Posti diventano Luoghi; il widget *posti* apre Luoghi).
+- **Nuova vista di prova "Punti":** mostra tutti i punti salvati (puliti) su una tela unica e veloce (solo i punti visibili, al massimo uno ogni 3 px, ridisegno a ogni movimento). Filtri per **ora** (dalle/alle) e **accuratezza massima**, *Colora per ora* con legenda, *Notti rilevate* come pallini arancioni; toccando un punto si vede ora e accuratezza.
+- **Parametri per provare le notti** (Personalizza → Notti, valgono anche per statistiche e Luoghi; 0 = disattivato): *Accuratezza massima*, *Durata minima* del gruppo, *Punti nella fascia centrale* con le sue ore (01–05), *Unione dei luoghi* (400 m). I default lasciano il calcolo com'era.
+
+## 0.29.20 (build 69) - 2026-10-04
+- **Pallino delle notti:** 25% più grande (da 11 a 14 px).
+
+## 0.29.19 (build 68) - 2026-10-04
+- **Pallino delle notti:** una sola dimensione (11 px), anche per i gruppi accorpati.
+- **Vista Luoghi:** nel pannello in basso due caselle, *Notti* e *Posti*, mostrano o nascondono ciascun livello; la scelta resta salvata (`mymap.bothShow`).
+
+## 0.29.18 (build 67) - 2026-10-04
+- **Rombi dei posti:** dimensione fissa di 9 px (prima 12, 25% in meno), uguale anche per i gruppi accorpati.
+
+## 0.29.17 (build 66) - 2026-10-04
+- **Posti celesti:** i rombi dei posti senza nome passano da rosso a celeste (#4fc3f7); rinominati restano bianchi.
+- **Accorpamento ridotto ancora:** celle di fusione dimezzate di nuovo: Notti 15 px, Posti 14 px, Luoghi 32 px, così i posti restano separati più a lungo (zoom su una città).
+
+## 0.29.16 (build 65) - 2026-10-04
+- **Posti rossi:** i rombi dei posti senza nome sono rossi (#dc3545), così non si confondono con le notti arancioni; rinominati restano bianchi.
+- **Accorpamento dimezzato:** le celle di fusione con lo zoom lontano sono la metà: Notti 30 px (prima 60), Posti 28 px (56), Luoghi 65 px (130).
+
+## 0.29.15 (build 64) - 2026-10-04
+- **Notti:** pallino arancione con saturazione 90% (`hsl(27 90% 60%)`); i posti restano con l'arancione più tenue.
+- **Posti a rombo:** il triangolino diventa un rombo (12 px, gruppi 16 px).
+- **Gruppi senza numero:** i pallini e i rombi accorpati non mostrano più il numero; si riconoscono dalla dimensione maggiore.
+- **Vista Luoghi:** i gruppi si formano prima con lo zoom lontano (celle da 130 px invece di 60 e 56).
+
+## 0.29.14 (build 63) - 2026-10-04
+- **Pallini più piccoli e discreti:** arancione meno saturo (#e39b5f), pallino 11 px (gruppi 20 px) con contorno da 1 px.
+- **Posti a triangolini:** nella vista Posti ogni posto è un triangolino (13 px, gruppi 22 px con il numero di posti), stessi colori: arancione senza nome, bianco rinominato. Non variano più con il tempo passato.
+- **Vista sperimentale "Luoghi":** nuova targhetta che unisce Notti (pallini) e Posti (triangolini) sulla stessa mappa, con riepilogo e i due elenchi (`drawBoth`).
+
+## 0.29.13 (build 62) - 2026-10-04
+- **Notti e Posti, icone semplificate:** un solo pallino per luogo, senza numeri: **arancione** se il posto non è stato rinominato, **bianco** se ha un nome (contorno scuro sottile). I gruppi (zoom lontano) sono un pallino più grande con il numero di luoghi, bianco solo se tutti sono rinominati. Notti e visite restano nel popup e negli elenchi.
+
+## 0.29.12 (build 61) - 2026-10-04
+- **Pannello dati comprimibile:** il pannello in basso della mappa ha in alto una freccia che lo riduce a una sola barretta (e lo riespande); la scelta resta salvata (`mymap.panelFold`).
+
+## 0.29.11 (build 60) - 2026-10-04
+- **Filtro rapido "Oggi":** sotto la barra in alto, accanto a *7 giorni* e *Sempre*, imposta il periodo sul giorno corrente; si evidenzia quando coincide con il filtro attivo.
+
+## 0.29.10 (build 59) - 2026-10-04
+- **Statistiche, pulizia:** tolti *Media giorni attivi*, *Serie di giorni con dati*, la curiosità *Bologna–Milano*, *km/h di media*, *km² grattati* e *Punti al giorno* (la scheda *Curiosità* non c'è più).
+- **Statistiche, blocchetti in cima:** *Stagione più viaggiata* e *Km nel weekend* sono ora blocchetti accanto a *km percorsi* e *giri della Terra*.
+
+## 0.29.9 (build 58) - 2026-10-04
+- **Contorno nel tema scuro:** con l'impostazione *auto* il filo sottile attorno a pannelli, pulsanti e targhette ora c'è anche nel tema scuro, un po' più luminoso (18% → 26%).
+- **Statistiche, panoramica:** tolte le righe *Giorni in movimento* e *Tempo in movimento*.
+- **Statistiche, notti:** *Notti rilevate* mostra anche il numero intero tra parentesi quando supera un anno (es. "1 anno e 2 mesi (430)").
+
 ## 0.29.8 (build 57) - 2026-10-04
 - **Anteprime dei widget:** nel selettore dei widget i tre widget (*ultimo punto*, *oggi e 7 giorni* chiaro e scuro) mostravano il layout vuoto, senza numeri. Ora hanno un'anteprima con dati di esempio (km 12 / 63, posti 5 / 18, movimento 2h 10m / 9h 45m, tracker fermo da 0:42, "5 min fa"). Valgono da Android 12 (`previewLayout`); sulle versioni precedenti resta il layout vuoto.
 - Nuovo `tools/widget_preview.py`: rigenera le anteprime dai layout veri; da rilanciare quando cambia il layout di un widget.

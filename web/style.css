@@ -18,7 +18,7 @@
 }
 /* contorno dei pannelli (Impostazioni → Aspetto): una linea sottile attorno a pannelli, pulsanti e targhette */
 :root { --outline: rgba(43, 53, 72, .30); }
-:root[data-theme="dark"] { --outline: rgba(255, 255, 255, .18); }
+:root[data-theme="dark"] { --outline: rgba(255, 255, 255, .26); }
 :root[data-outline="thin"] :is(.card, .float.bottom, #psheet, #lsheet, nav, .chip, .verpill, .zoompill, .seg, .sheet, #tune, #locate) { border: 1px solid var(--outline); }
 :root[data-theme="dark"] {
     --bg: #121212;
@@ -196,11 +196,13 @@ nav button.active { background: var(--accent-soft); color: var(--accent); }
 .seg button { padding: 9px 2px; font-size: 12.5px; }
 
 /* ---------- notti: lune sulla mappa ---------- */
-.moon { border-radius: 50%; display: grid; place-items: center; color: #fff; background: radial-gradient(circle at 32% 30%, #a5b4fc, #4f46e5 70%); box-shadow: 0 3px 12px rgba(79, 70, 229, .55); border: 2px solid rgba(255, 255, 255, .85); }
-.moon b { font-size: 12px; font-weight: 800; }
-.moon.cluster { position: relative; background: radial-gradient(circle at 32% 30%, #c4b5fd, #6d28d9 72%); box-shadow: 0 3px 14px rgba(109, 40, 217, .55); }
-.moon.cluster.pl { background: radial-gradient(circle at 32% 30%, #c4b5fd, #7c3aed 72%); }
-.moon.cluster i { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; display: grid; place-items: center; font-style: normal; font-size: 10px; font-weight: 800; color: #4c1d95; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .3); }
+.dot { border-radius: 50%; display: grid; place-items: center; background: hsl(27 90% 60%); border: 1px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .4); }
+.dot.named { background: #fff; border-color: rgba(0, 0, 0, .45); }
+.showrow { display: flex; gap: 16px; margin: 8px 0 4px; font-size: 13px; }
+.showrow label { display: flex; align-items: center; gap: 6px; }
+.showrow input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
+.tri { position: relative; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .4)); }
+.tri svg { width: 100%; height: 100%; display: block; }
 .leaflet-popup-content-wrapper { border-radius: 14px; background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
 .leaflet-popup-tip { background: var(--surface); }
 .pop { font-size: 13px; line-height: 1.5; min-width: 140px; }
@@ -419,8 +421,6 @@ details.fold[open] > summary::after { transform: rotate(-135deg); }
 :root[data-theme="dark"] .chip.on, :root[data-theme="dark"] .quick .chip.on { color: #121212; }
 :root[data-theme="dark"] .card.hero h2, :root[data-theme="dark"] .card.hero dt { color: rgba(18, 18, 18, .7); }
 :root[data-theme="dark"] .seg button.active, :root[data-theme="dark"] button { box-shadow: none; }
-:root[data-theme="dark"] .moon { color: #121212; background: radial-gradient(circle at 32% 30%, #f4f4f4, #6f6f6f 70%); box-shadow: 0 3px 12px rgba(0, 0, 0, .6); }
-:root[data-theme="dark"] .moon.cluster i { color: #121212; }
 :root[data-theme="dark"] .logo.big { box-shadow: 0 10px 30px rgba(0, 0, 0, .6); }
 
 /* ---------- mappa: targhetta della versione, filtro a icona, pannello dati ---------- */
@@ -430,6 +430,11 @@ details.fold[open] > summary::after { transform: rotate(-135deg); }
 #f-open.filterbtn { width: 38px; height: 38px; padding: 0; justify-content: center; border-radius: 50%; flex: none; }
 #f-open #f-summary { display: none; }
 #panel[hidden] { display: none; }
+#panel-fold { display: flex; width: 100%; height: 18px; margin: -6px 0 4px; padding: 0; justify-content: center; align-items: center; background: none; color: var(--muted); border: 0; box-shadow: none; border-radius: 8px; }
+#panel-fold svg { transition: transform .2s; }
+#panel.folded #panel-fold { margin: -6px 0; }
+#panel.folded #panel-fold svg { transform: rotate(180deg); }
+#panel.folded > :not(#panel-fold) { display: none; }
 /* titoli delle sezioni comprimibili delle statistiche: uguali a quelli delle altre schede */
 details[data-sfold] > summary { font-size: 12px; font-weight: 600; letter-spacing: .08em; }
 details[data-sfold][open] > summary { color: var(--muted); }
@@ -478,3 +483,8 @@ details[data-sfold] .rank { margin: 0; }
 button.secondary { background: var(--surface-2); border: 1px solid rgba(127, 127, 127, .55); box-shadow: 0 1px 2px rgba(0, 0, 0, .12); }
 /* nel tema scuro il testo era scuro su fondo scuro */
 :root[data-theme="dark"] .foldbody .big.on { color: var(--ok); }
+
+.showrow select, .showrow input[type="number"] { width: auto; padding: 4px 6px; font-size: 13px; border-radius: 8px; }
+.showrow { flex-wrap: wrap; align-items: center; }
+.hourbar { height: 6px; border-radius: 3px; margin-top: 6px; background: linear-gradient(90deg, hsl(0,85%,52%), hsl(60,85%,52%), hsl(120,85%,52%), hsl(180,85%,52%), hsl(240,85%,52%), hsl(300,85%,52%), hsl(360,85%,52%)); }
+.hourlab { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); }

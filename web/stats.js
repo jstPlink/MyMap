@@ -57,28 +57,21 @@ function renderStats(pts, periodo) {
   // ---- distanze e tempi in movimento ----
   const byDay = new Map(), byMonth = new Map(), byYear = new Map();
   const hourKm = Array(24).fill(0), dowKm = Array(7).fill(0), seasonKm = Array(4).fill(0);
-  let total = 0, movingMs = 0, weekendKm = 0;
+  let total = 0, weekendKm = 0;
   for (const s of moveSteps(pts)) {
     const d = new Date(s.ts), k = dkey(s.ts), mk = d.getFullYear() * 100 + d.getMonth(), dow = (d.getDay() + 6) % 7;
-    total += s.d; movingMs += s.dt;
+    total += s.d;
     byDay.set(k, (byDay.get(k) || 0) + s.d);
     byMonth.set(mk, (byMonth.get(mk) || 0) + s.d);
     byYear.set(d.getFullYear(), (byYear.get(d.getFullYear()) || 0) + s.d);
     hourKm[d.getHours()] += s.d; dowKm[dow] += s.d; seasonKm[season(d.getMonth())] += s.d;
     if (dow >= 5) weekendKm += s.d;
   }
-  const avgSpeed = movingMs ? total / (movingMs / 36e5) : 0;
 
-  // ---- giorni con dati e serie consecutiva ----
-  const days = [...new Set(pts.map((p) => epochDay(p.ts)))].sort((a, b) => a - b);
-  let streak = 1, bestStreak = 1, bestEnd = days[0];
-  for (let i = 1; i < days.length; i++) {
-    streak = days[i] === days[i - 1] + 1 ? streak + 1 : 1;
-    if (streak > bestStreak) { bestStreak = streak; bestEnd = days[i]; }
-  }
+  const days = [...new Set(pts.map((p) => epochDay(p.ts)))];
 
   // ---- notti, casa, lontananza, estremi ----
-  const sleep = sleepPlaces(pts, Prefs.v.sleep.from, Prefs.v.sleep.to, Prefs.v.sleep.minPts, Prefs.v.sleep.radius, Prefs.hiddenNights());
+  const sleep = Prefs.sleepOf(pts);
   const stays = topStays(pts, 5);
   const home = sleep.places[0] || stays[0];
   const nearHome = (p) => home && km(home, p) < 0.4;
@@ -109,7 +102,6 @@ function renderStats(pts, periodo) {
   const newMonths = [...newByMonth.keys()].sort((a, b) => a - b).slice(-12);
   const years = [...byYear.keys()].sort();
   const bestMonth = [...byMonth.entries()].sort((a, b) => b[1] - a[1])[0];
-  const movingDays = [...byDay.values()].filter((v) => v >= 1).length;
   const first = pts[0].ts, last = pts[pts.length - 1].ts;
   const at = (p) => [p.lat, p.lon];
   const place = (p) => placeSpan(p.lat, p.lon);
@@ -120,21 +112,17 @@ function renderStats(pts, periodo) {
     <div class="tiles">
       ${tile(fmt0(total), "km percorsi", `${fmtSpan(days.length)} con dati`)}
       ${tile(fmt1(total / 40075), "giri della Terra", `${fmt1(total / 384400 * 100)}% verso la Luna`)}
-      ${tile(fmt1(avgSpeed), "km/h di media", "solo in movimento")}
-      ${tile("…", "km² grattati", "esagoni da 100 m", "t-area")}
+      ${tile(STAGIONI[argmax(seasonKm)], "stagione più viaggiata", `${fmt0(Math.max(...seasonKm))} km`)}
+      ${tile(fmt0(weekendKm), "km nel weekend", `${fmt0(total ? weekendKm / total * 100 : 0)}% del totale`)}
     </div>
 
     <div class="card"><h2>Panoramica</h2>
       ${row("Punti registrati", fmt0(pts.length))}
       ${row("Periodo", `${fmtDataBreve(first)} → ${fmtDataBreve(last)}`)}
-      ${row("Giorni in movimento", `${fmtCount(movingDays)} su ${fmtCount(days.length)}`)}
-      ${row("Media giorni attivi", `${fmt1(movingDays ? total / movingDays : 0)} km`)}
-      ${row("Tempo in movimento", dur(movingMs))}
-      ${row("Serie di giorni con dati", `${fmtCount(bestStreak)} → ${fmtDataBreve(bestEnd * 864e5 + 12 * 36e5)}`)}
     </div>
 
     <div class="card"><h2>Dove hai dormito</h2>
-      ${row("Notti rilevate", fmtCount(sleep.nights, "notte", "notti"))}
+      ${row("Notti rilevate", sleep.nights > 365 ? `${fmtCount(sleep.nights, "notte", "notti")} (${fmt0(sleep.nights)})` : fmtCount(sleep.nights, "notte", "notti"))}
       ${row("Luoghi diversi", fmt0(sleep.places.length))}
       ${row("Notti fuori casa", fmtCount(Math.max(0, nightsAway), "notte", "notti"))}
       ${sleep.places.length ? rank(sleep.places.slice(0, 5).map((p, i) => [place(p) + (i === 0 ? ' <small class="tag">casa</small>' : ""), fmtSpan(p.nights, "notte", "notti"), at(p)])) : ""}
@@ -180,19 +168,7 @@ function renderStats(pts, periodo) {
       <p class="msg">Ora di punta: ${argmax(hourKm)}:00</p></div>
 
     <div class="card"><h2>Km per giorno della settimana</h2>${bars(GIORNI, dowKm, "km")}
-      <p class="msg">Viaggi di più di ${GIORNI_LUNGHI[argmax(dowKm)]}</p></div>
-
-    <div class="card"><h2>Curiosità</h2>
-      ${row("Stagione più viaggiata", `${STAGIONI[argmax(seasonKm)]} · ${fmt0(Math.max(...seasonKm))} km`)}
-      ${row("Km nel weekend", `${fmt0(weekendKm)} (${fmt0(total ? weekendKm / total * 100 : 0)}%)`)}
-      ${row("Bologna–Milano A/R", `${fmt1(total / 400)} volte`)}
-      ${row("Punti al giorno", fmt0(pts.length / days.length))}
-    </div>`;
+      <p class="msg">Viaggi di più di ${GIORNI_LUNGHI[argmax(dowKm)]}</p></div>`;
 
   hydratePlaces(el);
-  // l'area grattata richiede più calcoli: si completa subito dopo, senza bloccare la schermata
-  setTimeout(() => {
-    const z = hexVisits(pts, 100), t = document.getElementById("t-area");
-    if (t) { t.textContent = fmt1(z.area); t.nextElementSibling.nextElementSibling.textContent = `${fmt0(z.cells.length)} esagoni da 100 m`; }
-  }, 60);
 }

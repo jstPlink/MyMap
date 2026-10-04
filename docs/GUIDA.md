@@ -33,17 +33,18 @@ Sopra il tasto "dove sono" c'è il pulsante con i cursori, che apre il pannello 
 | **Scratch** | la mappa è coperta e "gratti" (esagoni) i posti in cui sei stato | esagoni grattati, diametro, **stati visitati** e percentuale, con il pulsante *Elenco stati visitati* |
 | **Heatmap** | calore dei punti: più passi, più è caldo | i **3 posti più visitati** e il pulsante *Elenco posti più visti* (dal più visitato) |
 | **Percorsi** | le tue tracce, a colore unico o colorate per frequenza | gli **spostamenti di un giorno**, con i pulsanti ‹ › per cambiare giorno |
-| **Notti** | dove hai dormito, con il numero di notti per luogo (le lune vicine si fondono in gruppi con lo zoom lontano) | notti, luoghi diversi, notti nel luogo principale, pulsante *Elenco notti e luoghi* |
-| **Posti** | i luoghi dove ti sei fermato almeno 20 minuti, con visite e tempo totale (anche qui i gruppi con lo zoom lontano) | posti, visite, rinominati, da rinominare, pulsante *Elenco posti* (dalla visita più recente) |
+| **Luoghi** (sperimentale; sostituisce le viste Notti e Posti) | notti (pallini) e posti (rombi) insieme sulla stessa mappa; i gruppi si formano prima che nelle viste singole; i posti senza nome sono celesti | notti, luoghi di notte, posti, visite, due caselle *Notti* e *Posti* per mostrare o nascondere ciascun livello, pulsanti per i due elenchi |
+| **Punti** (di prova) | **tutti i punti salvati** (già puliti, gli stessi usati per le notti) su una tela veloce: si disegnano solo quelli visibili, al massimo uno ogni 3 px. Le **notti rilevate** sono pallini arancioni sopra i punti; toccando un punto vedi ora e accuratezza | numero di punti, filtro **ora** (dalle/alle, anche a cavallo della mezzanotte), **accuratezza massima**, *Colora per ora*, *Notti rilevate*. Il pannello di personalizzazione ha i parametri delle notti da provare |
 
 - **Filtro del periodo:** scorciatoie (Oggi, Ieri, Ultimi 7/30 giorni, Questo mese, Mese scorso, Quest'anno, Tutto), anno/mese/giorno,
   da data a data e **fascia oraria** (es. 07:00–09:00, anche a cavallo della mezzanotte).
 - **Dove sono:** chiede la posizione fresca al telefono (se non arriva usa l'ultima nota) e centra la mappa.
 - **Cambio vista o filtro:** la mappa si centra sulla tua posizione con **20 km di raggio** (circa 40 km di larghezza).
-- **Toccare un posto o una luna** apre i dettagli e permette di **dare o cambiare il nome**; un nome dato da te vale per tutti i punti
+- **Toccare un posto o un pallino** apre i dettagli e permette di **dare o cambiare il nome**; un nome dato da te vale per tutti i punti
   entro 120 m e ha la precedenza su quello di OpenStreetMap. Da Posti puoi nominare in sequenza i posti nuovi.
-- **Filtri rapidi:** sotto la barra in alto, **7 giorni** e **Sempre** (quello attivo è evidenziato); per i dettagli (anno, mese, date, fascia
+- **Filtri rapidi:** sotto la barra in alto, **Oggi**, **7 giorni** e **Sempre** (quello attivo è evidenziato); per i dettagli (anno, mese, date, fascia
   oraria) si usa l'imbuto.
+- **Pannello dati comprimibile:** la freccia in alto nel pannello in basso lo riduce a una barretta e lo riespande; la scelta resta salvata.
 - **Spostamenti (vista Percorsi):** il pannello in basso mostra gli spostamenti **di un giorno** (all'inizio l'ultimo con spostamenti): "da dove
   a dove", orario, km e durata, con il numero di spostamenti e i km del giorno. I pulsanti ‹ › passano al giorno precedente o successivo
   che ha spostamenti (i giorni senza sono saltati) e **applicano come filtro** quel giorno, così la mappa mostra solo i suoi tragitti.
@@ -58,7 +59,7 @@ Sopra il tasto "dove sono" c'è il pulsante con i cursori, che apre il pannello 
   contano nella percentuale. Limiti: il Vaticano e gli altri micro-stati sotto i 2 km, e i punti esattamente sul bordo di un porto, possono
   non essere riconosciuti; Tuvalu non ha confini nel file.
 - **Nascondere notti e posti:** notti e posti si calcolano dai punti, quindi non si "cancellano": si **nascondono** e i dati restano. Dal
-  popup (pulsante *Nascondi*) o dagli elenchi nel pannello della vista (*Notti salvate* in Notti, *Posti salvati* in Posti), dove con
+  popup (pulsante *Nascondi*) o dagli elenchi nel pannello della vista (*Notti salvate* e *Posti salvati* in Luoghi, *Notti salvate* in Punti), dove con
   *Mostra* tornano. Le notti si nascondono per data (dal popup si nascondono tutte le notti di quel luogo, con conferma), i posti per
   luogo (entro 150 m). Le notti e i posti nascosti non contano in mappa, elenchi e statistiche; la scelta si salva nel profilo.
 - **I km sono uguali in tutte le viste:** si calcolano sempre sugli stessi dati (tutti i punti del filtro).
@@ -66,7 +67,7 @@ Sopra il tasto "dove sono" c'è il pulsante con i cursori, che apre il pannello 
 ## 4. Personalizzazione (pannello con i cursori)
 
 Ogni vista mostra **solo le sue impostazioni**: Scratch gli esagoni, Heatmap i parametri della heatmap, Percorsi quelli dei percorsi,
-Notti la formula delle notti e l'elenco *Notti salvate*, Posti i nomi e l'elenco *Posti salvati*. In fondo c'è sempre l'**Aspetto**
+Luoghi la formula delle notti, i nomi e gli elenchi *Notti salvate* e *Posti salvati*; Punti la formula delle notti e l'elenco *Notti salvate*. In fondo c'è sempre l'**Aspetto**
 (tema, mappa e ritocchi), che vale per tutte.
 
 Ogni gruppo ha in cima un menu **Preset** con **Salva** ed **Elimina**: salvi la combinazione di valori con un nome e la riapplichi
@@ -81,8 +82,8 @@ livello e l'altro il valore si interpola, fuori dal primo e dall'ultimo resta il
 | **Scratch · esagoni** | diametro dell'esagono a tre livelli di zoom (zoom → metri); agli zoom intermedi si interpola da solo. Partenza: zoom 6 → 100 km, 11 → 3 km, 16 → 100 m; minimo consigliato 100 m |
 | **Heatmap** | raggio (a tre zoom), sfocatura, quantità di calore (più bassa = più caldo), opacità minima, densità dei percorsi (un punto ogni N metri tra due fix; 0 = nessuno), gradiente a quattro colori con preset |
 | **Percorsi** | stile (*colore unico* oppure *per frequenza*); colore, spessore (a tre zoom) e opacità per il colore unico; per frequenza: sfocatura, quantità di calore (passaggi sovrapposti per il colore più caldo), opacità minima, gradiente; **dettaglio** (semplificazione dei tratti in px: più alto = più leggero) |
-| **Notti** | dalle/alle (default 23–09), punti minimi (default 2), raggio (default 300 m) |
-| **Aspetto** | tema (come il telefono, chiaro, scuro in grigi), stile della mappa, **contorno dei pannelli** (automatico: sottile nel tema chiaro; sempre; nessuno), **ritocchi alla mappa** |
+| **Notti** (in Luoghi e Punti) | dalle/alle (default 23–09), punti minimi (default 2), raggio (default 300 m); di prova, 0 = disattivati: accuratezza massima, durata minima del gruppo (minuti), punti minimi nella fascia centrale (e le sue ore, default 01–05), unione dei luoghi (default 400 m) |
+| **Aspetto** | tema (come il telefono, chiaro, scuro in grigi), stile della mappa, **contorno dei pannelli** (automatico: sottile in entrambi i temi; sempre; nessuno), **ritocchi alla mappa** |
 | **Nomi dei posti** | nomi dati da te; interruttore per i nomi di OpenStreetMap |
 
 **Stili della mappa:** Colorata, Pastello, Seppia, OpenStreetMap, Topografica, National Geographic, Satellite, Semplice (grigia).
@@ -92,10 +93,10 @@ mappa di base (nomi, percorsi e marcatori restano com'erano). La tinta e la sfoc
 
 ## 5. Statistiche
 
-Scheda **Statistiche**, con filtro per anno e mese: km percorsi, giri della Terra, velocità media, km² grattati, panoramica
-(giorni con dati, tempo in movimento, serie di giorni), dove hai dormito, i 10 giorni più lunghi, dove passi più tempo, posti
+Scheda **Statistiche**, con filtro per anno e mese: in cima i blocchetti (km percorsi, giri della Terra, stagione più viaggiata, km nel
+weekend), poi panoramica (punti e periodo), dove hai dormito, i 10 giorni più lunghi, dove passi più tempo, posti
 visitati, casa e lontananza (giorni a casa, a più di 50 e 200 km, punto più lontano), estremi raggiunti, km per mese/anno/ora/giorno
-della settimana, zone nuove per mese e curiosità. Toccando una riga con il segno › la mappa si apre su quel luogo.
+della settimana e zone nuove per mese. Toccando una riga con il segno › la mappa si apre su quel luogo.
 **Durate oltre 365 giorni** si scrivono in anni, mesi e giorni (es. "2 anni, 2 mesi e 21 giorni"; anno = 365 giorni).
 
 ## 6. Tracker (Impostazioni → Tracker)
@@ -127,7 +128,7 @@ della settimana, zone nuove per mese e curiosità. Toccando una riga con il segn
     in movimento) e, accanto, da quanto tempo è stato registrato l'ultimo punto in **minuti e secondi** ("3:20"). Si aggiorna ogni 20 secondi a schermo
     acceso, con il tracking attivo. La cella diventa **rossa** se l'ultimo punto ha più di 6 minuti: con la frequenza di partenza da fermo (un punto ogni 10
     minuti) succede anche a telefono fermo, quindi per averla rossa solo quando c'è un problema conviene un punto ogni 5-6 minuti da fermo.
-  - **Tocchi:** un dato apre la vista (**Percorsi** per i km, **Posti** per i posti, **Heatmap** per il tempo in movimento) con il filtro su oggi (riga grande) o
+  - **Tocchi:** un dato apre la vista (**Percorsi** per i km, **Luoghi** per i posti, **Heatmap** per il tempo in movimento) con il filtro su oggi (riga grande) o
     sugli ultimi 7 giorni (riga grigia); la cella tracker apre le **impostazioni sulla sezione Tracker**; altrove si apre l'app.
   - **Anteprima:** nel selettore dei widget (tieni premuta la home → Widget → MyMap) i widget mostrano dati di esempio, non i tuoi; da Android 12.
   - **Se un testo risulta tagliato:** una riga di celle ha poca altezza; i margini e i testi sono già al limite per molti launcher.

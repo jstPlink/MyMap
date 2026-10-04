@@ -1,4 +1,4 @@
-# MyMap – Architettura (v0.29.8, build 57)
+# MyMap – Architettura (v0.29.21, build 70)
 
 Panoramica tecnica del progetto com'è oggi (per l'uso dell'app vedi [docs/GUIDA.md](docs/GUIDA.md)). La cronologia delle versioni è in [CHANGELOG.md](CHANGELOG.md): va aggiornata a ogni rilascio
 (alzare `versionCode` di 1 e `versionName` in `android/app/build.gradle.kts`, poi aggiungere la voce).
@@ -53,7 +53,7 @@ Google Play Services né librerie HTTP/JSON esterne.
 | File | Ruolo |
 |---|---|
 | `index.html`, `style.css` | Struttura e stile (tema chiaro, o scuro in scala di grigi). |
-| `app.js` | Mappa Leaflet, viste (Scratch, Heatmap, Percorsi, Notti, Posti) scelte con targhette verticali a destra, pannello di personalizzazione della vista corrente, filtro del periodo, pannello dati, tracker. |
+| `app.js` | Mappa Leaflet, viste (Scratch, Heatmap, Percorsi, Luoghi, Punti) scelte con targhette verticali a destra, pannello di personalizzazione della vista corrente, filtro del periodo, pannello dati, tracker. |
 | `stats.js` | Scheda Statistiche (sezioni comprimibili incluse). |
 | `geo.js`, `places.js` | Calcoli geografici (esagoni, notti, visite) e nomi dei luoghi (OpenStreetMap Nominatim + nomi dati dall'utente). |
 | `prefs.js`, `profile.js` | Parametri di personalizzazione (mostrati nel pannello della mappa), preset (vista corrente e frequenza dei punti inclusi) e loro salvataggio nel profilo del server, condiviso tra i dispositivi. |
@@ -68,8 +68,8 @@ Viste della mappa e dati mostrati nel pannello in basso:
 | Scratch | mappa coperta con esagoni "grattati" dove sei stato | esagoni grattati, diametro, stati visitati e percentuale |
 | Heatmap | calore dei punti | i 3 posti più visitati e l'elenco completo |
 | Percorsi | tracce (colore unico o per frequenza) | spostamenti di un giorno con cambio giorno (e filtro sul giorno) |
-| Notti | lune con il numero di notti per luogo | notti trovate, luoghi diversi, notti nel luogo principale, elenco notti e luoghi |
-| Posti | posti visitati (almeno 20 minuti) | posti totali, visite, rinominati, da rinominare, elenco posti |
+| Luoghi (sperimentale, `drawBoth`) | Notti e Posti insieme: pallini e rombi sulla stessa mappa (caselle Notti/Posti in `bothShow`, salvate in `mymap.bothShow`; celle di fusione 32 px invece di 15/14) | notti, luoghi di notte, posti, visite, i due elenchi |
+| Punti (di prova, `drawPoints`) | tutti i punti puliti su una tela propria (`L.Layer` con un `<canvas>` nell'overlayPane; proiezione Mercatore a mano, solo i punti visibili, uno ogni 3 px; ridisegno a ogni `moveend`) e le notti rilevate; il tocco mostra il punto più vicino | conteggio, filtro per ora e accuratezza (`ptOpt`, salvato in `mymap.ptView`), colore per ora, notti sì/no |
 
 ### Ponte nativo (`window.MyMapNative`, adattato da `web/native.js`)
 
@@ -109,10 +109,10 @@ I risultati asincroni tornano con `window.__nativeResult(id, risposta)` (profilo
   l'invio idempotente), `synced`. Nel server la collection `points` ha lo stesso schema più `user` e `device_id`.
 - **Pulizia (`geo.js`).** `clean`: via i fix con accuratezza > 120 m, i salti impossibili (> 180 km/h per più di 300 m) e i picchi (`despike`: punto a > 300 m da precedente e successivo, che distano tra loro meno del 40%, entro 15 min). `dropCoarse` (solo per Percorsi e Heatmap): via i fix con accuratezza ≥ 80 m se c'è un punto più preciso entro 5 min. `movePts`:
   senza le soste importate da Google (`acc = -1`) e con almeno 15 m tra due punti (`thin`); si usa per Percorsi e Heatmap.
-  Scratch, Notti e Posti usano tutti i punti.
+  Scratch, Luoghi e Punti usano tutti i punti.
 - **Km (`moveSteps`).** Passi tra punti consecutivi entro 20 minuti, scartando < 10 m, > 30 km e > 250 km/h. Calcolati sempre su tutti
   i punti del filtro, così sono uguali in ogni vista.
-- **Notti (`sleepPlaces`).** Finestra 23–09 (a cavallo della mezzanotte, la notte porta la data della sera); serve un gruppo di almeno
+- **Notti (`sleepPlaces`; `Prefs.sleepOf` la chiama con le impostazioni).** Parametri di prova in `Prefs.v.sleep` (0 = disattivato): `accMax` (scarta punti imprecisi), `minSpan` (durata minima del gruppo), `coreMin`/`coreFrom`/`coreTo` (punti minimi nella fascia centrale), `merge` (distanza di unione dei luoghi, default 400 m); i controlli extra usano tutti i punti entro il raggio dal centro del gruppo. Le viste Notti e Posti separate sono state tolte (restano Luoghi e Punti; le viste salvate `sleep`/`places` diventano `both`). Finestra 23–09 (a cavallo della mezzanotte, la notte porta la data della sera); serve un gruppo di almeno
   `minPts` punti entro `radius` metri; luogo = centro del gruppo più numeroso; notti entro 400 m nello stesso posto. Per le notti con
   molti punti si campionano al massimo ~120 punti. Le preferenze hanno una versione (`sleep.v`): cambiando la formula si azzerano.
 - **Posti (`visitPlaces`).** Episodi di almeno 20 minuti con i punti entro 150 m dal primo (buchi fino a 3 ore); posti entro 150 m uniti.
@@ -129,13 +129,14 @@ I risultati asincroni tornano con `window.__nativeResult(id, risposta)` (profilo
   Il pannello della vista Percorsi mostra gli spostamenti di un giorno (`tripsPanelHtml`, giorno in `tripDay`); `stepTripDay` cambia giorno e
   imposta il filtro del periodo su quel giorno, `showTrip` imposta giorno e fascia oraria dello spostamento toccato (±2 minuti) e lo evidenzia.
 - **Elenchi e filtri rapidi.** Gli elenchi completi (`openList`: posti più visti, notti e luoghi, posti, stati) usano il foglio `#lsheet` e i dati dell'ultimo
-  disegno (`lastLists`). I filtri rapidi **7 giorni** e **Sempre** (`.qf`) impostano il filtro del periodo come le scorciatoie del pannello filtro.
-- **Contorno dei pannelli.** `Prefs.v.outline` (`auto` = sottile solo nel tema chiaro, `thin`, `off`; `Prefs.effOutline`) imposta `data-outline` su `<html>`; in CSS `--outline` e la regola `:root[data-outline="thin"]`
+  disegno (`lastLists`). I filtri rapidi **Oggi**, **7 giorni** e **Sempre** (`.qf`) impostano il filtro del periodo come le scorciatoie del pannello filtro.
+- **Contorno dei pannelli.** `Prefs.v.outline` (`auto` = sottile in entrambi i temi, `thin`, `off`; `Prefs.effOutline`) imposta `data-outline` su `<html>`; in CSS `--outline` e la regola `:root[data-outline="thin"]`
   aggiungono una linea sottile a pannelli, pulsanti e targhette. Fa parte del gruppo `look` dei preset.
 - **Notti e posti nascosti.** `Prefs.v.hidden` = `{ places: [{lat, lon, label}], nights: [chiavi AAAAMMGG] }`, nel profilo come il resto delle
   impostazioni. `sleepPlaces(..., hidden)` esclude le notti nascoste dal conteggio ma le restituisce nell'elenco (`list`, con
   `hidden`); `visiblePlaces()` esclude i posti entro 150 m da uno nascosto. Gli elenchi *Notti salvate* e *Posti salvati* (`buildSavedLists`
   in `app.js`) sono nel pannello della vista e usano tutti i punti, non il filtro del periodo.
+- **Pannello dati comprimibile.** `#panel-fold` (freccia in cima a `#panel`) attiva la classe `folded`, che nasconde il contenuto; stato in `localStorage` (`mymap.panelFold`).
 - **Gruppi.** Notti e Posti fondono i marcatori vicini sullo schermo (~60 px) in gruppi, ricalcolati a ogni zoom.
 - **Mappa di base.** `MAP_STYLES` in `prefs.js` (otto stili) e `baseLayers` in `app.js`; i filtri di colore sono classi CSS sul livello
   delle tessere (`tiles-*`), i ritocchi dell'utente (`mapFx`) sono filtri sul solo pannello delle tessere e, per la tinta, un filtro SVG

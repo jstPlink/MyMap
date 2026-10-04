@@ -178,10 +178,12 @@ function updateFilterUI() {
   $("f-open").title = on ? "Filtro: " + filterSummary() : "Filtra per periodo"; // il pulsante è solo un'icona
   $("f-open").classList.toggle("on", on);
   $("f-reset").hidden = !on;
-  { // filtri rapidi in alto: evidenzia "7 giorni" o "Sempre" se coincidono con il filtro attivo
-    const f = filterState(), r = quickRange("7");
-    const is7 = f.from === r[0] && f.to === r[1] && !f.y && f.m === "" && !f.d && !f.tf && !f.tt;
-    document.querySelectorAll(".qf").forEach((b) => b.classList.toggle("on", b.dataset.qf === "7" ? is7 : !on));
+  { // filtri rapidi in alto: evidenzia "Oggi", "7 giorni" o "Sempre" se coincidono con il filtro attivo
+    const f = filterState(), plain = !f.y && f.m === "" && !f.d && !f.tf && !f.tt;
+    document.querySelectorAll(".qf").forEach((b) => {
+      const r = quickRange(b.dataset.qf);
+      b.classList.toggle("on", b.dataset.qf === "all" ? !on : plain && f.from === r[0] && f.to === r[1]);
+    });
   }
   // evidenzia la scorciatoia che coincide con il periodo scelto
   const f = filterState();
@@ -220,7 +222,7 @@ document.querySelectorAll("#f-quick [data-q]").forEach((b) => (b.onclick = () =>
 }));
 document.querySelectorAll(".qf").forEach((b) => (b.onclick = () => {
   clearAllFilters();
-  if (b.dataset.qf === "7") { const [from, to] = quickRange("7"); $("f-from").value = from; $("f-to").value = to; }
+  if (b.dataset.qf !== "all") { const [from, to] = quickRange(b.dataset.qf); $("f-from").value = from; $("f-to").value = to; }
   refilter();
 }));
 $("f-open").onclick = () => { fillFilters(); updateFilterUI(); $("fsheet").hidden = false; };
@@ -250,9 +252,10 @@ $("locate").onclick = async () => {
 };
 
 // ---------- viste della mappa ----------
-const MODES = ["scratch", "heat", "routes", "sleep", "places"];
+const MODES = ["scratch", "heat", "routes", "both", "points"];
+const LEGACY_MODES = { sleep: "both", places: "both" }; // le viste Notti e Posti separate non ci sono più
 const LIST_STEP = 40, listLimit = { nights: LIST_STEP, places: LIST_STEP }; // righe mostrate negli elenchi di notti e posti salvati
-let mode = MODES.includes(Prefs.v.view) ? Prefs.v.view : "scratch"; // vista corrente: si ricorda ed è condivisa con le altre impostazioni
+let mode = MODES.includes(LEGACY_MODES[Prefs.v.view] || Prefs.v.view) ? LEGACY_MODES[Prefs.v.view] || Prefs.v.view : "scratch"; // vista corrente: si ricorda ed è condivisa con le altre impostazioni
 let firstRender = true; // all'apertura la mappa si centra su dove sei, non sull'intero storico
 // SVG e non canvas: nella WebView di Android il canvas 2D di Leaflet bloccava l'interfaccia per ~2 secondi a ogni disegno
 const canvas = L.svg({ padding: 0.1 });
@@ -526,32 +529,32 @@ function drawScratch(pts) {
 }
 
 // Notti: i luoghi in cui hai dormito, con il numero di notti. Il calcolo è spiegato nelle impostazioni.
-function drawSleep(pts) {
-  const sl = sleepPlaces(pts, Prefs.v.sleep.from, Prefs.v.sleep.to, Prefs.v.sleep.minPts, Prefs.v.sleep.radius, Prefs.hiddenNights());
+function drawSleep(pts, cellPx = 15) {
+  const sl = Prefs.sleepOf(pts);
   const top = sl.places[0] ? sl.places[0].nights : 1;
   // Con lo zoom lontano le lune si sovrapporrebbero: quelle vicine sullo schermo (entro ~60 px) si fondono in un gruppo
   // con il totale delle notti e il numero di luoghi. Toccando un gruppo la mappa si avvicina. Si ricalcola a ogni zoom.
   const paint = () => {
-    const z = map.getZoom(), CELL = 60, cells = new Map();
+    const z = map.getZoom(), CELL = cellPx, cells = new Map();
     for (const p of sl.places) {
       const pt = map.project([p.lat, p.lon], z), k = Math.floor(pt.x / CELL) + "," + Math.floor(pt.y / CELL);
       const g = cells.get(k) || cells.set(k, { items: [], nights: 0, sl: 0, so: 0 }).get(k);
       g.items.push(p); g.nights += p.nights; g.sl += p.lat * p.nights; g.so += p.lon * p.nights;
     }
-    const maxN = Math.max(1, ...[...cells.values()].map((g) => g.nights));
     cells.forEach((g) => {
-      const size = Math.round(28 + 26 * Math.sqrt(g.nights / maxN));
+      const named = g.items.every((p) => !!Names.find(p.lat, p.lon)), cls = named ? " named" : "";
       if (g.items.length === 1) {
-        const p = g.items[0];
+        const p = g.items[0], size = 14;
         const icon = L.divIcon({ className: "", iconSize: [size, size], iconAnchor: [size / 2, size / 2],
-          html: `<div class="moon" style="width:${size}px;height:${size}px"><b>${p.nights}</b></div>` });
+          html: `<div class="dot${cls}" style="width:${size}px;height:${size}px"></div>` });
         const m = L.marker([p.lat, p.lon], { icon }).addTo(layer);
         m.bindPopup(() => `<div class="pop"><b>${placeSpan(p.lat, p.lon)}</b><br>${fmtSpan(p.nights, "notte", "notti")}<br>${fmtDay(p.first)} – ${fmtDay(p.last)}<br><button class="pop-btn" data-rename>Rinomina</button> <button class="pop-btn secondary" data-hide>Nascondi</button></div>`);
         m.on("popupopen", (e) => popupReady(e, p));
       } else {
         const lat = g.sl / g.nights, lon = g.so / g.nights;
+        const size = 14;
         const icon = L.divIcon({ className: "", iconSize: [size, size], iconAnchor: [size / 2, size / 2],
-          html: `<div class="moon cluster" style="width:${size}px;height:${size}px"><b>${g.nights}</b><i>${g.items.length}</i></div>` });
+          html: `<div class="dot${cls}" style="width:${size}px;height:${size}px"></div>` });
         const m = L.marker([lat, lon], { icon }).addTo(layer);
         m.on("click", () => map.fitBounds(L.latLngBounds(g.items.map((p) => [p.lat, p.lon])), { padding: [60, 60], maxZoom: 17 }));
       }
@@ -566,6 +569,111 @@ function drawSleep(pts) {
     : `Nessuna notte rilevata nel periodo: servono almeno ${Prefs.v.sleep.minPts} punti entro ${Prefs.v.sleep.radius} m tra le ${String(Prefs.v.sleep.from).padStart(2, "0")}:00 e le ${String(Prefs.v.sleep.to).padStart(2, "0")}:00.`;
   lastLists.sleep = sl;
   return { fit: sl.places.map((p) => [p.lat, p.lon]), paint, info, nights, n };
+}
+
+// Vista sperimentale "Luoghi": notti (pallini) e posti (triangolini) sulla stessa mappa
+const bothShow = (() => { try { return { nights: true, places: true, ...JSON.parse(localStorage.getItem("mymap.bothShow")) }; } catch { return { nights: true, places: true }; } })();
+function drawBoth(pts) {
+  const sl = drawSleep(pts, 32), pl = drawPlaces(pts, 32); // nella vista unita i gruppi si formano prima
+  repaint = () => { layer.clearLayers(); if (bothShow.places) pl.paint(); if (bothShow.nights) sl.paint(); };
+  const f = (n) => n.toLocaleString("it-IT");
+  return {
+    fit: sl.fit.concat(pl.fit),
+    info: sumHtml([[f(sl.nights), "notti"], [f(sl.n), "luoghi di notte"], [f(pl.n), "posti"], [f(pl.tot), "visite"]]) +
+      `<div class="showrow"><label><input type="checkbox" data-show="nights"${bothShow.nights ? " checked" : ""}> Notti</label><label><input type="checkbox" data-show="places"${bothShow.places ? " checked" : ""}> Posti</label></div>` +
+      '<button class="chip" id="list-nights">Elenco notti e luoghi</button> <button class="chip" id="list-places">Elenco posti</button>',
+  };
+}
+
+// Vista di prova "Punti": tutti i punti salvati (già puliti, come li usano le notti) su una tela unica. Per reggere decine di migliaia
+// di punti si disegnano solo quelli visibili e al massimo uno ogni 3 px; si ridisegna a ogni movimento della mappa.
+const ptOpt = (() => { const d = { h0: 0, h1: 24, acc: 0, byHour: false, nights: true }; try { return { ...d, ...JSON.parse(localStorage.getItem("mymap.ptView")) }; } catch { return d; } })();
+let ptInst = null;
+const mercY = (lat) => 0.5 - Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360)) / (2 * Math.PI);
+function drawPoints(pts) {
+  const n = pts.length, hrs = new Uint8Array(n);
+  for (let i = 0; i < n; i++) hrs[i] = new Date(pts[i].ts).getHours();
+  const nights = ptOpt.nights ? Prefs.sleepOf(pts).places : [];
+  let sel = [], drawn = { x: [], y: [], i: [] };
+  const select = () => {
+    const { h0, h1, acc } = ptOpt, all = h0 === h1 || (h0 === 0 && h1 === 24), wrap = h0 > h1;
+    sel = [];
+    for (let i = 0; i < n; i++) {
+      const h = hrs[i];
+      if (!all && !(wrap ? h >= h0 || h < h1 : h >= h0 && h < h1)) continue;
+      if (acc > 0 && pts[i].acc > acc) continue;
+      sel.push(i);
+    }
+  };
+  const hue = (h) => `hsl(${Math.round(h * 15)}, 85%, 52%)`;
+  const Cv = L.Layer.extend({
+    onAdd(m) {
+      this._c = L.DomUtil.create("canvas", "leaflet-zoom-hide");
+      this._c.style.pointerEvents = "none";
+      m.getPanes().overlayPane.appendChild(this._c);
+      this._click = (e) => this.tap(e);
+      m.on("click", this._click);
+      this.draw();
+    },
+    onRemove(m) { m.off("click", this._click); L.DomUtil.remove(this._c); },
+    draw() {
+      const c = this._c, size = map.getSize(), dpr = Math.min(2, window.devicePixelRatio || 1);
+      c.width = size.x * dpr; c.height = size.y * dpr; c.style.width = size.x + "px"; c.style.height = size.y + "px";
+      L.DomUtil.setPosition(c, map.containerPointToLayerPoint([0, 0]));
+      const ctx = c.getContext("2d"); ctx.scale(dpr, dpr);
+      const ws = 256 * Math.pow(2, map.getZoom()), ce = map.getCenter();
+      const ox = (ce.lng + 180) / 360 * ws - size.x / 2, oy = mercY(ce.lat) * ws - size.y / 2;
+      const groups = Array.from({ length: ptOpt.byHour ? 24 : 1 }, () => []), seen = new Set();
+      drawn = { x: [], y: [], i: [] };
+      let shown = 0;
+      for (const i of sel) {
+        const p = pts[i], x = (p.lon + 180) / 360 * ws - ox, y = mercY(p.lat) * ws - oy;
+        if (x < -8 || y < -8 || x > size.x + 8 || y > size.y + 8) continue;
+        const key = Math.floor(x / 3) * 10000 + Math.floor(y / 3);
+        if (seen.has(key)) continue;
+        seen.add(key); shown++;
+        groups[ptOpt.byHour ? hrs[i] : 0].push(x, y);
+        drawn.x.push(x); drawn.y.push(y); drawn.i.push(i);
+      }
+      const few = shown < 2500;
+      groups.forEach((g, b) => {
+        if (!g.length) return;
+        ctx.fillStyle = ptOpt.byHour ? hue(b) : "rgba(37, 99, 235, .8)";
+        if (few) { ctx.beginPath(); for (let k = 0; k < g.length; k += 2) { ctx.moveTo(g[k] + 2.5, g[k + 1]); ctx.arc(g[k], g[k + 1], 2.5, 0, 6.2832); } ctx.fill(); }
+        else for (let k = 0; k < g.length; k += 2) ctx.fillRect(g[k] - 1.2, g[k + 1] - 1.2, 2.4, 2.4);
+      });
+      ctx.lineWidth = 1.5; ctx.strokeStyle = "#fff"; ctx.fillStyle = "hsl(27, 90%, 60%)";
+      for (const pl of nights) {
+        const x = (pl.lon + 180) / 360 * ws - ox, y = mercY(pl.lat) * ws - oy;
+        if (x < -10 || y < -10 || x > size.x + 10 || y > size.y + 10) continue;
+        ctx.beginPath(); ctx.arc(x, y, 7, 0, 6.2832); ctx.fill(); ctx.stroke();
+      }
+      const el = $("pt-count");
+      if (el) el.textContent = `${sel.length.toLocaleString("it-IT")} punti selezionati su ${n.toLocaleString("it-IT")} · ${shown.toLocaleString("it-IT")} disegnati qui`;
+    },
+    tap(e) { // tocco: il punto disegnato più vicino (entro 18 px), con ora e accuratezza
+      const q = map.latLngToContainerPoint(e.latlng);
+      let best = -1, bd = 18 * 18;
+      for (let k = 0; k < drawn.x.length; k++) { const d = (drawn.x[k] - q.x) ** 2 + (drawn.y[k] - q.y) ** 2; if (d < bd) { bd = d; best = k; } }
+      if (best < 0) return;
+      const p = pts[drawn.i[best]];
+      const when = new Date(p.ts).toLocaleString("it-IT", { weekday: "short", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      L.popup().setLatLng([p.lat, p.lon]).setContent(`<div class="pop"><b>${when}</b><br>accuratezza ${p.acc < 0 ? "n.d. (importato)" : Math.round(p.acc) + " m"}<br>${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</div>`).openOn(map);
+    },
+  });
+  const inst = new Cv();
+  layer.addLayer(inst);
+  ptInst = { refresh: () => { select(); inst.draw(); } };
+  select();
+  repaint = () => inst.draw();
+  const H = (v, max) => Array.from({ length: max + 1 }, (_, h) => `<option value="${h}"${h === v ? " selected" : ""}>${String(h).padStart(2, "0")}:00</option>`).join("");
+  return {
+    fit: [],
+    info: `<p class="msg" id="pt-count"></p><div class="showrow">Dalle <select data-pt="h0">${H(ptOpt.h0, 23)}</select> alle <select data-pt="h1">${H(ptOpt.h1, 24)}</select></div>` +
+      `<div class="showrow"><label>Accuratezza max <input type="number" data-pt="acc" min="0" max="500" step="5" value="${ptOpt.acc}" style="width:64px"> m (0 = tutte)</label></div>` +
+      `<div class="showrow"><label><input type="checkbox" data-pt="byHour"${ptOpt.byHour ? " checked" : ""}> Colora per ora</label><label><input type="checkbox" data-pt="nights"${ptOpt.nights ? " checked" : ""}> Notti rilevate</label></div>` +
+      '<div class="hourbar"></div><div class="hourlab"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>',
+  };
 }
 
 // ---------- nomi dei posti ----------
@@ -729,6 +837,31 @@ $("l-list").addEventListener("click", (e) => {
   if (g) { const [la, lo] = g.dataset.go.split(",").map(Number); $("lsheet").hidden = true; gotoPlace(la, lo); }
 });
 
+// Il pannello in basso si comprime con la freccia in alto (la scelta resta salvata sul dispositivo)
+function setPanelFold(on) {
+  $("panel").classList.toggle("folded", on);
+  $("panel-fold").setAttribute("aria-expanded", String(!on));
+  try { localStorage.setItem("mymap.panelFold", on ? "1" : "0"); } catch {}
+}
+try { setPanelFold(localStorage.getItem("mymap.panelFold") === "1"); } catch {}
+$("panel-fold").onclick = () => setPanelFold(!$("panel").classList.contains("folded"));
+
+// Vista Luoghi: le due caselle mostrano o nascondono notti e posti
+$("panel").addEventListener("change", (e) => {
+  const pk = e.target.dataset && e.target.dataset.pt;
+  if (pk) { // vista Punti: filtri di prova
+    ptOpt[pk] = e.target.type === "checkbox" ? e.target.checked : +e.target.value;
+    try { localStorage.setItem("mymap.ptView", JSON.stringify(ptOpt)); } catch {}
+    if (pk === "nights") render(false); else if (ptInst) ptInst.refresh();
+    return;
+  }
+  const k = e.target.dataset && e.target.dataset.show;
+  if (!k) return;
+  bothShow[k] = e.target.checked;
+  try { localStorage.setItem("mymap.bothShow", JSON.stringify(bothShow)); } catch {}
+  if (repaint) repaint();
+});
+
 // Il pannello in basso: cambio giorno, tocco su uno spostamento o su un posto, pulsanti degli elenchi
 $("panel").addEventListener("click", (e) => {
   const b = e.target.closest("button[id]");
@@ -778,8 +911,8 @@ const fmtNightKey = (k) => new Date(dkeyTs(k)).toLocaleDateString("it-IT", { wee
 function buildSavedLists() {
   const sn = $("saved-nights"), sp = $("saved-places");
   const c5 = (la, lo) => `${la.toFixed(5)},${lo.toFixed(5)}`;
-  if (sn && mode === "sleep") {
-    const sl = sleepPlaces(points, Prefs.v.sleep.from, Prefs.v.sleep.to, Prefs.v.sleep.minPts, Prefs.v.sleep.radius, Prefs.hiddenNights());
+  if (sn && (mode === "both" || mode === "points")) {
+    const sl = Prefs.sleepOf(points);
     const off = sl.list.filter((n) => n.hidden).length;
     const rows = sl.list.slice(0, listLimit.nights).map((n) => `<div class="srow${n.hidden ? " off" : ""}"><div class="smain"><b>${fmtNightKey(n.key)}</b><span>${placeSpan(n.lat, n.lon)}</span></div>` +
       `<button class="hbtn secondary" data-go="${c5(n.lat, n.lon)}">Vai</button><button class="hbtn secondary" data-nhide="${n.key}" data-off="${n.hidden ? 1 : 0}">${n.hidden ? "Mostra" : "Nascondi"}</button></div>`).join("");
@@ -788,7 +921,7 @@ function buildSavedLists() {
       (sl.list.length > listLimit.nights ? '<button class="secondary" data-more="nights">Mostra altre</button>' : "");
     hydratePlaces(sn);
   }
-  if (sp && mode === "places") {
+  if (sp && mode === "both") {
     const all = visitPlaces(points), off = all.filter((p) => Prefs.isPlaceHidden(p.lat, p.lon)).length;
     const rows = all.slice(0, listLimit.places).map((p) => {
       const h = Prefs.isPlaceHidden(p.lat, p.lon), k = c5(p.lat, p.lon);
@@ -836,31 +969,35 @@ async function nameNewPlaces() {
 }
 $("name-new").onclick = nameNewPlaces;
 
+// Rombo per i posti: arancione se senza nome, bianco se rinominato
+function triIcon(size, named) {
+  const fill = named ? "#fff" : "#4fc3f7", stroke = named ? "rgba(0,0,0,.45)" : "#fff";
+  return L.divIcon({ className: "", iconSize: [size, size], iconAnchor: [size / 2, size / 2],
+    html: `<div class="tri" style="width:${size}px;height:${size}px"><svg viewBox="0 0 20 20"><polygon points="10,1 19,10 10,19 1,10" fill="${fill}" stroke="${stroke}" stroke-width="1" stroke-linejoin="round"/></svg></div>` });
+}
+
 // Posti visitati: dove ti sei fermato almeno 20 minuti, raggruppati per luogo (entro 150 m), con visite e tempo totale.
 // Con lo zoom lontano i posti vicini sullo schermo (entro ~56 px) si fondono in un gruppo con il totale di visite e il
 // numero di posti; toccandolo la mappa si avvicina. Si ricalcola a ogni zoom.
-function drawPlaces(pts) {
+function drawPlaces(pts, cellPx = 14) {
   const all = visiblePlaces(pts), shown = all.slice(0, 1500);
   const todo = all.filter(needsName).length;
   const paint = () => {
-    const z = map.getZoom(), CELL = 56, cells = new Map();
+    const z = map.getZoom(), CELL = cellPx, cells = new Map();
     for (const p of shown) {
       const pt = map.project([p.lat, p.lon], z), k = Math.floor(pt.x / CELL) + "," + Math.floor(pt.y / CELL);
       const g = cells.get(k) || cells.set(k, { items: [], visits: 0, ms: 0, sl: 0, so: 0 }).get(k);
       g.items.push(p); g.visits += p.visits; g.ms += p.ms; g.sl += p.lat * p.ms; g.so += p.lon * p.ms;
     }
-    const maxMs = Math.max(1, ...[...cells.values()].map((g) => g.ms));
     cells.forEach((g) => {
       if (g.items.length === 1) {
-        const p = g.items[0], hours = p.ms / 36e5, r = Math.max(6, Math.min(24, 6 + 4 * Math.sqrt(hours)));
+        const p = g.items[0], hours = p.ms / 36e5;
         const named = !!Names.find(p.lat, p.lon);
-        const m = L.circleMarker([p.lat, p.lon], { radius: r, color: "#fff", weight: 2, fillColor: named ? "#10b981" : p === all[0] ? "#f97316" : "#8b5cf6", fillOpacity: .78 }).addTo(layer);
+        const m = L.marker([p.lat, p.lon], { icon: triIcon(9, named) }).addTo(layer);
         m.bindPopup(() => `<div class="pop"><b>${placeSpan(p.lat, p.lon)}</b><br>${p.visits} ${p.visits === 1 ? "visita" : "visite"} · ${fmtHoursLong(hours)}<br>${fmtDay(p.first)} – ${fmtDay(p.last)}<br><button class="pop-btn" data-rename>${named ? "Rinomina" : "Dai un nome"}</button> <button class="pop-btn secondary" data-hide>Nascondi</button></div>`);
         m.on("popupopen", (e) => popupReady(e, p));
       } else {
-        const size = Math.round(30 + 24 * Math.sqrt(g.ms / maxMs)), lat = g.sl / g.ms, lon = g.so / g.ms;
-        const icon = L.divIcon({ className: "", iconSize: [size, size], iconAnchor: [size / 2, size / 2],
-          html: `<div class="moon cluster pl" style="width:${size}px;height:${size}px"><b>${g.visits}</b><i>${g.items.length}</i></div>` });
+        const lat = g.sl / g.ms, lon = g.so / g.ms, icon = triIcon(9, g.items.every((p) => Names.find(p.lat, p.lon)));
         L.marker([lat, lon], { icon }).addTo(layer)
           .on("click", () => map.fitBounds(L.latLngBounds(g.items.map((p) => [p.lat, p.lon])), { padding: [60, 60], maxZoom: 17 }));
       }
@@ -896,7 +1033,7 @@ function render(fit) {
   // si disegnano invece sui punti alleggeriti (senza soste importate e con almeno 15 m tra due punti)
   const all = applyFilter(points);
   const pts = mode === "heat" || mode === "routes" ? applyFilter(movePts) : all;
-  const draw = { scratch: drawScratch, heat: drawHeat, routes: drawRoutes, sleep: drawSleep, places: drawPlaces }[mode];
+  const draw = { scratch: drawScratch, heat: drawHeat, routes: drawRoutes, both: drawBoth, points: drawPoints }[mode];
   const r = pts.length ? draw(pts) : { fit: [], info: "Nessun punto nel periodo scelto." };
   updateFilterUI();
   map.invalidateSize();
@@ -926,6 +1063,7 @@ function showModeUI() {
   tuneRefresh();
 }
 function setMode(m, silent) {
+  m = LEGACY_MODES[m] || m;
   if (!MODES.includes(m) || (silent && m === mode)) return;
   mode = m;
   showModeUI();
@@ -939,7 +1077,8 @@ document.querySelectorAll("#modes button").forEach((b) => (b.onclick = () => set
 // così le modifiche si vedono subito sulla parte di mappa ancora visibile.
 const TUNE = {
   scratch: ["hex"], heat: ["heat"], routes: ["route"],
-  sleep: ["sleep", "nightslist"], places: ["places", "placeslist"],
+  points: ["sleep", "nightslist"],
+  both: ["sleep", "nightslist", "places", "placeslist"],
 };
 function tuneRefresh() {
   const want = [...(TUNE[mode] || []), "theme"];
@@ -948,7 +1087,7 @@ function tuneRefresh() {
     d.hidden = !want.includes(d.dataset.fold);
     if (d.dataset.fold !== "theme") d.open = true; // le sezioni della vista sono sempre aperte; l'Aspetto si apre a richiesta
   });
-  if (mode === "sleep" || mode === "places") buildSavedLists();
+  if (mode === "both" || mode === "points") buildSavedLists();
 }
 function openTune(on) {
   $("psheet").hidden = !on;
@@ -1151,7 +1290,7 @@ function openFromWidget(view, range) {
   $("f-from").value = from; $("f-to").value = to;
   $("f-tfrom").value = ""; $("f-tto").value = "";
   fillFilters();
-  setMode(view);
+  setMode(view === "places" ? "both" : view);
 }
 
 refreshStatus();

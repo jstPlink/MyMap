@@ -37,7 +37,7 @@ function prefDefaults() {
   return {
     hex,
     heat: { zooms: [7, 11, 15], widths: [5, 9, 16], blur: 12, max: 30, minOpacity: 35, step: 100, preset: "classico", colors: [...HEAT_PRESETS.classico] },
-    sleep: { v: 2, from: 23, to: 9, minPts: 2, radius: 300 }, // v: versione della formula
+    sleep: { v: 2, from: 23, to: 9, minPts: 2, radius: 300, accMax: 0, minSpan: 0, coreMin: 0, coreFrom: 1, coreTo: 5, merge: 400 }, // v: versione della formula
     route: { mode: "single", color: "#00796b", zooms: [7, 11, 15], widths: [1.5, 2.5, 5], opacity: 30, blur: 2, max: 6, minOpacity: 25, detail: 1.5, preset: "classico", colors: [...HEAT_PRESETS.classico] },
     theme: "system", // system | light | dark
     mapStyle: "color", // una chiave di MAP_STYLES
@@ -93,7 +93,7 @@ const Prefs = {
   sysDark() { const m = /[?&]sys=(\d)/.exec(location.search); return m ? m[1] === "1" : matchMedia("(prefers-color-scheme: dark)").matches; },
   isDark() { return this.v.theme === "dark" || (this.v.theme === "system" && this.sysDark()); },
   // contorno effettivo dei pannelli: "auto" è sottile nel tema chiaro e assente nello scuro
-  effOutline() { const o = this.v.outline; return o === "thin" ? "thin" : o === "off" ? "none" : this.isDark() ? "none" : "thin"; },
+  effOutline() { const o = this.v.outline; return o === "thin" ? "thin" : o === "off" ? "none" : "thin"; },
   applyTheme() { document.documentElement.dataset.theme = this.isDark() ? "dark" : "light"; document.documentElement.dataset.outline = this.effOutline(); },
   // Spessore in px allo zoom `z` per "heat" (raggio) o "route" (linea): tre livelli di zoom, ciascuno col suo valore; tra un livello
   // e l'altro si interpola, fuori dal primo e dall'ultimo resta il valore più vicino.
@@ -113,6 +113,8 @@ const Prefs = {
     else if (g === "hex") this.v.hex = hexAdopt(data, d.hex);
     else this.v[g] = { ...d[g], ...JSON.parse(JSON.stringify(data)) };
   },
+  // Notti trovate con le impostazioni correnti (comprese le opzioni di prova)
+  sleepOf(pts) { const s = this.v.sleep; return sleepPlaces(pts, s.from, s.to, s.minPts, s.radius, this.hiddenNights(), s); },
   hiddenNights() { return new Set(this.v.hidden.nights); },
   isPlaceHidden(lat, lon) { return this.v.hidden.places.some((h) => km(h, { lat, lon }) < 0.15); },
   reset(group) { const d = prefDefaults(); this.v[group] = d[group]; this.save(); },
@@ -292,11 +294,18 @@ function buildPrefsUI() {
 
     fold("sleep", "Notti", `
       ${presetBar("sleep")}
-      <p class="hint">Una notte viene registrata se, tra queste ore (anche a cavallo della mezzanotte), ci sono almeno N punti entro il raggio scelto uno dall'altro. Il luogo è il centro di quei punti; le notti entro 400 m si contano nello stesso posto.</p>
+      <p class="hint">Una notte viene registrata se, tra queste ore (anche a cavallo della mezzanotte), ci sono almeno N punti entro il raggio scelto uno dall'altro. Il luogo è il centro di quei punti; le notti entro la distanza di unione (400 m) si contano nello stesso posto.</p>
       <label class="field"><span>Dalle</span><select data-k="sleep.from">${hours(v.sleep.from)}</select></label>
       <label class="field"><span>Alle</span><select data-k="sleep.to">${hours(v.sleep.to)}</select></label>
       ${field("Punti minimi", "sleep.minPts", `type="number" min="1" max="500" step="1" value="${v.sleep.minPts}"`, "entro il raggio, per registrare la notte")}
       ${field("Raggio", "sleep.radius", `type="number" min="20" max="5000" step="10" value="${v.sleep.radius}"`, "metri entro cui devono stare i punti")}
+      <p class="hint">Parametri di prova (0 = disattivato):</p>
+      ${field("Accuratezza massima", "sleep.accMax", `type="number" min="0" max="500" step="5" value="${v.sleep.accMax}"`, "metri: ignora i punti più imprecisi")}
+      ${field("Durata minima", "sleep.minSpan", `type="number" min="0" max="720" step="10" value="${v.sleep.minSpan}"`, "minuti tra il primo e l'ultimo punto del gruppo")}
+      ${field("Punti nella fascia centrale", "sleep.coreMin", `type="number" min="0" max="500" step="1" value="${v.sleep.coreMin}"`, "minimo di punti tra le due ore qui sotto")}
+      <label class="field"><span>Fascia centrale dalle</span><select data-k="sleep.coreFrom">${hours(v.sleep.coreFrom)}</select></label>
+      <label class="field"><span>Fascia centrale alle</span><select data-k="sleep.coreTo">${hours(v.sleep.coreTo)}</select></label>
+      ${field("Unione dei luoghi", "sleep.merge", `type="number" min="50" max="3000" step="50" value="${v.sleep.merge}"`, "metri: notti più vicine contano nello stesso posto")}
       <button class="secondary" data-reset="sleep">Ripristina notti</button>`) +
 
     fold("nightslist", "Notti salvate", `<div id="saved-nights"></div>`) +
