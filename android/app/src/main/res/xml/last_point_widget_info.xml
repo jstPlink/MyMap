@@ -5,6 +5,7 @@
     android:targetCellWidth="2"
     android:targetCellHeight="1"
     android:updatePeriodMillis="1800000"
+    android:previewLayout="@layout/widget_last_point_preview"
     android:initialLayout="@layout/widget_last_point"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen" />

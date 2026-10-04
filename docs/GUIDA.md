@@ -129,6 +129,7 @@ della settimana, zone nuove per mese e curiosità. Toccando una riga con il segn
     minuti) succede anche a telefono fermo, quindi per averla rossa solo quando c'è un problema conviene un punto ogni 5-6 minuti da fermo.
   - **Tocchi:** un dato apre la vista (**Percorsi** per i km, **Posti** per i posti, **Heatmap** per il tempo in movimento) con il filtro su oggi (riga grande) o
     sugli ultimi 7 giorni (riga grigia); la cella tracker apre le **impostazioni sulla sezione Tracker**; altrove si apre l'app.
+  - **Anteprima:** nel selettore dei widget (tieni premuta la home → Widget → MyMap) i widget mostrano dati di esempio, non i tuoi; da Android 12.
   - **Se un testo risulta tagliato:** una riga di celle ha poca altezza; i margini e i testi sono già al limite per molti launcher.
 - **Avviso sonoro "nessun punto":** se il tracking è attivo ma l'ultimo punto ha più di 20 minuti, arriva una notifica con suono e vibrazione. Avvisa
   una sola volta per ogni buco e sparisce quando i punti riprendono; se fermi tu il tracking non parte. Può arrivare con qualche minuto di ritardo (il controllo

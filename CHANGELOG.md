@@ -4,6 +4,10 @@ Versione app in `android/app/build.gradle.kts` (`versionName` e `versionCode`).
 Ad ogni rilascio: alzare `versionCode` di 1, aggiornare `versionName` e aggiungere una voce qui.
 La versione è mostrata in cima alla schermata dell'app.
 
+## 0.29.8 (build 57) - 2026-10-04
+- **Anteprime dei widget:** nel selettore dei widget i tre widget (*ultimo punto*, *oggi e 7 giorni* chiaro e scuro) mostravano il layout vuoto, senza numeri. Ora hanno un'anteprima con dati di esempio (km 12 / 63, posti 5 / 18, movimento 2h 10m / 9h 45m, tracker fermo da 0:42, "5 min fa"). Valgono da Android 12 (`previewLayout`); sulle versioni precedenti resta il layout vuoto.
+- Nuovo `tools/widget_preview.py`: rigenera le anteprime dai layout veri; da rilanciare quando cambia il layout di un widget.
+
 ## 0.29.7 (build 56) - 2026-10-03
 - **Widget, margini:** il contenuto è avvicinato ai bordi del 5% su tutti i lati: da 20 a 19 dp (8 dp di margine del widget + 11 dp attorno ai dati, prima 12).
 

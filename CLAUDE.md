@@ -23,6 +23,7 @@ Commit e push solo quando l'utente li chiede.
 
 ## Note
 
+- Se cambi il layout di un widget rilancia `python tools/widget_preview.py`: rigenera le anteprime mostrate nel selettore dei widget.
 - Nei layout dei widget sono permessi solo alcuni elementi (per esempio niente `View` semplice): vedi ARCHITETTURA.md, `TodayWidget.kt`.
 - Le impostazioni di aspetto, i preset e i nomi dei posti viaggiano nel profilo del server (`web/profile.js`): se cambi il loro formato mantieni la
   conversione dai valori già salvati.
