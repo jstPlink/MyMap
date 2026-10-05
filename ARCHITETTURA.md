@@ -153,7 +153,7 @@ I risultati asincroni tornano con `window.__nativeResult(id, risposta)` (profilo
 
 Il sito è la stessa cartella `web/`, servita da PocketBase (`--publicDir=/pb_public`, `./web` montata in sola lettura nel compose): stesso indirizzo
 dell'API, quindi niente CORS e nessun URL da scrivere. `native.js` chiama `isPocketBaseHost()` (richiesta sincrona a `/api/health`; `?demo=1` la salta): se
-risponde, restituisce `makeWebNative()`, altrimenti restano il ponte nativo (nell'app) o i dati demo (Pages, `python -m http.server`). Il motore web ha la stessa
+risponde, restituisce `makeWebNative()`, altrimenti restano il ponte nativo (nell'app) o i dati demo (`python -m http.server`). Il motore web ha la stessa
 interfaccia del ponte (`Native.*`), con `isWeb: true`, `<html data-web>` e CSS che nascondono tracker, URL e scelta "su questo telefono".
 - **Accesso:** `auth-with-password` su `users`; nel browser restano solo token, id ed email (`mymap.web`), mai la password. Il token si rinnova a ogni apertura (`auth-refresh`); un 401 svuota tutto e riporta alla schermata di accesso (`window.onWebExpired`).
 - **Punti:** `fetchAll` legge `points` a pagine da 500 (`sort=ts,id`), 6 in parallelo, solo `ts,lat,lon,accuracy`, e li impacchetta come nell'app (16 byte/punto). Cache in IndexedDB (`mymap`/`kv`, chiave `pts:<utente>`): si tiene l'ultimo `ts`; all'apertura si confronta il numero di punti con `ts<=ultimo` (se è diverso ne sono stati tolti: si riscarica tutto) e si scaricano solo quelli con `ts>ultimo`. Ogni minuto un conteggio (`totalItems`) fa scattare il ricarico se sono arrivati punti dal telefono.
@@ -176,7 +176,7 @@ interfaccia del ponte (`Native.*`), con `isWeb: true`, `<html data-web>` e CSS c
 - `tools/widget_preview.py`: rigenera le anteprime dei widget (selettore dei widget) dai layout veri.
 - `tools/clean_points.py`: stessa pulizia dell'app sul server (conta; con `--apply` cancella dopo conferma, a lotti dall'API batch). Le regole sono duplicate in `PointStore.cleanup` e nello script: vanno tenute uguali.
 - `tools/import_timeline.py`: importa nel server l'export "Spostamenti" di Google Maps (percorsi, soste, fix GPS).
-- `.github/workflows/pages.yml`: pubblica `web/` su GitHub Pages (versione dimostrativa con dati demo).
+- Non c'è più la pubblicazione su GitHub Pages (workflow tolto: Pages non era attivato e falliva a ogni push). Il sito si serve da PocketBase (vedi *Versione web*).
 
 ## 5. Sviluppo e prova
 

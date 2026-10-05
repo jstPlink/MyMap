@@ -7,7 +7,8 @@ La versione è mostrata in cima alla schermata dell'app.
 ## 0.30.0 (build 71) - 2026-10-05
 - **Versione web.** Lo stesso `docker compose up -d` che avvia il database serve anche il sito: PocketBase espone la cartella `web/` (`--publicDir`), quindi aprendo l'indirizzo del server (porta 9090) si vede l'interfaccia, e l'app Android si collega allo stesso indirizzo: stesso account, stessi punti. Nel sito: accesso con email e password (anche nuovo account e "password dimenticata"), tutte le viste e le statistiche, impostazioni, preset e nomi sincronizzati con l'app, cambio password, esportazione CSV/GPX/JSON dal server. Non c'è il tracciamento (tracker, salute, frequenza, pulizia punti, "registra la posizione adesso").
 - I punti si scaricano dall'API a pagine di 500, 6 in parallelo, e si ricordano nel browser (IndexedDB): dalla seconda volta si scaricano solo i nuovi. Il sito controlla ogni minuto se ne sono arrivati.
-- Nuovo `web/native-web.js` (stessa interfaccia di `native.js`); il sito capisce da solo di essere servito da PocketBase (`/api/health`). Su GitHub Pages o con `python -m http.server` restano i dati demo (`?demo=1` li forza).
+- Nuovo `web/native-web.js` (stessa interfaccia di `native.js`); il sito capisce da solo di essere servito da PocketBase (`/api/health`). Con `python -m http.server` restano i dati demo (`?demo=1` li forza).
+- Tolto il workflow `pages.yml` (pubblicazione su GitHub Pages): Pages non era attivato nel repository e il workflow falliva a ogni push.
 
 ## 0.29.21 (build 70) - 2026-10-04
 - **Viste Notti e Posti tolte:** resta la vista accorpata *Luoghi* (le viste salvate Notti e Posti diventano Luoghi; il widget *posti* apre Luoghi).
