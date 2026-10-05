@@ -1,6 +1,6 @@
 # MyMap – Guida all'uso e ai parametri
 
-Guida per chi usa l'app (versione 0.30.4). Per come è fatta dentro, vedi [ARCHITETTURA.md](../ARCHITETTURA.md); per la cronologia
+Guida per chi usa l'app (versione 0.31.0). Per come è fatta dentro, vedi [ARCHITETTURA.md](../ARCHITETTURA.md); per la cronologia
 delle modifiche, [CHANGELOG.md](../CHANGELOG.md).
 
 ## 1. Cos'è
@@ -12,7 +12,7 @@ sincronizzano con un **tuo** server (PocketBase, ad esempio sul NAS).
 ## Versione web
 
 Quando il server gira con `docker compose up -d`, aprendo il suo indirizzo (ad esempio `http://NAS:9090`, o l'indirizzo pubblico del tunnel) nel browser si vede la stessa
-interfaccia dell'app, con gli stessi punti. Si accede con email e password dello stesso account (si può anche creare un account nuovo). Ci sono tutte le viste, le statistiche,
+interfaccia dell'app (su uno schermo largo, almeno 1000 px, con un layout pensato per il computer: a sinistra menu, viste, periodo e dati, a destra la mappa; statistiche e impostazioni su più colonne), con gli stessi punti. Si accede con email e password dello stesso account (si può anche creare un account nuovo). Ci sono tutte le viste, le statistiche,
 le impostazioni, i preset, i nomi dei posti e le notti nascoste, sincronizzati con l'app (quello che cambi nel sito lo ritrovi nell'app e viceversa), il cambio password e
 l'esportazione (CSV, GPX, JSON, direttamente dal server). **Non c'è il tracciamento**: niente tracker, salute del tracking, frequenza dei punti, pulizia dei punti e
 "registra la posizione adesso" (il pulsante "dove sono" usa la posizione del browser, solo con HTTPS). La prima apertura scarica tutti i punti (qualche secondo con decine

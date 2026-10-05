@@ -57,6 +57,7 @@ const Native = (() => {
 
   // ---------- modalità web: sito servito da PocketBase (native-web.js) ----------
   if (isPocketBaseHost()) { document.documentElement.dataset.web = "1"; return makeWebNative(); }
+  if (/[?&]layout=web/.test(location.search)) document.documentElement.dataset.web = "1"; // solo per provare il layout del sito con i dati demo
 
   // ---------- modalità browser ----------
   const demo = demoPoints();

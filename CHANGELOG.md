@@ -4,6 +4,10 @@ Versione app in `android/app/build.gradle.kts` (`versionName` e `versionCode`).
 Ad ogni rilascio: alzare `versionCode` di 1, aggiornare `versionName` e aggiungere una voce qui.
 La versione è mostrata in cima alla schermata dell'app.
 
+## 0.31.0 (build 76) - 2026-10-05
+- **Nuovo layout del sito su schermi larghi (≥ 1000 px).** In qualsiasi browser (l'app Android non cambia): a sinistra una colonna con logo e versione, menu verticale (Mappa, Statistiche, Impostazioni) e i controlli della mappa (viste, periodo con scorciatoie, pannello dati, *Personalizza la vista* e *Dove sono* con la scritta); a destra la mappa a tutta altezza, con il livello di zoom in alto a sinistra e il pannello di personalizzazione che si apre a destra. Statistiche su tre colonne con i blocchetti in cima; Impostazioni su due colonne. Stesso stile (colori, chip, contorni). Sotto i 1000 px il sito resta com'era. Nuovi `web/web.css` e `web/web-layout.js` (sposta gli elementi senza cambiare gli id).
+- **Server locale per provare l'interfaccia:** `python tools/dev_server.py` (dati demo, con il layout del sito; `?layout=web` nasconde anche tracker e simili come online) oppure `--proxy http://IP:9090` per usare i dati veri dal PocketBase. `.claude/launch.json` lo avvia dal pannello.
+
 ## 0.30.4 (build 75) - 2026-10-05
 - **Nuovo indirizzo del server:** `https://mymap.fplinio.it` (prima `pocketbase.fplinio.it`, che non esiste più). È il valore di partenza dell'app (`SERVER_URL`) e, se nel telefono è salvato il vecchio indirizzo, `Prefs.serverUrl` lo converte da solo. Aggiornato anche `tools/import_timeline.py`.
 

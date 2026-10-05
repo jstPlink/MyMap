@@ -23,6 +23,7 @@ Commit e push solo quando l'utente li chiede.
 
 ## Note
 
+- Per provare l'interfaccia web in locale: `python tools/dev_server.py` (dati demo) oppure `python tools/dev_server.py --proxy http://IP:9090` (dati veri dal PocketBase), poi `http://localhost:8123`. Il layout per schermi larghi è in `web/web.css` e `web/web-layout.js`; la versione sul NAS si aggiorna copiando `web/` in `/volume1/docker/mymap/web` (vedi docs/PASSAGGIO.md).
 - Se cambi il layout di un widget rilancia `python tools/widget_preview.py`: rigenera le anteprime mostrate nel selettore dei widget.
 - Nei layout dei widget sono permessi solo alcuni elementi (per esempio niente `View` semplice): vedi ARCHITETTURA.md, `TodayWidget.kt`.
 - Le impostazioni di aspetto, i preset e i nomi dei posti viaggiano nel profilo del server (`web/profile.js`): se cambi il loro formato mantieni la

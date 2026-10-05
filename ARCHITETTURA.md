@@ -1,4 +1,4 @@
-# MyMap – Architettura (v0.30.4, build 75)
+# MyMap – Architettura (v0.31.0, build 76)
 
 Panoramica tecnica del progetto com'è oggi (per l'uso dell'app vedi [docs/GUIDA.md](docs/GUIDA.md)). La cronologia delle versioni è in [CHANGELOG.md](CHANGELOG.md): va aggiornata a ogni rilascio
 (alzare `versionCode` di 1 e `versionName` in `android/app/build.gradle.kts`, poi aggiungere la voce).
@@ -60,6 +60,7 @@ Google Play Services né librerie HTTP/JSON esterne.
 | `account.js` | Schermata di accesso, account, cambio password, esportazione. |
 | `world.js`, `countries-data.js` | Stati visitati: `world.js` decodifica i confini (TopoJSON Natural Earth 1:50m in `countries-data.js`, caricato solo alla prima richiesta) e assegna i punti ai paesi (punto in poligono, con i buchi come Lesotho e San Marino); i punti si raggruppano in celle di 0,02° e si provano più punti per cella, le celle già risolte si ricordano. Conta uno stato con almeno 3 punti, ignorando i tratti oltre 400 km/h; il totale per la percentuale sono 195 stati sovrani. |
 | `native.js` | Adattatore verso il motore nativo (o simulazione nel browser). |
+| `web.css`, `web-layout.js` | Layout del sito su schermi larghi (≥ 1000 px, in qualsiasi browser, non nell'app): `web-layout.js` costruisce `#side` (logo, `nav`, controlli della mappa) e vi sposta `#modes`, `.fgroup`, `.qfs`, `#panel`, `#tune`, `#locate`, più `#s-ver` e `#zoomlevel` (senza cambiare gli id), e li rimette al loro posto sotto i 1000 px (`matchMedia`); `web.css` li dispone (griglia 340 px + mappa, pannello di personalizzazione a destra, statistiche a colonne, impostazioni a griglia). `?layout=web` attiva `data-web` (nasconde tracker e simili) anche con i dati demo. |
 
 Viste della mappa e dati mostrati nel pannello in basso:
 
@@ -173,6 +174,7 @@ interfaccia del ponte (`Native.*`), con `isWeb: true`, `<html data-web>` e CSS c
 ## 4. Strumenti e pubblicazione
 
 - `tools/setup_server.py`: prepara il server (utente, campi necessari).
+- `tools/dev_server.py`: server locale di `web/` senza cache (`python tools/dev_server.py`, porta 8123); con `--proxy http://IP:9090` inoltra `/api` al PocketBase e il sito funziona con i dati veri. `.claude/launch.json` ne ha la configurazione.
 - `tools/widget_preview.py`: rigenera le anteprime dei widget (selettore dei widget) dai layout veri.
 - `tools/clean_points.py`: stessa pulizia dell'app sul server (conta; con `--apply` cancella dopo conferma, a lotti dall'API batch). Le regole sono duplicate in `PointStore.cleanup` e nello script: vanno tenute uguali.
 - `tools/import_timeline.py`: importa nel server l'export "Spostamenti" di Google Maps (percorsi, soste, fix GPS).
