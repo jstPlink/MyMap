@@ -4,6 +4,9 @@ Versione app in `android/app/build.gradle.kts` (`versionName` e `versionCode`).
 Ad ogni rilascio: alzare `versionCode` di 1, aggiornare `versionName` e aggiungere una voce qui.
 La versione è mostrata in cima alla schermata dell'app.
 
+## 0.30.4 (build 75) - 2026-10-05
+- **Nuovo indirizzo del server:** `https://mymap.fplinio.it` (prima `pocketbase.fplinio.it`, che non esiste più). È il valore di partenza dell'app (`SERVER_URL`) e, se nel telefono è salvato il vecchio indirizzo, `Prefs.serverUrl` lo converte da solo. Aggiornato anche `tools/import_timeline.py`.
+
 ## 0.30.3 (build 74) - 2026-10-05
 - **Password da almeno 5 caratteri:** i controlli di creazione account e cambio password (sito e app) chiedono 5 caratteri invece di 8, come il server dopo `setup_server.py` o la migrazione `1700000002`.
 

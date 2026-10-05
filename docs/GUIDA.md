@@ -1,6 +1,6 @@
 # MyMap – Guida all'uso e ai parametri
 
-Guida per chi usa l'app (versione 0.30.3). Per come è fatta dentro, vedi [ARCHITETTURA.md](../ARCHITETTURA.md); per la cronologia
+Guida per chi usa l'app (versione 0.30.4). Per come è fatta dentro, vedi [ARCHITETTURA.md](../ARCHITETTURA.md); per la cronologia
 delle modifiche, [CHANGELOG.md](../CHANGELOG.md).
 
 ## 1. Cos'è

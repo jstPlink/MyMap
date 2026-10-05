@@ -4,7 +4,7 @@
 Legge semanticSegments[].timelinePath (percorsi), semanticSegments[].visit (soste) e rawSignals[].position (fix GPS con accuratezza).
 client_id è un hash di (ts, lat, lon): rilanciare lo script non crea duplicati.
 
-Uso:  python tools/import_timeline.py takeout/Spostamenti.json --url https://pocketbase.fplinio.it --email TUA@EMAIL [--only takeout-visit]
+Uso:  python tools/import_timeline.py takeout/Spostamenti.json --url https://mymap.fplinio.it --email TUA@EMAIL [--only takeout-visit]
 La password si legge da MYMAP_PASSWORD, altrimenti viene chiesta.
 """
 import argparse, getpass, hashlib, json, os, re, sys, urllib.request, urllib.error

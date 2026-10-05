@@ -1,4 +1,4 @@
-# MyMap – Architettura (v0.30.3, build 74)
+# MyMap – Architettura (v0.30.4, build 75)
 
 Panoramica tecnica del progetto com'è oggi (per l'uso dell'app vedi [docs/GUIDA.md](docs/GUIDA.md)). La cronologia delle versioni è in [CHANGELOG.md](CHANGELOG.md): va aggiornata a ogni rilascio
 (alzare `versionCode` di 1 e `versionName` in `android/app/build.gradle.kts`, poi aggiungere la voce).

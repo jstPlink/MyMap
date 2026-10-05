@@ -7,7 +7,7 @@ class Prefs(context: Context) {
 
     /** Di default il server è quello nel BuildConfig; l'utente può cambiarlo dalle impostazioni. */
     var serverUrl: String
-        get() = sp.getString("server_url", null) ?: BuildConfig.SERVER_URL
+        get() = (sp.getString("server_url", null) ?: BuildConfig.SERVER_URL).replace("://pocketbase.fplinio.it", "://mymap.fplinio.it") // il vecchio indirizzo non esiste più
         set(v) = sp.edit().putString("server_url", v.trim().trimEnd('/')).apply()
     var email: String
         get() = sp.getString("email", "") ?: ""
