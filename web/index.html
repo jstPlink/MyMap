@@ -9,9 +9,9 @@
 <script>
   // tema: scelta dell'utente (chiaro/scuro) o, se "come il telefono", quello del telefono (l'app lo passa come ?sys=0/1)
   (function () {
-    var t = "system";
+    var t = "dark";
     var o = "auto";
-    try { var pr = JSON.parse(localStorage.getItem("mymap.prefs") || "{}"); t = pr.theme || "system"; o = pr.outline === "thin" || pr.outline === "off" ? pr.outline : "auto"; } catch (e) {}
+    try { var pr = JSON.parse(localStorage.getItem("mymap.prefs") || "{}"); t = pr.theme || "dark"; o = pr.outline === "thin" || pr.outline === "off" ? pr.outline : "auto"; } catch (e) {}
     var m = /[?&]sys=(\d)/.exec(location.search);
     var sys = m ? m[1] === "1" : matchMedia("(prefers-color-scheme: dark)").matches;
     var dark = t === "dark" || (t === "system" && sys);

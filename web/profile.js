@@ -46,6 +46,7 @@ const Profile = (() => {
       Names.adopt(remote.names || {});
       store.set(T_KEY, String(remote.t || Date.now()));
     } finally { applying = false; }
+    if (Prefs.migrated) { Prefs.migrated = false; store.set(T_KEY, String(Date.now())); setTimeout(push, 0); } // valori di partenza nuovi: il profilo del server si aggiorna
     Prefs.applyTheme();
     Native.setTheme(Prefs.v.theme);
     if (window.setBase) setBase();

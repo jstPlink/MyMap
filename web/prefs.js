@@ -32,18 +32,20 @@ const HEAT_PRESETS = {
 };
 const HEAT_STOPS = [0.2, 0.45, 0.7, 1];
 
+const DEFAULTS_V = 2; // da alzare quando cambiano i valori di partenza di aspetto, esagoni, heatmap e percorsi
+
 function prefDefaults() {
-  const hex = { zooms: [6, 11, 16], diams: [6, 11, 16].map(defaultHexDiam) }; // tre livelli di zoom; in mezzo si interpola
+  const hex = { zooms: [3, 13, 16], diams: [50000, 170, 50] }; // tre livelli di zoom; in mezzo si interpola
   return {
     hex,
-    heat: { zooms: [7, 11, 15], widths: [5, 9, 16], blur: 12, max: 30, minOpacity: 35, step: 100, preset: "classico", colors: [...HEAT_PRESETS.classico] },
+    heat: { zooms: [7, 11, 15], widths: [5, 3, 2], blur: 1, max: 1, minOpacity: 16, step: 1, preset: "fuoco", colors: [...HEAT_PRESETS.fuoco] },
     sleep: { v: 2, from: 23, to: 9, minPts: 2, radius: 300, accMax: 0, minSpan: 0, coreMin: 0, coreFrom: 1, coreTo: 5, merge: 400 }, // v: versione della formula
-    route: { mode: "single", color: "#00796b", zooms: [7, 11, 15], widths: [1.5, 2.5, 5], opacity: 30, blur: 2, max: 6, minOpacity: 25, detail: 1.5, preset: "classico", colors: [...HEAT_PRESETS.classico] },
-    theme: "system", // system | light | dark
-    mapStyle: "color", // una chiave di MAP_STYLES
+    route: { mode: "freq", color: "#00796b", zooms: [7, 11, 15], widths: [1.5, 2.5, 5], opacity: 0, blur: 1, max: 6, minOpacity: 30, detail: 1, preset: "fuoco", colors: [...HEAT_PRESETS.fuoco] },
+    theme: "dark", // system | light | dark
+    mapStyle: "topo", // una chiave di MAP_STYLES
     outline: "auto", // auto (sottile nel tema chiaro) | thin (sempre) | off (mai): linea attorno a pannelli e pulsanti
     // ritocchi alla mappa di base (cursori in Aspetto): filtri di colore e tinta sovrapposta
-    mapFx: { hue: 0, sat: 100, bright: 100, contrast: 100, gray: 0, sepia: 0, invert: 0, blur: 0, tint: "#3b82f6", tintOpacity: 0, tintMode: "multiply" },
+    mapFx: { hue: 0, sat: 150, bright: 100, contrast: 95, gray: 0, sepia: 0, invert: 0, blur: 0, tint: "#3b82f6", tintOpacity: 0, tintMode: "multiply" },
     hidden: { places: [], nights: [] }, // posti e notti nascosti dall'utente (i dati restano): posti = {lat, lon, label}, notti = chiavi AAAAMMGG della sera
     presets: {}, // preset salvati dall'utente: { gruppo: { nome: valori } }, gruppi hex, heat, route, sleep, look
     view: "scratch", // vista della mappa, condivisa tra i dispositivi
@@ -67,7 +69,12 @@ const Prefs = {
   onSaved: null, // () => void, impostato da profile.js: ogni modifica delle impostazioni sale anche sul profilo
   adopt(saved) {
     const d = prefDefaults();
-    this.v = { hex: hexAdopt(saved.hex, d.hex), heat: { ...d.heat, ...saved.heat }, sleep: saved.sleep && saved.sleep.v === d.sleep.v ? { ...d.sleep, ...saved.sleep } : d.sleep, route: { ...d.route, ...saved.route }, theme: saved.theme ?? d.theme, mapStyle: saved.mapStyle ?? d.mapStyle, outline: ["thin", "off", "auto"].includes(saved.outline) ? saved.outline : "auto", mapFx: { ...d.mapFx, ...saved.mapFx }, presets: saved.presets && typeof saved.presets === "object" ? saved.presets : {}, view: typeof saved.view === "string" ? saved.view : d.view, hidden: { places: Array.isArray(saved.hidden && saved.hidden.places) ? saved.hidden.places : [], nights: Array.isArray(saved.hidden && saved.hidden.nights) ? saved.hidden.nights : [] }, names: saved.names ?? d.names };
+    // versione dei valori di partenza: se cambia, aspetto, esagoni, heatmap e percorsi salvati tornano ai nuovi valori (una volta sola)
+    if (saved.dv !== DEFAULTS_V) {
+      if (["hex", "heat", "route", "theme", "mapStyle", "mapFx"].some((k) => saved[k] !== undefined)) this.migrated = true;
+      saved = { ...saved, hex: undefined, heat: undefined, route: undefined, theme: undefined, mapStyle: undefined, mapFx: undefined };
+    }
+    this.v = { dv: DEFAULTS_V, hex: hexAdopt(saved.hex, d.hex), heat: { ...d.heat, ...saved.heat }, sleep: saved.sleep && saved.sleep.v === d.sleep.v ? { ...d.sleep, ...saved.sleep } : d.sleep, route: { ...d.route, ...saved.route }, theme: saved.theme ?? d.theme, mapStyle: saved.mapStyle ?? d.mapStyle, outline: ["thin", "off", "auto"].includes(saved.outline) ? saved.outline : "auto", mapFx: { ...d.mapFx, ...saved.mapFx }, presets: saved.presets && typeof saved.presets === "object" ? saved.presets : {}, view: typeof saved.view === "string" ? saved.view : d.view, hidden: { places: Array.isArray(saved.hidden && saved.hidden.places) ? saved.hidden.places : [], nights: Array.isArray(saved.hidden && saved.hidden.nights) ? saved.hidden.nights : [] }, names: saved.names ?? d.names };
   },
   load() {
     try { this.adopt(JSON.parse(localStorage.getItem("mymap.prefs") || "{}")); } catch { this.v = prefDefaults(); }

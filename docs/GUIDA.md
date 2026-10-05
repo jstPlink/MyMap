@@ -1,6 +1,6 @@
 # MyMap – Guida all'uso e ai parametri
 
-Guida per chi usa l'app (versione 0.30.0). Per come è fatta dentro, vedi [ARCHITETTURA.md](../ARCHITETTURA.md); per la cronologia
+Guida per chi usa l'app (versione 0.30.2). Per come è fatta dentro, vedi [ARCHITETTURA.md](../ARCHITETTURA.md); per la cronologia
 delle modifiche, [CHANGELOG.md](../CHANGELOG.md).
 
 ## 1. Cos'è
@@ -85,11 +85,11 @@ quando vuoi. I preset valgono per esagoni, heatmap, percorsi, notti e aspetto (t
 
 **Spessore a tre livelli di zoom** (heatmap e percorsi): per ciascuno dei tre livelli scegli lo zoom e lo spessore in pixel; tra un
 livello e l'altro il valore si interpola, fuori dal primo e dall'ultimo resta il valore più vicino. Valori di partenza: percorsi
-1,5 / 2,5 / 5 px e heatmap 5 / 9 / 16 px a zoom 7 / 11 / 15.
+1,5 / 2,5 / 5 px e heatmap 5 / 3 / 2 px a zoom 7 / 11 / 15.
 
 | Gruppo | Parametri |
 |---|---|
-| **Scratch · esagoni** | diametro dell'esagono a tre livelli di zoom (zoom → metri); agli zoom intermedi si interpola da solo. Partenza: zoom 6 → 100 km, 11 → 3 km, 16 → 100 m; minimo consigliato 100 m |
+| **Scratch · esagoni** | diametro dell'esagono a tre livelli di zoom (zoom → metri); agli zoom intermedi si interpola da solo. Partenza: zoom 3 → 50 km, 13 → 170 m, 16 → 50 m; minimo consigliato 100 m |
 | **Heatmap** | raggio (a tre zoom), sfocatura, quantità di calore (più bassa = più caldo), opacità minima, densità dei percorsi (un punto ogni N metri tra due fix; 0 = nessuno), gradiente a quattro colori con preset |
 | **Percorsi** | stile (*colore unico* oppure *per frequenza*); colore, spessore (a tre zoom) e opacità per il colore unico; per frequenza: sfocatura, quantità di calore (passaggi sovrapposti per il colore più caldo), opacità minima, gradiente; **dettaglio** (semplificazione dei tratti in px: più alto = più leggero) |
 | **Notti** (in Luoghi e Punti) | dalle/alle (default 23–09), punti minimi (default 2), raggio (default 300 m); di prova, 0 = disattivati: accuratezza massima, durata minima del gruppo (minuti), punti minimi nella fascia centrale (e le sue ore, default 01–05), unione dei luoghi (default 400 m) |

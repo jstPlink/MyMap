@@ -5,6 +5,8 @@ Per l'uso dell'app vedi [GUIDA.md](GUIDA.md), per com'è fatta [../ARCHITETTURA.
 
 ## Problema aperto: il sito sul NAS non carica
 
+> **Risolto (2026-10-05).** La cartella `web/` sul NAS era vuota e il container era stato ricreato da un altro compose. Ora il progetto è solo in `/volume1/docker/mymap` (database, `web/` e compose), il sito risponde sia da LAN sia dal tunnel. Quando cambia `web/` va ricopiata sul NAS (`/volume1/docker/mymap/web`); Cloudflare tiene in cache i file 4 ore (*Purge Everything*). Il testo qui sotto è la cronologia.
+
 Dopo `git pull && docker compose up -d` sul NAS, il sito non si apre. Verificato dall'esterno, attraverso il tunnel Cloudflare (`https://pocketbase.fplinio.it`, la stessa `SERVER_URL` dell'app in `android/app/build.gradle.kts`):
 
 | Richiesta | Risposta |

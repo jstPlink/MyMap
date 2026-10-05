@@ -4,6 +4,13 @@ Versione app in `android/app/build.gradle.kts` (`versionName` e `versionCode`).
 Ad ogni rilascio: alzare `versionCode` di 1, aggiornare `versionName` e aggiungere una voce qui.
 La versione è mostrata in cima alla schermata dell'app.
 
+## 0.30.2 (build 73) - 2026-10-05
+- **Nuovi valori di partenza.** *Aspetto:* tema scuro, mappa topografica, saturazione 150, contrasto 95. *Scratch:* zoom 3 → 50 km, 13 → 170 m, 16 → 50 m. *Heatmap:* spessori 5 / 3 / 2 px a zoom 7 / 11 / 15, sfocatura 1, quantità di calore 1, opacità minima 16, densità 1, gradiente fuoco. *Percorsi:* stile per frequenza, spessori 1,5 / 2,5 / 5 px, opacità 0, sfocatura 1, quantità di calore 6, opacità minima 30, dettaglio 1, gradiente fuoco.
+- **Una sola volta** anche le impostazioni già salvate di aspetto, scratch, heatmap e percorsi tornano a questi valori e si aggiornano nel profilo del server; notti, nomi, preset, posti nascosti e vista corrente non cambiano (`DEFAULTS_V` in `prefs.js`: da alzare quando i valori di partenza cambiano ancora).
+
+## 0.30.1 (build 72) - 2026-10-05
+- **Schermata di accesso:** il pulsante *Password dimenticata?* era quasi invisibile (azzurro chiaro su fondo chiaro); ora ha il colore del testo ed è sottolineato.
+
 ## 0.30.0 (build 71) - 2026-10-05
 - **Versione web.** Lo stesso `docker compose up -d` che avvia il database serve anche il sito: PocketBase espone la cartella `web/` (`--publicDir`), quindi aprendo l'indirizzo del server (porta 9090) si vede l'interfaccia, e l'app Android si collega allo stesso indirizzo: stesso account, stessi punti. Nel sito: accesso con email e password (anche nuovo account e "password dimenticata"), tutte le viste e le statistiche, impostazioni, preset e nomi sincronizzati con l'app, cambio password, esportazione CSV/GPX/JSON dal server. Non c'è il tracciamento (tracker, salute, frequenza, pulizia punti, "registra la posizione adesso").
 - I punti si scaricano dall'API a pagine di 500, 6 in parallelo, e si ricordano nel browser (IndexedDB): dalla seconda volta si scaricano solo i nuovi. Il sito controlla ogni minuto se ne sono arrivati.
