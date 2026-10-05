@@ -1,6 +1,6 @@
 # MyMap – Guida all'uso e ai parametri
 
-Guida per chi usa l'app (versione 0.30.2). Per come è fatta dentro, vedi [ARCHITETTURA.md](../ARCHITETTURA.md); per la cronologia
+Guida per chi usa l'app (versione 0.30.3). Per come è fatta dentro, vedi [ARCHITETTURA.md](../ARCHITETTURA.md); per la cronologia
 delle modifiche, [CHANGELOG.md](../CHANGELOG.md).
 
 ## 1. Cos'è
@@ -150,8 +150,7 @@ della settimana e zone nuove per mese. Toccando una riga con il segno › la map
 
 ## 7. Account e dati
 
-- **Account:** accesso, creazione, *Cambia password* (serve quella attuale), esci. La password deve avere almeno **8 caratteri** nell'app; il
-  server, dopo `tools/setup_server.py`, ne accetta anche 5, ma l'app non lo consente ancora (vedi i punti aperti in ARCHITETTURA.md).
+- **Account:** accesso, creazione, *Cambia password* (serve quella attuale), esci. La password deve avere almeno **5 caratteri** (il server li accetta dopo `tools/setup_server.py` o con la migrazione `1700000002`).
 - **Impostazioni nel profilo:** con un account sul server, impostazioni, preset, vista corrente, frequenza dei punti, nomi dei posti e notti e posti nascosti
   si salvano nel profilo e si ritrovano su un altro telefono o dopo una reinstallazione (vince la modifica più recente). Serve il campo
   `settings` sul server: si crea con `python tools/setup_server.py --url … --admin-email …` (vedi ARCHITETTURA.md).

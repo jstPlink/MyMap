@@ -1,4 +1,4 @@
-# MyMap – Architettura (v0.30.2, build 73)
+# MyMap – Architettura (v0.30.3, build 74)
 
 Panoramica tecnica del progetto com'è oggi (per l'uso dell'app vedi [docs/GUIDA.md](docs/GUIDA.md)). La cronologia delle versioni è in [CHANGELOG.md](CHANGELOG.md): va aggiornata a ogni rilascio
 (alzare `versionCode` di 1 e `versionName` in `android/app/build.gradle.kts`, poi aggiungere la voce).
@@ -166,7 +166,7 @@ interfaccia del ponte (`Native.*`), con `isWeb: true`, `<html data-web>` e CSS c
 - Migrazioni: collection `points` (idempotente grazie all'indice unico `user + client_id`, regole solo per il proprietario),
   batch API attiva (`/api/batch`, 300 richieste), campo JSON `settings` sugli utenti per il profilo.
 - Password: PocketBase vuole di default almeno 8 caratteri. La migrazione `1700000002` e `tools/setup_server.py` abbassano il minimo
-  del campo a **5** (idempotenti). Attenzione: i controlli dell'app (`web/account.js`, `web/index.html`) chiedono ancora **8**.
+  del campo a **5** (idempotenti). Anche i controlli dell'app (`web/account.js`, `web/index.html`) chiedono almeno **5** (dalla 0.30.3).
 - `pocketbase/start-local.ps1` e `set-admin.ps1` servono per provarlo su Windows senza Docker (richiedono il binario in
   `pocketbase/bin/`, escluso da git).
 
@@ -229,7 +229,6 @@ risulta vuoto o incoerente (l'app può interrompersi all'avvio); (c) la disinsta
 - Gli spostamenti (`computeTrips`) e gli elenchi si ricalcolano a ogni caricamento dei punti e si ricordano per riferimento all'array dei punti;
   con molti anni di dati non è misurato il costo sul telefono.
 - Gli APK compilati su PC diversi non sono intercambiabili per via della firma di debug (vedi sezione 5).
-- Password: il minimo è 5 sul server (dopo `setup_server.py` o la migrazione) ma 8 nell'app: da allineare se si vuole usare 5.
 - La tinta della mappa usa un filtro SVG e la sfocatura un filtro CSS: sui telefoni meno potenti possono rallentare la mappa. Non
   misurato sul dispositivo.
 - Le tessere Esri e OpenStreetMap non richiedono chiave ma hanno i loro termini d'uso (uso personale e leggero); quelle CARTO ora

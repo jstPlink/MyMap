@@ -4,6 +4,9 @@ Versione app in `android/app/build.gradle.kts` (`versionName` e `versionCode`).
 Ad ogni rilascio: alzare `versionCode` di 1, aggiornare `versionName` e aggiungere una voce qui.
 La versione è mostrata in cima alla schermata dell'app.
 
+## 0.30.3 (build 74) - 2026-10-05
+- **Password da almeno 5 caratteri:** i controlli di creazione account e cambio password (sito e app) chiedono 5 caratteri invece di 8, come il server dopo `setup_server.py` o la migrazione `1700000002`.
+
 ## 0.30.2 (build 73) - 2026-10-05
 - **Nuovi valori di partenza.** *Aspetto:* tema scuro, mappa topografica, saturazione 150, contrasto 95. *Scratch:* zoom 3 → 50 km, 13 → 170 m, 16 → 50 m. *Heatmap:* spessori 5 / 3 / 2 px a zoom 7 / 11 / 15, sfocatura 1, quantità di calore 1, opacità minima 16, densità 1, gradiente fuoco. *Percorsi:* stile per frequenza, spessori 1,5 / 2,5 / 5 px, opacità 0, sfocatura 1, quantità di calore 6, opacità minima 30, dettaglio 1, gradiente fuoco.
 - **Una sola volta** anche le impostazioni già salvate di aspetto, scratch, heatmap e percorsi tornano a questi valori e si aggiornano nel profilo del server; notti, nomi, preset, posti nascosti e vista corrente non cambiano (`DEFAULTS_V` in `prefs.js`: da alzare quando i valori di partenza cambiano ancora).

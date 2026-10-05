@@ -86,7 +86,7 @@ async function doEmailLogin(create) {
   const url = $("l-url").value.trim(), email = $("l-email").value.trim(), password = $("l-pw").value;
   if (!/^https?:\/\//i.test(url)) return loginSay("Inserisci l'URL del database, ad esempio https://pocketbase.tuodominio.it", true);
   if (!email || !password) return loginSay("Inserisci email e password", true);
-  if (create && password.length < 8) return loginSay("La password deve avere almeno 8 caratteri", true);
+  if (create && password.length < 5) return loginSay("La password deve avere almeno 5 caratteri", true);
   if (create && password !== $("l-pw2").value) return loginSay("Le due password non coincidono", true);
   setBusy(true);
   loginSay(create ? "Creazione dell'account…" : "Accesso…");
@@ -151,7 +151,7 @@ $("pc-open").onclick = () => {
 $("pc-save").onclick = async () => {
   const old = $("pc-old").value, nw = $("pc-new").value;
   if (!old) return pcSay("Scrivi la password attuale", true);
-  if (nw.length < 8) return pcSay("La nuova password deve avere almeno 8 caratteri", true);
+  if (nw.length < 5) return pcSay("La nuova password deve avere almeno 5 caratteri", true);
   if (nw !== $("pc-new2").value) return pcSay("Le due nuove password non coincidono", true);
   if (nw === old) return pcSay("La nuova password è uguale a quella attuale", true);
   $("pc-save").disabled = true;
