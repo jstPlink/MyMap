@@ -13,6 +13,6 @@ visitati, con statistiche. Nessuna parte social. I dati restano sul telefono o s
 ## Cartelle
 
 - `android/` app Kotlin: tracking in background, buffer SQLite, sincronizzazione, WebView
-- `web/` interfaccia (HTML, CSS, JS senza build), inclusa nell'APK
+- `web/` interfaccia (HTML, CSS, JS senza build), inclusa nell'APK e servita anche da PocketBase come sito (stesso indirizzo del database, vedi docker-compose.yml)
 - `pocketbase/` migrazioni e script per il backend
 - `tools/` preparazione del server e importazione dello storico di Google Maps

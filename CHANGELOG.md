@@ -4,6 +4,11 @@ Versione app in `android/app/build.gradle.kts` (`versionName` e `versionCode`).
 Ad ogni rilascio: alzare `versionCode` di 1, aggiornare `versionName` e aggiungere una voce qui.
 La versione è mostrata in cima alla schermata dell'app.
 
+## 0.30.0 (build 71) - 2026-10-05
+- **Versione web.** Lo stesso `docker compose up -d` che avvia il database serve anche il sito: PocketBase espone la cartella `web/` (`--publicDir`), quindi aprendo l'indirizzo del server (porta 9090) si vede l'interfaccia, e l'app Android si collega allo stesso indirizzo: stesso account, stessi punti. Nel sito: accesso con email e password (anche nuovo account e "password dimenticata"), tutte le viste e le statistiche, impostazioni, preset e nomi sincronizzati con l'app, cambio password, esportazione CSV/GPX/JSON dal server. Non c'è il tracciamento (tracker, salute, frequenza, pulizia punti, "registra la posizione adesso").
+- I punti si scaricano dall'API a pagine di 500, 6 in parallelo, e si ricordano nel browser (IndexedDB): dalla seconda volta si scaricano solo i nuovi. Il sito controlla ogni minuto se ne sono arrivati.
+- Nuovo `web/native-web.js` (stessa interfaccia di `native.js`); il sito capisce da solo di essere servito da PocketBase (`/api/health`). Su GitHub Pages o con `python -m http.server` restano i dati demo (`?demo=1` li forza).
+
 ## 0.29.21 (build 70) - 2026-10-04
 - **Viste Notti e Posti tolte:** resta la vista accorpata *Luoghi* (le viste salvate Notti e Posti diventano Luoghi; il widget *posti* apre Luoghi).
 - **Nuova vista di prova "Punti":** mostra tutti i punti salvati (puliti) su una tela unica e veloce (solo i punti visibili, al massimo uno ogni 3 px, ridisegno a ogni movimento). Filtri per **ora** (dalle/alle) e **accuratezza massima**, *Colora per ora* con legenda, *Notti rilevate* come pallini arancioni; toccando un punto si vede ora e accuratezza.

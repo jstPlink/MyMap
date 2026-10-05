@@ -1,20 +1,23 @@
-# PocketBase di MyMap, pensato per il NAS.
-#   docker compose up -d                      solo PocketBase, sulla porta 9090 (LAN)
+# MyMap sul NAS: PocketBase (database dei punti) e interfaccia web, allo stesso indirizzo.
+# PocketBase serve anche la cartella web/ (sito) oltre all'API: aprendo http://NAS:9090 si vede il sito, e l'app Android
+# si collega allo stesso indirizzo (stesso account, stessi punti).
+#   docker compose up -d                      PocketBase + sito web, sulla porta 9090 (LAN)
 #   docker compose --profile tunnel up -d     in più il tunnel Cloudflare, per raggiungerlo da fuori casa
 #
 # Sul NAS servono questa cartella con dentro pocketbase/pb_migrations (crea la collection `points`
-# e abilita /api/batch). pb_data viene creata al primo avvio.
+# e abilita /api/batch) e web/ (il sito). pb_data viene creata al primo avvio.
 services:
   pocketbase:
     image: ghcr.io/muchobien/pocketbase:latest
     container_name: mymap-pocketbase
     restart: unless-stopped
-    command: ["serve", "--http=0.0.0.0:8090", "--dir=/pb_data", "--migrationsDir=/pb_migrations"]
+    command: ["serve", "--http=0.0.0.0:8090", "--dir=/pb_data", "--migrationsDir=/pb_migrations", "--publicDir=/pb_public"]
     ports:
       - "9090:8090"   # porta 9090 del NAS -> 8090 del container
     volumes:
       - ./pocketbase/pb_data:/pb_data
       - ./pocketbase/pb_migrations:/pb_migrations
+      - ./web:/pb_public:ro   # il sito: stessa cartella che finisce nell'APK
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8090/api/health"]
       interval: 30s

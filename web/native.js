@@ -55,6 +55,9 @@ const Native = (() => {
     };
   }
 
+  // ---------- modalità web: sito servito da PocketBase (native-web.js) ----------
+  if (isPocketBaseHost()) { document.documentElement.dataset.web = "1"; return makeWebNative(); }
+
   // ---------- modalità browser ----------
   const demo = demoPoints();
   const state = { tracking: false, total: demo.length, pending: 0, lastSync: "mai" };

@@ -42,7 +42,7 @@ function showLogin() {
   $("l-pw").value = "";
   $("l-pw2").value = "";
   loginSay("");
-  pickDb("local"); // di default i dati restano sul telefono
+  pickDb(Native.isWeb ? "server" : "local"); // di default i dati restano sul telefono (nel web c'è solo il server)
   pickMode("login");
   $("login").hidden = false;
 }
@@ -169,6 +169,7 @@ $("logout").onclick = async () => {
   if (session.mode !== "server") { showLogin(); pickDb("server"); return; }
   const pending = Native.status().pending;
   const ok = await confirmDialog(
+    Native.isWeb ? `Uscire dall'account ${session.email}? I punti restano nel database online.` :
     `Uscire dall'account ${session.email}? I punti salvati su questo telefono vengono cancellati (restano nel database online).` +
     (pending ? ` Attenzione: ${pending} punti non sono ancora stati sincronizzati e andranno persi.` : ""), "Esci");
   if (!ok) return;
@@ -185,6 +186,11 @@ function say2(t) { $("export-msg").textContent = t; }
 document.querySelectorAll("[data-export]").forEach((b) => (b.onclick = () => {
   const fmt = b.dataset.export;
   if (Native.isApp) { Native.exportData(fmt); say2("Scegli dove salvare il file…"); return; }
+  if (Native.isWeb) { // scarica dal server tutti i punti con tutti i campi
+    say2("Scarico i punti dal server…");
+    Native.exportData(fmt).then((n) => say2(`Esportati ${n} punti`), (e) => say2("Esportazione non riuscita: " + (e && e.message || e)));
+    return;
+  }
   // nel browser (demo) si esporta quello che c'è in pagina
   const iso = (t) => new Date(t).toISOString();
   let text, type;
@@ -201,6 +207,12 @@ document.querySelectorAll("[data-export]").forEach((b) => (b.onclick = () => {
 }));
 
 refreshAccount();
-if (Native.isApp && session.mode === "none") showLogin();
+const hasEngine = Native.isApp || Native.isWeb;
+if (hasEngine && session.mode === "none") showLogin();
 Profile.onState = refreshAccount;
-if (Native.isApp && session.mode === "server") Profile.sync();
+if (hasEngine && session.mode === "server") Profile.sync();
+if (Native.isWeb) {
+  document.querySelector('[data-fold="export"] .hint').textContent = "Scarica dal server tutti i tuoi punti in un file.";
+  // token scaduto: si torna alla schermata di accesso
+  window.onWebExpired = () => { session = Native.session(); points = []; movePts = []; loadedTotal = -1; statsFor = ""; render(false); refreshAccount(); showLogin(); };
+}

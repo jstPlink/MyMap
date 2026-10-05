@@ -488,3 +488,6 @@ button.secondary { background: var(--surface-2); border: 1px solid rgba(127, 127
 .showrow { flex-wrap: wrap; align-items: center; }
 .hourbar { height: 6px; border-radius: 3px; margin-top: 6px; background: linear-gradient(90deg, hsl(0,85%,52%), hsl(60,85%,52%), hsl(120,85%,52%), hsl(180,85%,52%), hsl(240,85%,52%), hsl(300,85%,52%), hsl(360,85%,52%)); }
 .hourlab { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); }
+
+/* versione web (servita da PocketBase): niente tracciamento, e l'indirizzo del database è quello del sito */
+:root[data-web] [data-fold="tracker"], :root[data-web] #trackwarn, :root[data-web] #login-db, :root[data-web] #l-url { display: none; }

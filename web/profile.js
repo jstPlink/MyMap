@@ -10,9 +10,10 @@ const Profile = (() => {
   let timer = null, applying = false, busy = false, again = false, pulled = false, syncing = false; // pulled: il profilo del server è già stato letto in questa sessione
 
   const localT = () => +store.get(T_KEY) || 0;
-  const online = () => Native.isApp && session && session.mode === "server";
+  const online = () => (Native.isApp || Native.isWeb) && session && session.mode === "server";
+  let remoteTracker; // frequenza dei punti letta dal profilo: nel web non c'è un tracker, ma il profilo deve conservarla
   const acct = () => (session ? `${session.url}|${session.email}` : "");
-  const snapshot = () => ({ t: localT(), prefs: { ...Prefs.v, tracker: Native.isApp ? Native.trackerConfig() : undefined }, names: Names.snapshot() });
+  const snapshot = () => ({ t: localT(), prefs: { ...Prefs.v, tracker: Native.isApp ? Native.trackerConfig() : remoteTracker }, names: Names.snapshot() });
   const set = (s, d = "") => { state = s; detail = d; if (api.onState) api.onState(); };
 
   async function push() {
@@ -68,6 +69,7 @@ const Profile = (() => {
       let remote = null;
       try { remote = r.settings ? JSON.parse(r.settings) : null; } catch {}
       pulled = true;
+      if (remote && remote.prefs && remote.prefs.tracker) remoteTracker = remote.prefs.tracker;
       // installazione nuova (o altro account): il profilo del server vince sempre, qualunque ora abbiano le modifiche locali
       const known = store.get(OK_KEY) === acct();
       if (remote && (!known || (remote.t || 0) > localT())) apply(remote);

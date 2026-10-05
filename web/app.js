@@ -1113,8 +1113,8 @@ async function loadPoints() {
   lastLoad = Date.now();
   const total = Native.status().total;
   if (total === loadedTotal && points.length) return; // niente ricarico se non ci sono punti nuovi
-  points = clean(await Native.points());
-  loadedTotal = total;
+  try { points = clean(await Native.points()); } catch (e) { console.warn("punti non caricati", e); return; } // web: rete assente o accesso scaduto
+  loadedTotal = Native.isWeb ? Native.status().total : total; // nel web il totale lo conosce solo il caricamento stesso
   movePts = thin(dropCoarse(points.filter((p) => !isStay(p))), 15, 5 * 60000);
   if (firstRender) { await locate(); drawMe(); }
   fillFilters();
@@ -1270,7 +1270,7 @@ bindPrefsUI();
 Prefs.onChange = (g) => { if (g === "mapFx") { applyMapFx(); return; } statsFor = ""; render(false); };
 Prefs.applyTheme();
 Native.setTheme(Prefs.v.theme); // l'app lo ricorda per colorare le barre di sistema prima che la pagina si carichi
-$("repull").onclick = () => { Native.repull(); $("repull-msg").textContent = "Scarico avviato: i punti nuovi compaiono al prossimo avvio dell'app."; };
+$("repull").onclick = () => { Native.repull(); $("repull-msg").textContent = Native.isWeb ? "Cache svuotata: i punti si riscaricano ora dal server." : "Scarico avviato: i punti nuovi compaiono al prossimo avvio dell'app."; };
 
 // ---------- aperture dai widget ----------
 // Il widget "oggi" apre l'app su una vista con il filtro su oggi: km → Percorsi, posti → Posti, tempo in movimento → Heatmap.

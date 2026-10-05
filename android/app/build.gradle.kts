@@ -11,8 +11,8 @@ android {
         applicationId = "com.mymap.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 70
-        versionName = "0.29.21"
+        versionCode = 71
+        versionName = "0.30.0"
         buildConfigField("String", "SERVER_URL", "\"https://pocketbase.fplinio.it\"")
     }
 

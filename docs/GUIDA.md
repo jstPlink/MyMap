@@ -1,6 +1,6 @@
 # MyMap – Guida all'uso e ai parametri
 
-Guida per chi usa l'app (versione 0.24.0). Per come è fatta dentro, vedi [ARCHITETTURA.md](../ARCHITETTURA.md); per la cronologia
+Guida per chi usa l'app (versione 0.30.0). Per come è fatta dentro, vedi [ARCHITETTURA.md](../ARCHITETTURA.md); per la cronologia
 delle modifiche, [CHANGELOG.md](../CHANGELOG.md).
 
 ## 1. Cos'è
@@ -8,6 +8,16 @@ delle modifiche, [CHANGELOG.md](../CHANGELOG.md).
 MyMap è un'app Android **personale**: registra dove vai, anche con lo schermo bloccato, e te lo mostra in cinque viste (scratch map,
 heatmap, percorsi, notti, posti…) e in statistiche. Non c'è nessuna parte social. I dati restano **sul telefono** oppure si
 sincronizzano con un **tuo** server (PocketBase, ad esempio sul NAS).
+
+## Versione web
+
+Quando il server gira con `docker compose up -d`, aprendo il suo indirizzo (ad esempio `http://NAS:9090`, o l'indirizzo pubblico del tunnel) nel browser si vede la stessa
+interfaccia dell'app, con gli stessi punti. Si accede con email e password dello stesso account (si può anche creare un account nuovo). Ci sono tutte le viste, le statistiche,
+le impostazioni, i preset, i nomi dei posti e le notti nascoste, sincronizzati con l'app (quello che cambi nel sito lo ritrovi nell'app e viceversa), il cambio password e
+l'esportazione (CSV, GPX, JSON, direttamente dal server). **Non c'è il tracciamento**: niente tracker, salute del tracking, frequenza dei punti, pulizia dei punti e
+"registra la posizione adesso" (il pulsante "dove sono" usa la posizione del browser, solo con HTTPS). La prima apertura scarica tutti i punti (qualche secondo con decine
+di migliaia); poi il browser li ricorda e scarica solo i nuovi. *Dati → Riscarica lo storico dal server* svuota quella cache. Il sito controlla ogni minuto se dal telefono
+sono arrivati punti nuovi.
 
 ## 2. Primi passi
 

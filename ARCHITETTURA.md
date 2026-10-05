@@ -1,4 +1,4 @@
-# MyMap – Architettura (v0.29.21, build 70)
+# MyMap – Architettura (v0.30.0, build 71)
 
 Panoramica tecnica del progetto com'è oggi (per l'uso dell'app vedi [docs/GUIDA.md](docs/GUIDA.md)). La cronologia delle versioni è in [CHANGELOG.md](CHANGELOG.md): va aggiornata a ogni rilascio
 (alzare `versionCode` di 1 e `versionName` in `android/app/build.gradle.kts`, poi aggiungere la voce).
@@ -149,9 +149,20 @@ I risultati asincroni tornano con `window.__nativeResult(id, risposta)` (profilo
 - **Filtro alla sincronizzazione.** `SyncWorker` chiama `PointStore.cleanup(true, onlyPending = true)` prima di inviare: l'analisi usa i punti da inviare più le 3 ore precedenti (anche già inviati, come contesto), ma si cancellano solo quelli con `synced = 0`, che quindi non salgono sul server; niente `VACUUM`. Le regole sono le stesse della pulizia manuale.
 - **Pulizia del database (`PointStore.cleanup`, ponte `cleanPoints(apply)`, Tracker → Pulizia dei punti).** Toglie accuratezza > 120 m, picchi (stessa regola di `despike`) e punti da fermo ripetuti (entro 10 m dall'ultimo tenuto e 10 min, seguiti da un punto ancora fermo: restano primo, ultimo e uno ogni 10 min). Le soste importate (acc = -1) non si toccano. I punti già sincronizzati tolti finiscono in `deleted` (database versione 2), che `insertSynced` rispetta; il server non viene modificato. Su 78.817 punti reali la simulazione ne toglie circa 17.000.
 
+### Versione web (`web/native-web.js`)
+
+Il sito è la stessa cartella `web/`, servita da PocketBase (`--publicDir=/pb_public`, `./web` montata in sola lettura nel compose): stesso indirizzo
+dell'API, quindi niente CORS e nessun URL da scrivere. `native.js` chiama `isPocketBaseHost()` (richiesta sincrona a `/api/health`; `?demo=1` la salta): se
+risponde, restituisce `makeWebNative()`, altrimenti restano il ponte nativo (nell'app) o i dati demo (Pages, `python -m http.server`). Il motore web ha la stessa
+interfaccia del ponte (`Native.*`), con `isWeb: true`, `<html data-web>` e CSS che nascondono tracker, URL e scelta "su questo telefono".
+- **Accesso:** `auth-with-password` su `users`; nel browser restano solo token, id ed email (`mymap.web`), mai la password. Il token si rinnova a ogni apertura (`auth-refresh`); un 401 svuota tutto e riporta alla schermata di accesso (`window.onWebExpired`).
+- **Punti:** `fetchAll` legge `points` a pagine da 500 (`sort=ts,id`), 6 in parallelo, solo `ts,lat,lon,accuracy`, e li impacchetta come nell'app (16 byte/punto). Cache in IndexedDB (`mymap`/`kv`, chiave `pts:<utente>`): si tiene l'ultimo `ts`; all'apertura si confronta il numero di punti con `ts<=ultimo` (se è diverso ne sono stati tolti: si riscarica tutto) e si scaricano solo quelli con `ts>ultimo`. Ogni minuto un conteggio (`totalItems`) fa scattare il ricarico se sono arrivati punti dal telefono.
+- **Profilo:** `pullSettings`/`pushSettings` sul campo `settings` dell'utente, con la stessa logica dell'app (`profile.js`). Il web non ha un tracker, ma conserva nel profilo la frequenza dei punti letta dal server (`remoteTracker`), altrimenti la cancellerebbe.
+- **Esportazione:** scarica dal server tutti i campi e genera il file nel browser (`exportData`). **Non provato contro un PocketBase vero**: la prova è stata fatta con un finto server con gli stessi endpoint.
+
 ## 3. Backend (`pocketbase/`, `docker-compose.yml`)
 
-- PocketBase in Docker, porta pubblicata solo su `127.0.0.1:8090` (l'esposizione pubblica è pensata via tunnel Cloudflare).
+- PocketBase in Docker, serve anche il sito (`--publicDir`, vedi *Versione web*), porta pubblicata solo su `127.0.0.1:8090` (l'esposizione pubblica è pensata via tunnel Cloudflare).
 - Migrazioni: collection `points` (idempotente grazie all'indice unico `user + client_id`, regole solo per il proprietario),
   batch API attiva (`/api/batch`, 300 richieste), campo JSON `settings` sugli utenti per il profilo.
 - Password: PocketBase vuole di default almeno 8 caratteri. La migrazione `1700000002` e `tools/setup_server.py` abbassano il minimo
