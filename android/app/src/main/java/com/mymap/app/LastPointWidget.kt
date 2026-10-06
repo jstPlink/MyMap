@@ -35,12 +35,12 @@ class LastPointWidget : AppWidgetProvider() {
             val views = RemoteViews(context.packageName, R.layout.widget_last_point)
             views.setTextViewText(R.id.w_value, if (ts == 0L) "—" else ago(age))
             views.setTextViewText(R.id.w_label, if (ts == 0L) "nessun punto salvato" else "dall'ultimo punto")
-            views.setTextColor(R.id.w_value, if (ts != 0L && age > STALE_MS) 0xFFD32F2F.toInt() else 0xFF212121.toInt())
+            views.setTextColor(R.id.w_value, if (ts != 0L && age > STALE_MS) 0xFFFBBF24.toInt() else 0xFFFFFFFF.toInt())
             views.setOnClickPendingIntent(R.id.w_root, TodayWidget.openApp(context, null, null)) // il tocco apre l'app
             manager.updateAppWidget(ids, views)
         }
 
-        // oltre mezz'ora senza punti il valore diventa rosso (da fermo il telefono ne salva uno ogni 10 minuti)
+        // oltre mezz'ora senza punti il valore diventa ambra (da fermo il telefono ne salva uno ogni 10 minuti)
         private const val STALE_MS = 30 * 60_000L
 
         fun ago(ms: Long): String {

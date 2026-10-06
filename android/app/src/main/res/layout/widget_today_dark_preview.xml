@@ -13,21 +13,21 @@
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:minWidth="34dp"
-        android:paddingLeft="11dp"
-        android:layout_marginRight="10dp"
+        android:paddingLeft="4dp"
+        android:layout_marginRight="2dp"
         android:orientation="vertical">
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="left"
             android:gravity="center"
-            android:paddingTop="11dp"
+            android:paddingTop="7dp"
             android:paddingBottom="0dp"
             android:text=" "
             android:includeFontPadding="false"
-            android:textSize="11.2sp"
+            android:textSize="12sp"
             android:textStyle="bold"
-            android:textColor="#D9A8A8A8"
+            android:textColor="#E6FFFFFF"
             android:maxLines="1" />
         <TextView
             android:layout_width="match_parent"
@@ -41,9 +41,9 @@
             android:gravity="center_vertical"
             android:text="oggi"
             android:includeFontPadding="false"
-            android:textSize="11.2sp"
+            android:textSize="12sp"
             android:textStyle="bold"
-            android:textColor="#D9A8A8A8"
+            android:textColor="#E6FFFFFF"
             android:maxLines="1" />
         <TextView
             android:layout_width="match_parent"
@@ -55,20 +55,17 @@
             android:layout_gravity="left"
             android:gravity="center"
             android:paddingTop="0dp"
-            android:paddingBottom="11dp"
+            android:paddingBottom="7dp"
             android:text="7g"
             android:includeFontPadding="false"
-            android:textSize="11.2sp"
+            android:textSize="12sp"
             android:textStyle="bold"
-            android:textColor="#D9A8A8A8"
+            android:textColor="#E6FFFFFF"
             android:maxLines="1" />
     </LinearLayout>
-    <ImageView
-        android:layout_width="1dp"
-        android:layout_height="46dp"
-        android:background="#33FFFFFF" />
     <LinearLayout
         android:id="@+id/w_col_km"
+        android:background="@drawable/widget_cell"
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="1"
@@ -79,13 +76,13 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:gravity="center"
-            android:paddingTop="11dp"
+            android:paddingTop="7dp"
             android:paddingBottom="0dp"
             android:text="km"
             android:includeFontPadding="false"
-            android:textSize="11.2sp"
+            android:textSize="12sp"
             android:textStyle="bold"
-            android:textColor="#D9A8A8A8"
+            android:textColor="#E6FFFFFF"
             android:maxLines="1" />
         <TextView
             android:layout_width="match_parent"
@@ -99,7 +96,7 @@
             android:minHeight="21dp"
             android:gravity="center"
             android:includeFontPadding="false"
-            android:textSize="16.8sp"
+            android:textSize="16.5sp"
             android:textStyle="bold"
             android:textColor="#FFFFFF"
             android:maxLines="1" />
@@ -115,15 +112,16 @@
             android:layout_gravity="center_horizontal"
             android:gravity="center_horizontal"
             android:paddingTop="0dp"
-            android:paddingBottom="11dp"
+            android:paddingBottom="7dp"
             android:includeFontPadding="false"
-            android:textSize="11.2sp"
+            android:textSize="12sp"
             android:textStyle="bold"
-            android:textColor="#D9A8A8A8"
+            android:textColor="#E6FFFFFF"
             android:maxLines="1" />
     </LinearLayout>
     <LinearLayout
         android:id="@+id/w_col_places"
+        android:background="@drawable/widget_cell"
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="1"
@@ -134,13 +132,13 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:gravity="center"
-            android:paddingTop="11dp"
+            android:paddingTop="7dp"
             android:paddingBottom="0dp"
             android:text="posti"
             android:includeFontPadding="false"
-            android:textSize="11.2sp"
+            android:textSize="12sp"
             android:textStyle="bold"
-            android:textColor="#D9A8A8A8"
+            android:textColor="#E6FFFFFF"
             android:maxLines="1" />
         <TextView
             android:layout_width="match_parent"
@@ -154,7 +152,7 @@
             android:minHeight="21dp"
             android:gravity="center"
             android:includeFontPadding="false"
-            android:textSize="16.8sp"
+            android:textSize="16.5sp"
             android:textStyle="bold"
             android:textColor="#FFFFFF"
             android:maxLines="1" />
@@ -170,15 +168,16 @@
             android:layout_gravity="center_horizontal"
             android:gravity="center_horizontal"
             android:paddingTop="0dp"
-            android:paddingBottom="11dp"
+            android:paddingBottom="7dp"
             android:includeFontPadding="false"
-            android:textSize="11.2sp"
+            android:textSize="12sp"
             android:textStyle="bold"
-            android:textColor="#D9A8A8A8"
+            android:textColor="#E6FFFFFF"
             android:maxLines="1" />
     </LinearLayout>
     <LinearLayout
         android:id="@+id/w_col_time"
+        android:background="@drawable/widget_cell"
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="1"
@@ -189,13 +188,13 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:gravity="center"
-            android:paddingTop="11dp"
+            android:paddingTop="7dp"
             android:paddingBottom="0dp"
             android:text="movimento"
             android:includeFontPadding="false"
-            android:textSize="11.2sp"
+            android:textSize="12sp"
             android:textStyle="bold"
-            android:textColor="#D9A8A8A8"
+            android:textColor="#E6FFFFFF"
             android:maxLines="1" />
         <TextView
             android:layout_width="match_parent"
@@ -209,7 +208,7 @@
             android:minHeight="21dp"
             android:gravity="center"
             android:includeFontPadding="false"
-            android:textSize="16.8sp"
+            android:textSize="16.5sp"
             android:textStyle="bold"
             android:textColor="#FFFFFF"
             android:maxLines="1" />
@@ -225,25 +224,21 @@
             android:layout_gravity="center_horizontal"
             android:gravity="center_horizontal"
             android:paddingTop="0dp"
-            android:paddingBottom="11dp"
+            android:paddingBottom="7dp"
             android:includeFontPadding="false"
-            android:textSize="11.2sp"
+            android:textSize="12sp"
             android:textStyle="bold"
-            android:textColor="#D9A8A8A8"
+            android:textColor="#E6FFFFFF"
             android:maxLines="1" />
     </LinearLayout>
-    <ImageView
-        android:layout_width="1dp"
-        android:layout_height="46dp"
-        android:layout_marginLeft="6dp"
-        android:background="#33FFFFFF" />
     <LinearLayout
         android:id="@+id/w_col_pos"
+        android:background="@drawable/widget_cell"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:minWidth="88dp"
-        android:paddingLeft="11dp"
-        android:paddingRight="11dp"
+        android:paddingLeft="6dp"
+        android:paddingRight="6dp"
         android:layout_marginLeft="6dp"
         android:orientation="vertical">
         <TextView
@@ -252,13 +247,13 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:gravity="center"
-            android:paddingTop="11dp"
+            android:paddingTop="7dp"
             android:paddingBottom="0dp"
             android:text="tracker"
             android:includeFontPadding="false"
-            android:textSize="11.2sp"
+            android:textSize="12sp"
             android:textStyle="bold"
-            android:textColor="#D9A8A8A8"
+            android:textColor="#E6FFFFFF"
             android:maxLines="1" />
         <LinearLayout
             android:layout_width="match_parent"
@@ -280,7 +275,7 @@
                 android:layout_marginLeft="5dp"
                 android:gravity="center"
                 android:includeFontPadding="false"
-                android:textSize="16.8sp"
+                android:textSize="16.5sp"
                 android:textStyle="bold"
                 android:textColor="#FFFFFF"
                 android:maxLines="1" />

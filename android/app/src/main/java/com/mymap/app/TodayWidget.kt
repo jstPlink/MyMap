@@ -30,7 +30,7 @@ open class TodayWidget : AppWidgetProvider() {
     }
 
     companion object {
-        /** Oltre questo tempo dall'ultimo punto la cella tracker diventa rossa. */
+        /** Oltre questo tempo dall'ultimo punto la cella tracker diventa ambra. */
         private const val ALERT_MS = 6 * 60_000L
 
         /** Fotogrammi delle due icone animate (ViewFlipper): vanno colorati tutti insieme. */
@@ -82,20 +82,20 @@ open class TodayWidget : AppWidgetProvider() {
         /**
          * Cella tracker: solo l'icona animata, colorata come lo stato (onde se fermo, passi se in movimento), e da quanto tempo è stato
          * registrato l'ultimo punto ("3:20", minuti e secondi). Se l'ultimo punto ha più di 6 minuti (o non ce ne sono) la cella
-         * diventa rossa, con icona e testi bianchi.
+         * diventa ambra, con icona e testi in teal scuro.
          */
         private fun applyTracker(views: RemoteViews, fix: PointStore.LastFix?, dark: Boolean) {
             val age = if (fix == null) 0L else System.currentTimeMillis() - fix.ts
             val stale = fix != null && age > StaleAlert.STALE_MS
             val alert = fix == null || age > ALERT_MS
             val moving = fix != null && !stale && fix.moving
-            val white = 0xFFFFFFFF.toInt()
-            val green = if (dark) 0xFF7DDC9C.toInt() else 0xFF1B7F3B.toInt()
-            val plain = if (dark) 0xFFFFFFFF.toInt() else 0xFF1B1B1B.toInt()
-            val labelColor = if (dark) 0xD9A8A8A8.toInt() else 0xD9707070.toInt() // lo stesso grigio dei dati dei 7 giorni
-            val color = if (alert) white else if (moving) green else plain
-            views.setInt(R.id.w_col_pos, "setBackgroundResource", if (alert) R.drawable.widget_alert_red else 0)
-            views.setTextColor(R.id.w_lbl_pos, if (alert) white else labelColor)
+            val onAlert = 0xFF0B4F4A.toInt() // teal scuro sull'ambra
+            val green = 0xFF86EFAC.toInt()
+            val plain = 0xFFFFFFFF.toInt()
+            val labelColor = 0xE6FFFFFF.toInt()
+            val color = if (alert) onAlert else if (moving) green else plain
+            views.setInt(R.id.w_col_pos, "setBackgroundResource", if (alert) R.drawable.widget_alert_amber else R.drawable.widget_cell)
+            views.setTextColor(R.id.w_lbl_pos, if (alert) onAlert else labelColor)
             views.setTextViewText(R.id.w_ago, if (fix == null) "—" else clock(age))
             views.setTextColor(R.id.w_ago, color)
             views.setViewVisibility(R.id.w_flip_still, if (moving) View.GONE else View.VISIBLE)

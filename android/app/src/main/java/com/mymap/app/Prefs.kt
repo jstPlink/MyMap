@@ -12,9 +12,19 @@ class Prefs(context: Context) {
     var email: String
         get() = sp.getString("email", "") ?: ""
         set(v) = sp.edit().putString("email", v.trim()).apply()
+    /** Cifrata con una chiave dell'Android Keystore (AES-GCM) che non lascia mai il dispositivo; le versioni precedenti la salvavano in chiaro (`pw`) e la si migra alla prima lettura. */
     var password: String
-        get() = sp.getString("pw", "") ?: ""
-        set(v) = sp.edit().putString("pw", v).apply()
+        get() {
+            sp.getString("pwe", null)?.let { return SecretBox.open(it) ?: "" }
+            val old = sp.getString("pw", null) ?: return ""
+            password = old // migrazione: cifra e cancella il valore in chiaro
+            return old
+        }
+        set(v) {
+            val e = sp.edit().remove("pw")
+            if (v.isEmpty()) e.remove("pwe") else SecretBox.seal(v)?.let { e.putString("pwe", it) } ?: e.remove("pwe")
+            e.apply()
+        }
     var token: String
         get() = sp.getString("token", "") ?: ""
         set(v) = sp.edit().putString("token", v).apply()
@@ -29,8 +39,9 @@ class Prefs(context: Context) {
     var oauth: Boolean
         get() = sp.getBoolean("oauth", false)
         set(v) = sp.edit().putBoolean("oauth", v).apply()
+    init { if (sp.contains("pw")) password = password } // cifra subito la password salvata in chiaro dalle versioni precedenti
     fun clearAccount() {
-        sp.edit().remove("email").remove("pw").remove("token").remove("uid").putBoolean("oauth", false).putBoolean("historyPulled", false).apply()
+        sp.edit().remove("email").remove("pw").remove("pwe").remove("token").remove("uid").putBoolean("oauth", false).putBoolean("historyPulled", false).apply()
     }
     /** Tema scelto nelle impostazioni: "system", "light" o "dark". Serve a colorare le barre di sistema prima che la pagina si carichi. */
     var theme: String

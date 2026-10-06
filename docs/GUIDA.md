@@ -1,6 +1,6 @@
 # MyMap – Guida all'uso e ai parametri
 
-Guida per chi usa l'app (versione 0.32.6). Per come è fatta dentro, vedi [ARCHITETTURA.md](../ARCHITETTURA.md); per la cronologia
+Guida per chi usa l'app (versione 0.32.11). Per come è fatta dentro, vedi [ARCHITETTURA.md](../ARCHITETTURA.md); per la cronologia
 delle modifiche, [CHANGELOG.md](../CHANGELOG.md).
 
 ## 1. Cos'è
@@ -130,16 +130,16 @@ della settimana. Toccando una riga con il segno › la mappa si apre su quel luo
   come punto.
 
 - **Widget "ultimo punto":** tieni premuta la schermata home → Widget → MyMap. Mostra da quanto tempo è stato salvato l'ultimo punto
-  ("5 min fa"); diventa rosso oltre 30 minuti (segno che il tracking potrebbe essere fermo). Si aggiorna a ogni punto e ogni ~15 minuti;
+  ("5 min fa"); diventa ambra oltre 30 minuti (segno che il tracking potrebbe essere fermo). Si aggiorna a ogni punto e ogni ~15 minuti;
   toccandolo si apre l'app.
 - **Widget "oggi e 7 giorni" (4×1):** stesso menu dei widget, in due versioni: *MyMap · oggi e 7 giorni (chiaro)*, su una targhetta
-  semitrasparente effetto plastificato, e *(scuro)*, piatto e a tinta unita.
+  teal con riquadri bianchi trasparenti, come i widget di Bilancio, e *(scuro)*, piatto e a tinta unita.
   - **Cosa mostra:** a sinistra le etichette **oggi** (riga con i valori grandi) e **7g** (riga con i valori grigi); poi tre colonne con il titolo in alto,
     **km** percorsi, **posti** visitati (soste di almeno 20 minuti) e tempo in **movimento**, con sotto il valore di oggi e il valore degli ultimi 7 giorni.
   - **Cella tracker** (a destra): un'**icona animata** (**onde** che si allargano se sei fermo, **impronte di scarpe** che camminano se sei in movimento; verde
     in movimento) e, accanto, da quanto tempo è stato registrato l'ultimo punto in **minuti e secondi** ("3:20"). Si aggiorna ogni 20 secondi a schermo
-    acceso, con il tracking attivo. La cella diventa **rossa** se l'ultimo punto ha più di 6 minuti: con la frequenza di partenza da fermo (un punto ogni 10
-    minuti) succede anche a telefono fermo, quindi per averla rossa solo quando c'è un problema conviene un punto ogni 5-6 minuti da fermo.
+    acceso, con il tracking attivo. La cella diventa **ambra** se l'ultimo punto ha più di 6 minuti: con la frequenza di partenza da fermo (un punto ogni 10
+    minuti) succede anche a telefono fermo, quindi per averla ambra solo quando c'è un problema conviene un punto ogni 5-6 minuti da fermo.
   - **Tocchi:** un dato apre la vista (**Percorsi** per i km, **Luoghi** per i posti, **Heatmap** per il tempo in movimento) con il filtro su oggi (riga grande) o
     sugli ultimi 7 giorni (riga grigia); la cella tracker apre le **impostazioni sulla sezione Tracker**; altrove si apre l'app.
   - **Anteprima:** nel selettore dei widget (tieni premuta la home → Widget → MyMap) i widget mostrano dati di esempio, non i tuoi; da Android 12.

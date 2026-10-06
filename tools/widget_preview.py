@@ -42,7 +42,7 @@ def preview(src, tint):
     return s
 
 
-wr(r"res/layout/widget_today_preview.xml", preview(r"res/layout/widget_today.xml", "#FF1B1B1B"))
+wr(r"res/layout/widget_today_preview.xml", preview(r"res/layout/widget_today.xml", "#FFFFFFFF"))
 wr(r"res/layout/widget_today_dark_preview.xml", preview(r"res/layout/widget_today_dark.xml", "#FFFFFFFF"))
 
 # widget "ultimo punto": anteprima con un esempio

@@ -4,6 +4,21 @@ Versione app in `android/app/build.gradle.kts` (`versionName` e `versionCode`).
 Ad ogni rilascio: alzare `versionCode` di 1, aggiornare `versionName` e aggiungere una voce qui.
 La versione è mostrata in cima alla schermata dell'app.
 
+## 0.32.11 (build 88) - 2026-10-06
+- **Riquadri dei widget ancora meno contrastati (-20%):** l'opacità di `widget_cell` scende da 25/255 (`#19FFFFFF`) a 20/255 (`#14FFFFFF`), circa l'8%.
+
+## 0.32.10 (build 87) - 2026-10-06
+- **Riquadri dei widget ancora meno contrastati (-10%):** l'opacità di `widget_cell` scende da 28/255 (`#1CFFFFFF`) a 25/255 (`#19FFFFFF`), circa il 10%.
+
+## 0.32.9 (build 86) - 2026-10-06
+- **Riquadri dei widget meno contrastati:** `widget_cell` passa da bianco al 18% (`#2EFFFFFF`) a bianco all'11% (`#1CFFFFFF`), così i riquadri si staccano meno dallo sfondo del widget (chiaro e scuro).
+
+## 0.32.8 (build 85) - 2026-10-06
+- **Widget nello stile di Bilancio:** sfondo teal (`#0F766E`, angoli 22 dp; nella versione scura resta il fondo grigio scuro), dati dentro riquadri bianchi trasparenti con angoli 14 dp (*km*, *posti*, *movimento* e *tracker*; `widget_cell`), niente più divisori e riflesso lucido, testi bianchi (titoli 12 sp con `#E6FFFFFF`, cifre 16,5 sp in grassetto). Il rosso diventa **ambra** (`#FBBF24`) con testi in teal scuro: cella tracker senza punti da più di 6 minuti e valore del widget *ultimo punto* oltre 30 minuti. Il verde del movimento è più chiaro (`#86EFAC`). Anteprime rigenerate.
+
+## 0.32.7 (build 84) - 2026-10-06
+- **Preparazione alla pubblicazione:** l'indirizzo di partenza del server non è più scritto nel codice: `SERVER_URL` si legge da `mymap.serverUrl` in `android/local.properties` (vuoto se manca). La password dell'account è cifrata con il Keystore di Android (`SecretBox.kt`) invece di restare in chiaro nelle preferenze; quella già salvata si migra da sola. Il traffico HTTP in chiaro è ammesso solo nelle build di debug (`network_security_config`); la release usa solo HTTPS.
+
 ## 0.32.6 (build 83) - 2026-10-06
 - **Feedback aptico aumentato del 15%** rispetto alla 0.32.5: `HAPTIC_SCALE` da 0,595 a 0,684 (0,595 × 1,15; praticamente il valore della 0.32.4, 0,7). Sul motore acceso/spento di questo telefono: tocco 10 ms, conferma 20 ms, errore due impulsi da 23 ms.
 
