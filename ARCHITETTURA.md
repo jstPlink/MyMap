@@ -1,4 +1,4 @@
-# MyMap – Architettura (v0.31.0, build 76)
+# MyMap – Architettura (v0.32.6, build 83)
 
 Panoramica tecnica del progetto com'è oggi (per l'uso dell'app vedi [docs/GUIDA.md](docs/GUIDA.md)). La cronologia delle versioni è in [CHANGELOG.md](CHANGELOG.md): va aggiornata a ogni rilascio
 (alzare `versionCode` di 1 e `versionName` in `android/app/build.gradle.kts`, poi aggiungere la voce).
@@ -36,7 +36,7 @@ Google Play Services né librerie HTTP/JSON esterne.
 
 | File | Ruolo |
 |---|---|
-| `MainActivity.kt` | Contiene la WebView, gestisce i permessi a gradini (posizione precisa → "sempre" → notifiche), le barre di sistema e il ponte `MyMapNative`. |
+| `MainActivity.kt` | Contiene la WebView (sempre in verticale: `screenOrientation="portrait"` nel manifest), gestisce i permessi a gradini (posizione precisa → "sempre" → notifiche), le barre di sistema e il ponte `MyMapNative`. |
 | `LocationService.kt` | Servizio in primo piano: frequenza dei punti regolabile (in movimento ogni N secondi, da fermo N punti ogni X minuti), filtro sui fix imprecisi, GPS con rete come riserva da fermo. |
 | `TrackerWatchdog.kt` | Ogni ~15 minuti controlla che il tracking giri; se Android l'ha fermato lo riavvia o manda una notifica. |
 | `BootReceiver.kt` | Riavvia il tracking dopo il boot e dopo un aggiornamento dell'app. |
@@ -77,11 +77,11 @@ Viste della mappa e dati mostrati nel pannello in basso:
 | Gruppo | Metodi |
 |---|---|
 | Stato e punti | `getStatus` (versione, totale, da sincronizzare, ultima sync, tracking), `getPoints` (tutti i punti in binario compatto base64: ts in secondi, lat e lon ×1e6, accuratezza), `getConfig` |
-| Tracking | `startTracking`, `stopTracking`, `syncNow`, `repullHistory`, `requestIgnoreBattery`, `getHealth`, `getTrackerConfig`, `setTrackerConfig`, `openAppSettings` |
+| Tracking | `startTracking`, `stopTracking`, `syncNow`, `requestIgnoreBattery`, `getHealth`, `getTrackerConfig`, `setTrackerConfig`, `openAppSettings` |
 | Posizione | `getLocation` (ultima nota), `requestFix(id, save)` (posizione fresca, opzionalmente salvata come punto) |
-| Account | `getSession`, `loginEmail`, `loginGoogle`, `cancelGoogle`, `useLocal`, `logout`, `changePassword`, `resetPassword` |
+| Account | `getSession`, `loginEmail`, `loginGoogle`, `cancelGoogle`, `useLocal`, `logout`, `changePassword`, `resetPassword`, `deleteAccount(id)` (in `account.js` dopo due conferme: parola ELIMINA e finestra finale; DELETE sull'utente: PocketBase cancella a cascata i suoi punti; poi svuota punti e account locali) |
 | Profilo | `pullSettings(id)`, `pushSettings(id, json)` |
-| Interfaccia | `setTheme` (colora le barre di sistema), `haptic(kind)` (tap, ok, error), `exportData(formato)` |
+| Interfaccia | `setTheme` (colora le barre di sistema), `haptic(kind)` (tap, ok, error; `Vibrator`: ampiezza o durata scalate con `HAPTIC_SCALE` = 0,684 secondo il motore; senza motore, feedback di sistema), `exportData(formato)` |
 
 I risultati asincroni tornano con `window.__nativeResult(id, risposta)` (profilo, posizione) o `window.__authResult(...)` (accesso).
 
@@ -137,6 +137,8 @@ I risultati asincroni tornano con `window.__nativeResult(id, risposta)` (profilo
   impostazioni. `sleepPlaces(..., hidden)` esclude le notti nascoste dal conteggio ma le restituisce nell'elenco (`list`, con
   `hidden`); `visiblePlaces()` esclude i posti entro 150 m da uno nascosto. Gli elenchi *Notti salvate* e *Posti salvati* (`buildSavedLists`
   in `app.js`) sono nel pannello della vista e usano tutti i punti, non il filtro del periodo.
+- **Indicatore "dove sono".** `here` è sempre l'ultimo punto di `points` (`locate()`, sincrona): si ricalcola a ogni `loadPoints`, quindi segue i punti nuovi; il tasto *Dove sono* centra la mappa lì senza chiedere un fix (`Native.fix` resta solo per *Registra la posizione adesso*).
+- **Filtro e pannello degli spostamenti.** `tripsPanelHtml` mostra solo gli spostamenti con `start` dentro il filtro (`applyFilter(arr, stato)` accetta uno stato esplicito). I pulsanti ‹ › e `showTrip` restringono il filtro a un giorno: per non perdere gli altri giorni ricordano il filtro dell'utente in `tripScope` (`freezeTripScope`), che `render(true)` (cambio di vista o di filtro dell'utente) azzera.
 - **Pannello dati comprimibile.** `#panel-fold` (freccia in cima a `#panel`) attiva la classe `folded`, che nasconde il contenuto; stato in `localStorage` (`mymap.panelFold`).
 - **Gruppi.** Notti e Posti fondono i marcatori vicini sullo schermo (~60 px) in gruppi, ricalcolati a ogni zoom.
 - **Mappa di base.** `MAP_STYLES` in `prefs.js` (otto stili) e `baseLayers` in `app.js`; i filtri di colore sono classi CSS sul livello
@@ -235,5 +237,5 @@ risulta vuoto o incoerente (l'app può interrompersi all'avvio); (c) la disinsta
   misurato sul dispositivo.
 - Le tessere Esri e OpenStreetMap non richiedono chiave ma hanno i loro termini d'uso (uso personale e leggero); quelle CARTO ora
   richiedono una chiave e non si usano.
-- Il feedback aptico dipende dalla vibrazione al tocco del telefono; il riavvio del tracking da background può essere negato da
+- Il feedback aptico (`MainActivity.haptic`, `HAPTIC_SCALE` = 0,684) rispetta l'impostazione Android *vibrazione al tocco*; su motori acceso/spento (come quello del telefono di prova, `capabilities = ON_CALLBACK`) l'intensità si regola solo con la durata dell'impulso, e i valori di base sono scelti a occhio. Il riavvio del tracking da background può essere negato da
   Android 12+ (in quel caso c'è la notifica del cane da guardia).

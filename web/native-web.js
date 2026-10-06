@@ -190,6 +190,13 @@ function makeWebNative() {
       if (r.code !== 200) return { ok: false, error: r.code === 400 && r.j && r.j.data && r.j.data.oldPassword ? "La password attuale non è corretta" : errText(r.j) };
       return login(a.email, nw); // il cambio invalida i token precedenti: se ne prende uno nuovo
     },
+    deleteAccount: async () => {
+      // cancella l'utente: PocketBase elimina a cascata anche tutti i suoi punti
+      const r = await authed("DELETE", `/api/collections/users/records/${readAuth().id}`);
+      if (r.code < 200 || r.code >= 300) return { ok: false, error: r.code === 401 ? "Accesso scaduto: accedi di nuovo" : errText(r.j) };
+      writeAuth(null); idbClear(); state.total = 0;
+      return { ok: true, error: "" };
+    },
     resetPassword: async ({ email }) => {
       const r = await call("POST", "/api/collections/users/request-password-reset", { email }, "");
       if (r.code >= 200 && r.code < 300) return { ok: true };
@@ -209,6 +216,6 @@ function makeWebNative() {
     health: () => ({ tracking: false, running: false, lastTs: 0, fine: true, bg: true, battery: true, notif: true }),
     trackerConfig: () => ({ movingSec: 5, stillPoints: 1, stillMinutes: 10 }),
     setTrackerConfig: () => {}, openAppSettings: () => {}, cleanPoints: () => ({ total: 0, accuracy: 0, spikes: 0, stays: 0 }),
-    start: () => {}, stop: () => {}, sync: () => {}, repull: async () => { await idbClear(); state.total = -1; }, battery: () => {},
+    start: () => {}, stop: () => {}, sync: () => {}, battery: () => {},
   };
 }

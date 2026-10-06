@@ -27,6 +27,9 @@ import org.json.JSONObject
  * Contenitore dell'interfaccia web (cartella web/ del repository, inclusa negli asset).
  * Qui restano solo i permessi Android e il ponte verso il motore nativo: tracking, buffer e sync.
  */
+/** Intensità del feedback aptico rispetto al massimo (1 = massima): 0,7 (−30%), poi −15% (0,595), poi +15% (0,595 × 1,15 = 0,684). */
+private const val HAPTIC_SCALE = 0.684f
+
 class MainActivity : Activity() {
 
     private lateinit var prefs: Prefs
@@ -240,9 +243,6 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface
-        fun repullHistory() { prefs.historyPulled = false; SyncWorker.enqueue(this@MainActivity) }
-
-        @JavascriptInterface
         fun requestIgnoreBattery() { runOnUiThread { this@MainActivity.requestIgnoreBattery() } }
 
         /** Stato dell'accesso: modalità (none/server/local), server, email. */
@@ -279,10 +279,30 @@ class MainActivity : Activity() {
             }.start()
         }
 
-        /** Feedback aptico a ogni tocco (se il telefono ha attiva la vibrazione al tocco): kind = tap | ok | error. */
+        /**
+         * Feedback aptico a ogni tocco (se il telefono ha attiva la vibrazione al tocco): kind = tap | ok | error.
+         * Intensità ridotta (`HAPTIC_SCALE` = 0,684): con un motore a ampiezza regolabile si usa quella frazione dell'ampiezza massima; su un motore
+         * acceso/spento (come quello di questo telefono: capabilities = ON_CALLBACK) si accorcia l'impulso alla stessa frazione, che è ciò che se ne
+         * percepisce come intensità. Il feedback di sistema di prima non aveva un controllo di intensità né una durata nota.
+         */
         @JavascriptInterface
         fun haptic(kind: String) {
             runOnUiThread {
+                if (android.provider.Settings.System.getInt(contentResolver, android.provider.Settings.System.HAPTIC_FEEDBACK_ENABLED, 1) == 0) return@runOnUiThread
+                val vib = getSystemService(android.os.Vibrator::class.java)
+                if (vib != null && vib.hasVibrator()) {
+                    val amp = if (vib.hasAmplitudeControl()) (255 * HAPTIC_SCALE).toInt() else android.os.VibrationEffect.DEFAULT_AMPLITUDE
+                    val len = if (vib.hasAmplitudeControl()) 1f else HAPTIC_SCALE // senza regolazione si scala la durata
+                    fun ms(base: Int) = maxOf(5L, (base * len).toLong())
+                    vib.vibrate(
+                        when (kind) {
+                            "error" -> android.os.VibrationEffect.createWaveform(longArrayOf(0, ms(35), 70, ms(35)), intArrayOf(0, amp, 0, amp), -1)
+                            "ok" -> android.os.VibrationEffect.createOneShot(ms(30), amp)
+                            else -> android.os.VibrationEffect.createOneShot(ms(15), amp)
+                        }
+                    )
+                    return@runOnUiThread
+                }
                 val c = when (kind) {
                     "ok" -> if (Build.VERSION.SDK_INT >= 30) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.VIRTUAL_KEY
                     "error" -> if (Build.VERSION.SDK_INT >= 30) HapticFeedbackConstants.REJECT else HapticFeedbackConstants.LONG_PRESS
@@ -393,6 +413,22 @@ class MainActivity : Activity() {
                 try {
                     if (prefs.mode != "server") error("non collegato a un server")
                     val err = Api(prefs).saveSettings(json)
+                    r.put("ok", err == null).put("error", err ?: "")
+                } catch (e: Exception) {
+                    r.put("ok", false).put("error", e.message ?: "errore")
+                }
+                runOnUiThread { web.evaluateJavascript("window.__nativeResult($id, $r)", null) }
+            }.start()
+        }
+
+        /** Elimina l'account dal server (con tutti i suoi punti) e svuota il telefono. Risposta in window.__nativeResult(id, {ok, error}). */
+        @JavascriptInterface
+        fun deleteAccount(id: Int) {
+            Thread {
+                val r = JSONObject()
+                try {
+                    val err = if (prefs.mode != "server") "non collegato a un server" else Api(prefs).deleteAccount()
+                    if (err == null) { store.clear(); prefs.clearAccount(); prefs.mode = "none" }
                     r.put("ok", err == null).put("error", err ?: "")
                 } catch (e: Exception) {
                     r.put("ok", false).put("error", e.message ?: "errore")

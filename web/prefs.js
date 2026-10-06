@@ -324,11 +324,6 @@ function buildPrefsUI() {
         <input data-k="names" type="checkbox" ${v.names ? "checked" : ""}></label>`) +
 
     fold("placeslist", "Posti salvati", `<div id="saved-places"></div>`);
-  // "Dati" resta nelle Impostazioni (una volta sola, così il pulsante non perde il suo gestore a ogni ricostruzione)
-  const dataRoot = document.getElementById("prefs-data");
-  if (dataRoot && !dataRoot.firstChild) dataRoot.innerHTML = fold("data", "Dati", `
-      <button class="secondary" id="repull">Riscarica lo storico dal server</button>
-      <p class="msg" id="repull-msg"></p>`);
   restoreFolds(document);
   paintGradbar();
   paintRoutePreview();

@@ -16,12 +16,12 @@ function confirmDialog(text, okLabel) {
 }
 
 // Finestra con un campo di testo. Risolve {action: "save" | "skip" | "cancel", value}
-function promptDialog({ text, value = "", placeholder = "", okLabel = "Salva", skipLabel = "", noLabel = "Annulla" }) {
+function promptDialog({ text, value = "", placeholder = "", okLabel = "Salva", skipLabel = "", noLabel = "Annulla", danger = false }) {
   return new Promise((resolve) => {
     const inp = $("modal-input");
     $("modal-text").textContent = text;
     inp.hidden = false; inp.value = value; inp.placeholder = placeholder;
-    $("modal-ok").textContent = okLabel; $("modal-ok").classList.remove("danger");
+    $("modal-ok").textContent = okLabel; $("modal-ok").classList.toggle("danger", danger);
     $("modal-skip").hidden = !skipLabel; $("modal-skip").textContent = skipLabel;
     $("modal-no").textContent = noLabel;
     $("modal").hidden = false;
@@ -132,12 +132,14 @@ function refreshAccount() {
     $("acct-info").innerHTML = kv("Accesso", s.oauth ? "Google" : "Email") + kv("Account", s.email || "–") + kv("Database", s.url.replace(/^https?:\/\//, "")) + kv("Impostazioni", Profile.label());
     $("logout").textContent = "Esci dall'account";
     $("logout").classList.add("danger");
+    $("del-acct").hidden = false;
     $("pc-open").hidden = !!s.oauth;
   } else {
     $("acct-info").innerHTML = kv("Database", s.mode === "local" ? "Solo su questo telefono" : "Non collegato");
     $("pc-open").hidden = true; $("pc-form").hidden = true;
     $("logout").textContent = "Collegati a un server";
     $("logout").classList.remove("danger");
+    $("del-acct").hidden = true; $("del-msg").textContent = "";
   }
 }
 
@@ -179,6 +181,32 @@ $("logout").onclick = async () => {
   render(false);
   refreshAccount();
   showLogin(); pickDb("server");
+};
+
+// Elimina account: cancella dal server l'account con tutti i suoi punti e le impostazioni, e svuota questo dispositivo. Due conferme: scrivere ELIMINA e poi una seconda finestra.
+$("del-acct").onclick = async () => {
+  const msg = $("del-msg");
+  msg.classList.remove("err"); msg.textContent = "";
+  const r = await promptDialog({
+    text: `Eliminare definitivamente l'account ${session.email}? Vengono cancellati dal server l'account, tutti i suoi punti e le sue impostazioni, e anche i dati salvati ${Native.isWeb ? "in questo browser" : "su questo telefono"}. Non si può annullare. Per confermare scrivi ELIMINA.`,
+    placeholder: "ELIMINA", okLabel: "Elimina account", danger: true,
+  });
+  if (r.action !== "save") return;
+  if (r.value.toUpperCase() !== "ELIMINA") { msg.classList.add("err"); msg.textContent = "Non hai scritto ELIMINA: l'account non è stato eliminato."; return; }
+  // seconda conferma, dopo aver scritto la parola
+  if (!(await confirmDialog(`Ultima conferma: l'account ${session.email} e tutti i suoi punti verranno cancellati subito e per sempre. Eliminarlo davvero?`, "Sì, elimina per sempre"))) { msg.textContent = "Eliminazione annullata."; return; }
+  $("del-acct").disabled = true;
+  msg.textContent = "Eliminazione in corso…";
+  const res = await Native.deleteAccount();
+  $("del-acct").disabled = false;
+  if (!res.ok) { msg.classList.add("err"); msg.textContent = res.error || "Eliminazione non riuscita"; Native.haptic("error"); return; }
+  Native.haptic("ok");
+  session = Native.session();
+  points = []; movePts = []; loadedTotal = -1; statsFor = "";
+  render(false);
+  refreshAccount();
+  showLogin(); pickDb("server");
+  loginSay("Account eliminato.");
 };
 
 // ---------- esportazione ----------

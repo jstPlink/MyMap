@@ -1,5 +1,7 @@
 # MyMap – Note di passaggio tra sessioni (2026-10-05)
 
+> **Nota storica:** scritta il 2026-10-05 e non aggiornata. Il problema sul NAS descritto sotto (sito che dà 404) può essere stato risolto dopo; l'indirizzo del server è poi diventato `https://mymap.fplinio.it` (0.30.4). Per lo stato attuale valgono CHANGELOG.md e ARCHITETTURA.md.
+
 Stato del lavoro al momento del passaggio, per chi riprende (ad esempio una sessione con accesso SSH al NAS). Non contiene credenziali.
 Per l'uso dell'app vedi [GUIDA.md](GUIDA.md), per com'è fatta [../ARCHITETTURA.md](../ARCHITETTURA.md), per le versioni [../CHANGELOG.md](../CHANGELOG.md).
 

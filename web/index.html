@@ -119,6 +119,15 @@
       <button id="fix-now" class="secondary">Registra la posizione adesso</button>
       <p class="msg wrap" id="fix-msg"></p>
     </div></details>
+    <details class="card fold" data-fold="export"><summary>Esporta i dati</summary><div class="foldbody">
+      <p class="hint">Salva tutti i punti di questo telefono in un file, dove vuoi tu.</p>
+      <div class="exp">
+        <button class="secondary" data-export="csv">CSV</button>
+        <button class="secondary" data-export="gpx">GPX</button>
+        <button class="secondary" data-export="json">JSON</button>
+      </div>
+      <p class="msg" id="export-msg"></p>
+    </div></details>
     <details class="card fold" data-fold="account"><summary>Account</summary><div class="foldbody">
       <div id="acct-info"></div>
       <button id="pc-open" class="secondary" hidden>Cambia password</button>
@@ -129,17 +138,9 @@
         <button id="pc-save">Salva nuova password</button>
         <p class="msg" id="pc-msg"></p>
       </div>
-      <button id="logout" class="secondary">Esci dall'account</button>
-    </div></details>
-    <div id="prefs-data"></div>
-    <details class="card fold" data-fold="export"><summary>Esporta i dati</summary><div class="foldbody">
-      <p class="hint">Salva tutti i punti di questo telefono in un file, dove vuoi tu.</p>
-      <div class="exp">
-        <button class="secondary" data-export="csv">CSV</button>
-        <button class="secondary" data-export="gpx">GPX</button>
-        <button class="secondary" data-export="json">JSON</button>
-      </div>
-      <p class="msg" id="export-msg"></p>
+      <button id="logout" class="secondary danger">Esci dall'account</button>
+      <button id="del-acct" class="linkbtn del-link" hidden>Elimina account</button>
+      <p class="msg wrap" id="del-msg"></p>
     </div></details>
   </section>
 

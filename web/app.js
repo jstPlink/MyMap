@@ -136,8 +136,8 @@ function fillFilters() {
 const filterState = () => ({ y: $("f-year").value, m: $("f-month").value, d: $("f-day").value, from: $("f-from").value, to: $("f-to").value, tf: $("f-tfrom").value, tt: $("f-tto").value });
 const minutes = (hhmm) => { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; };
 
-function applyFilter(arr) {
-  const { y, m, d, from, to, tf, tt } = filterState();
+function applyFilter(arr, st = filterState()) {
+  const { y, m, d, from, to, tf, tt } = st;
   if (from || to) {
     const a = from ? new Date(from + "T00:00:00").getTime() : -Infinity;
     const b = to ? new Date(to + "T23:59:59.999").getTime() : Infinity;
@@ -232,10 +232,11 @@ $("f-clear").onclick = () => { clearAllFilters(); refilter(); };
 $("f-reset").onclick = () => { clearAllFilters(); refilter(); };
 
 // ---------- posizione attuale ----------
+// L'indicatore "dove sono" sta sempre sull'ultimo punto salvato (non sulla posizione del GPS in questo momento) e si sposta quando arrivano punti nuovi.
 let here = null;
-async function locate() {
-  try { here = await Native.location(); } catch { here = null; }
-  if (!here && points.length) { const p = points[points.length - 1]; here = { lat: p.lat, lon: p.lon, approx: true }; }
+function locate() {
+  const p = points[points.length - 1];
+  here = p ? { lat: p.lat, lon: p.lon, ts: p.ts } : null;
   return here;
 }
 function drawMe() {
@@ -243,11 +244,8 @@ function drawMe() {
   if (!here) return;
   L.circleMarker([here.lat, here.lon], { radius: 8, color: "#fff", weight: 3, fillColor: "#1e88e5", fillOpacity: 1 }).addTo(meLayer);
 }
-$("locate").onclick = async () => {
-  $("locate").classList.add("busy");
-  const r = Native.isApp ? await Native.fix(false) : null; // posizione fresca; se non arriva si ripiega sull'ultima nota
-  if (r && r.ok) here = { lat: r.lat, lon: r.lon }; else await locate();
-  $("locate").classList.remove("busy");
+$("locate").onclick = () => {
+  locate();
   if (here) { drawMe(); map.setView([here.lat, here.lon], 15); }
 };
 
@@ -733,11 +731,17 @@ function tripRow(t, i) {
 }
 
 let tripDay = null; // giorno (AAAAMMGG) mostrato nel pannello; all'inizio l'ultimo con spostamenti
-const tripDays = () => [...new Set(getTrips().map((t) => dkey(t.start)))].sort((a, b) => a - b); // dal più vecchio
+// Il pannello mostra solo gli spostamenti che iniziano nel periodo filtrato. I pulsanti ‹ › restringono il filtro a un giorno: per non
+// perdere gli altri giorni, al primo passaggio si ricorda il filtro scelto dall'utente (tripScope), che si dimentica quando lo cambia.
+let tripScope = null;
+const freezeTripScope = () => { if (!tripScope) tripScope = filterState(); };
+const inTripScope = (t) => applyFilter([{ ts: t.start }], tripScope || filterState()).length > 0;
+const tripDays = () => [...new Set(getTrips().filter(inTripScope).map((t) => dkey(t.start)))].sort((a, b) => a - b); // dal più vecchio
 function tripsPanelHtml() {
   const all = getTrips();
   if (!all.length) return '<p class="tip">Nessuno spostamento trovato: servono due soste di almeno 20 minuti in luoghi diversi.</p>';
   const days = tripDays();
+  if (!days.length) return '<p class="tip">Nessuno spostamento nel periodo scelto.</p>';
   if (tripDay === null || !days.includes(tripDay)) tripDay = days[days.length - 1];
   const i = days.indexOf(tripDay), idxs = [];
   all.forEach((t, k) => { if (dkey(t.start) === tripDay) idxs.push(k); });
@@ -753,6 +757,7 @@ function tripsPanelHtml() {
 function stepTripDay(dir) {
   const days = tripDays(), i = days.indexOf(tripDay) + dir;
   if (i < 0 || i >= days.length) return;
+  freezeTripScope();
   tripDay = days[i];
   const d = new Date(dkeyTs(tripDay)), all = getTrips(), pts = [];
   clearAllFilters();
@@ -769,6 +774,7 @@ function showTrip(i) {
   const t = getTrips()[i];
   if (!t) return;
   const s = new Date(t.start), e = new Date(t.end), sameDay = ymd(s) === ymd(e);
+  freezeTripScope();
   clearAllFilters();
   $("f-from").value = ymd(s); $("f-to").value = ymd(e);
   if (sameDay) { $("f-tfrom").value = hhmm(t.start - 120000); $("f-tto").value = hhmm(t.end + 120000); }
@@ -1026,6 +1032,7 @@ function goHere() {
 
 // fit = true quando l'utente cambia vista o filtro: allora la mappa inquadra i dati; all'avvio resta su dove sei
 function render(fit) {
+  if (fit) tripScope = null; // cambio di vista o di filtro fatto dall'utente: il pannello degli spostamenti segue il nuovo filtro
   layer.clearLayers();
   $("name-new").hidden = true;
   repaint = null;
@@ -1116,7 +1123,7 @@ async function loadPoints() {
   try { points = clean(await Native.points()); } catch (e) { console.warn("punti non caricati", e); return; } // web: rete assente o accesso scaduto
   loadedTotal = Native.isWeb ? Native.status().total : total; // nel web il totale lo conosce solo il caricamento stesso
   movePts = thin(dropCoarse(points.filter((p) => !isStay(p))), 15, 5 * 60000);
-  if (firstRender) { await locate(); drawMe(); }
+  locate(); drawMe();
   fillFilters();
   render(false);
 }
@@ -1270,7 +1277,6 @@ bindPrefsUI();
 Prefs.onChange = (g) => { if (g === "mapFx") { applyMapFx(); return; } statsFor = ""; render(false); };
 Prefs.applyTheme();
 Native.setTheme(Prefs.v.theme); // l'app lo ricorda per colorare le barre di sistema prima che la pagina si carichi
-$("repull").onclick = () => { Native.repull(); $("repull-msg").textContent = Native.isWeb ? "Cache svuotata: i punti si riscaricano ora dal server." : "Scarico avviato: i punti nuovi compaiono al prossimo avvio dell'app."; };
 
 // ---------- aperture dai widget ----------
 // Il widget "oggi" apre l'app su una vista con il filtro su oggi: km → Percorsi, posti → Posti, tempo in movimento → Heatmap.

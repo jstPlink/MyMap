@@ -1,6 +1,6 @@
 # MyMap – Guida all'uso e ai parametri
 
-Guida per chi usa l'app (versione 0.31.0). Per come è fatta dentro, vedi [ARCHITETTURA.md](../ARCHITETTURA.md); per la cronologia
+Guida per chi usa l'app (versione 0.32.6). Per come è fatta dentro, vedi [ARCHITETTURA.md](../ARCHITETTURA.md); per la cronologia
 delle modifiche, [CHANGELOG.md](../CHANGELOG.md).
 
 ## 1. Cos'è
@@ -16,7 +16,7 @@ interfaccia dell'app (su uno schermo largo, almeno 1000 px, con un layout pensat
 le impostazioni, i preset, i nomi dei posti e le notti nascoste, sincronizzati con l'app (quello che cambi nel sito lo ritrovi nell'app e viceversa), il cambio password e
 l'esportazione (CSV, GPX, JSON, direttamente dal server). **Non c'è il tracciamento**: niente tracker, salute del tracking, frequenza dei punti, pulizia dei punti e
 "registra la posizione adesso" (il pulsante "dove sono" usa la posizione del browser, solo con HTTPS). La prima apertura scarica tutti i punti (qualche secondo con decine
-di migliaia); poi il browser li ricorda e scarica solo i nuovi. *Dati → Riscarica lo storico dal server* svuota quella cache. Il sito controlla ogni minuto se dal telefono
+di migliaia); poi il browser li ricorda e scarica solo i nuovi. Il sito controlla ogni minuto se dal telefono
 sono arrivati punti nuovi.
 
 ## 2. Primi passi
@@ -34,6 +34,8 @@ sono arrivati punti nuovi.
 
 ## 3. La mappa
 
+L'app resta sempre **in verticale**: non ruota quando giri il telefono. Tocchi, conferme ed errori danno un breve **feedback aptico** (se in Android è attiva la *vibrazione al tocco*); l'intensità è già ridotta e si regola con `HAPTIC_SCALE` in `MainActivity.kt`.
+
 In alto a sinistra: la **versione** e il **livello di zoom** (con la larghezza della mappa in km). In alto a destra: il **filtro del
 periodo** (icona a imbuto; tenendola premuta compare il periodo attivo). Sul lato destro: le **viste**, come targhette verticali.
 Sopra il tasto "dove sono" c'è il pulsante con i cursori, che apre il pannello di **personalizzazione della vista corrente**.
@@ -48,14 +50,14 @@ Sopra il tasto "dove sono" c'è il pulsante con i cursori, che apre il pannello 
 
 - **Filtro del periodo:** scorciatoie (Oggi, Ieri, Ultimi 7/30 giorni, Questo mese, Mese scorso, Quest'anno, Tutto), anno/mese/giorno,
   da data a data e **fascia oraria** (es. 07:00–09:00, anche a cavallo della mezzanotte).
-- **Dove sono:** chiede la posizione fresca al telefono (se non arriva usa l'ultima nota) e centra la mappa.
+- **Dove sono:** il pallino azzurro sta sempre sull'**ultimo punto salvato** (si sposta da solo quando ne arrivano di nuovi) e il tasto centra la mappa lì; non chiede una posizione fresca (per quella c'è *Registra la posizione adesso* nel Tracker).
 - **Cambio vista o filtro:** la mappa si centra sulla tua posizione con **20 km di raggio** (circa 40 km di larghezza).
 - **Toccare un posto o un pallino** apre i dettagli e permette di **dare o cambiare il nome**; un nome dato da te vale per tutti i punti
   entro 120 m e ha la precedenza su quello di OpenStreetMap. Da Posti puoi nominare in sequenza i posti nuovi.
 - **Filtri rapidi:** sotto la barra in alto, **Oggi**, **7 giorni** e **Sempre** (quello attivo è evidenziato); per i dettagli (anno, mese, date, fascia
   oraria) si usa l'imbuto.
 - **Pannello dati comprimibile:** la freccia in alto nel pannello in basso lo riduce a una barretta e lo riespande; la scelta resta salvata.
-- **Spostamenti (vista Percorsi):** il pannello in basso mostra gli spostamenti **di un giorno** (all'inizio l'ultimo con spostamenti): "da dove
+- **Spostamenti (vista Percorsi):** il pannello in basso mostra gli spostamenti **di un giorno** del periodo filtrato (all'inizio l'ultimo con spostamenti; con il filtro *7 giorni* i pulsanti ‹ › scorrono solo quei 7 giorni): "da dove
   a dove", orario, km e durata, con il numero di spostamenti e i km del giorno. I pulsanti ‹ › passano al giorno precedente o successivo
   che ha spostamenti (i giorni senza sono saltati) e **applicano come filtro** quel giorno, così la mappa mostra solo i suoi tragitti.
   Toccando uno spostamento il filtro diventa il suo giorno e la sua fascia oraria: resta in mappa solo quel tragitto, evidenziato. Si toglie
@@ -106,7 +108,7 @@ mappa di base (nomi, percorsi e marcatori restano com'erano). La tinta e la sfoc
 Scheda **Statistiche**, con filtro per anno e mese: in cima i blocchetti (km percorsi, giri della Terra, stagione più viaggiata, km nel
 weekend), poi panoramica (punti e periodo), dove hai dormito, i 10 giorni più lunghi, dove passi più tempo, posti
 visitati, casa e lontananza (giorni a casa, a più di 50 e 200 km, punto più lontano), estremi raggiunti, km per mese/anno/ora/giorno
-della settimana e zone nuove per mese. Toccando una riga con il segno › la mappa si apre su quel luogo.
+della settimana. Toccando una riga con il segno › la mappa si apre su quel luogo.
 **Durate oltre 365 giorni** si scrivono in anni, mesi e giorni (es. "2 anni, 2 mesi e 21 giorni"; anno = 365 giorni).
 
 ## 6. Tracker (Impostazioni → Tracker)
@@ -150,7 +152,8 @@ della settimana e zone nuove per mese. Toccando una riga con il segno › la map
 
 ## 7. Account e dati
 
-- **Account:** accesso, creazione, *Cambia password* (serve quella attuale), esci. La password deve avere almeno **5 caratteri** (il server li accetta dopo `tools/setup_server.py` o con la migrazione `1700000002`).
+
+- **Account** (in fondo alle Impostazioni): accesso, creazione, *Cambia password* (serve quella attuale), *Esci dall'account* (rosso) ed **Elimina account** (un piccolo testo sottolineato in fondo, difficile da toccare per sbaglio): chiede di scrivere ELIMINA, poi una seconda conferma, e cancella dal server l'account con **tutti i suoi punti** e le impostazioni, poi svuota anche i dati del dispositivo. Non si annulla. La password deve avere almeno **5 caratteri** (il server li accetta dopo `tools/setup_server.py` o con la migrazione `1700000002`).
 - **Impostazioni nel profilo:** con un account sul server, impostazioni, preset, vista corrente, frequenza dei punti, nomi dei posti e notti e posti nascosti
   si salvano nel profilo e si ritrovano su un altro telefono o dopo una reinstallazione (vince la modifica più recente). Serve il campo
   `settings` sul server: si crea con `python tools/setup_server.py --url … --admin-email …` (vedi ARCHITETTURA.md).

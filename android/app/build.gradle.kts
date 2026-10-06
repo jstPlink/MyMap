@@ -11,8 +11,8 @@ android {
         applicationId = "com.mymap.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 76
-        versionName = "0.31.0"
+        versionCode = 83
+        versionName = "0.32.6"
         buildConfigField("String", "SERVER_URL", "\"https://mymap.fplinio.it\"")
     }
 

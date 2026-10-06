@@ -91,15 +91,9 @@ function renderStats(pts, periodo) {
 
   const visited = visiblePlaces(pts);
 
-  // ---- zone nuove per mese (esagoni da 800 m, interpolati) ----
-  const z8 = hexVisits(pts, 800);
-  const newByMonth = new Map();
-  z8.cells.forEach((c) => { const d = new Date(c[4]), k = d.getFullYear() * 100 + d.getMonth(); newByMonth.set(k, (newByMonth.get(k) || 0) + 1); });
-
   // ---- classifiche ----
   const topDays = [...byDay.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
   const months = [...byMonth.keys()].sort((a, b) => a - b).slice(-12);
-  const newMonths = [...newByMonth.keys()].sort((a, b) => a - b).slice(-12);
   const years = [...byYear.keys()].sort();
   const bestMonth = [...byMonth.entries()].sort((a, b) => b[1] - a[1])[0];
   const first = pts[0].ts, last = pts[pts.length - 1].ts;
@@ -157,10 +151,6 @@ function renderStats(pts, periodo) {
 
     <div class="card"><h2>Km per mese</h2>${bars(months.map((m) => MESI[m % 100].slice(0, 3)), months.map((m) => byMonth.get(m)), "km")}
       ${bestMonth ? `<p class="msg">Mese più attivo: ${MESI[bestMonth[0] % 100]} ${Math.floor(bestMonth[0] / 100)} · ${fmt0(bestMonth[1])} km</p>` : ""}</div>
-
-    <div class="card"><h2>Zone nuove per mese</h2>
-      ${bars(newMonths.map((m) => MESI[m % 100].slice(0, 3)), newMonths.map((m) => newByMonth.get(m)), "zone da 800 m")}
-      <p class="msg">Zone da 800 m mai viste prima · ${fmt0(z8.cells.length)} in totale</p></div>
 
     ${years.length > 1 ? `<div class="card"><h2>Km per anno</h2>${bars(years.map(String), years.map((y) => byYear.get(y)), "km")}</div>` : ""}
 

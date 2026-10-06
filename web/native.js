@@ -30,7 +30,6 @@ const Native = (() => {
       start: () => real.startTracking(),
       stop: () => real.stopTracking(),
       sync: () => real.syncNow(),
-      repull: () => real.repullHistory(),
       cleanPoints: (apply) => JSON.parse(real.cleanPoints(!!apply)),
       location: async () => { const t = real.getLocation(); return t ? JSON.parse(t) : null; },
       battery: () => real.requestIgnoreBattery(),
@@ -39,6 +38,7 @@ const Native = (() => {
       pullSettings: () => ask((id) => real.pullSettings(id)),
       pushSettings: (json) => ask((id) => real.pushSettings(id, json)),
       changePassword: (c) => new Promise((res) => { authPending = res; real.changePassword(JSON.stringify(c)); }),
+      deleteAccount: () => ask((id) => real.deleteAccount(id)),
       resetPassword: (c) => new Promise((res) => { authPending = res; real.resetPassword(JSON.stringify(c)); }),
       loginGoogle: (url) => new Promise((res) => { authPending = res; real.loginGoogle(url); }),
       cancelGoogle: () => real.cancelGoogle(),
@@ -76,6 +76,7 @@ const Native = (() => {
     pullSettings: async () => ({ ok: false, error: "solo nell'app" }),
     pushSettings: async () => ({ ok: false, error: "solo nell'app" }),
     changePassword: async () => ({ ok: false, error: "Disponibile solo nell'app Android" }),
+    deleteAccount: async () => ({ ok: false, error: "Disponibile solo nell'app Android" }),
     resetPassword: async () => ({ ok: false, error: "Disponibile solo nell'app Android" }),
     loginGoogle: async () => ({ ok: false, error: "Disponibile solo nell'app Android" }),
     cancelGoogle: () => {}, useLocal: () => {}, logout: () => {}, exportData: () => {}, setTheme: () => {},
@@ -93,7 +94,6 @@ const Native = (() => {
       navigator.geolocation.getCurrentPosition((p) => res({ lat: p.coords.latitude, lon: p.coords.longitude }), () => res(null), { timeout: 4000 });
     }),
     sync: () => { state.pending = 0; state.lastSync = new Date().toLocaleTimeString("it-IT"); },
-    repull: () => {},
     battery: () => alert("Disponibile solo nell'app Android"),
   };
 })();

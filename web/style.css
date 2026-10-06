@@ -491,3 +491,8 @@ button.secondary { background: var(--surface-2); border: 1px solid rgba(127, 127
 
 /* versione web (servita da PocketBase): niente tracciamento, e l'indirizzo del database è quello del sito */
 :root[data-web] [data-fold="tracker"], :root[data-web] #trackwarn, :root[data-web] #login-db, :root[data-web] #l-url { display: none; }
+
+/* pulsanti secondari rossi (Esci dall'account, Elimina account): .secondary ha un fondo proprio che altrimenti vincerebbe su .danger */
+button.secondary.danger { background: var(--danger); color: #fff; border-color: transparent; }
+/* Elimina account: solo testo, piccolo, in fondo e lontano dagli altri pulsanti, perché sia difficile da toccare per sbaglio */
+button.linkbtn.del-link { display: block; width: auto; margin: 36px auto 4px; padding: 2px 4px; background: none; border: 0; box-shadow: none; color: var(--danger) !important; font-size: 11.5px; font-weight: 400; text-decoration: underline; opacity: .8; }

@@ -113,6 +113,18 @@ class Api(private val prefs: Prefs) {
     }
 
     /**
+     * Elimina l'account collegato: PocketBase cancella il record dell'utente e, per la relazione a cascata, anche tutti i suoi punti.
+     * Serve che la regola di cancellazione degli utenti lo permetta (quella di partenza lo fa). Ritorna null se ok, altrimenti il motivo.
+     */
+    fun deleteAccount(): String? {
+        if (prefs.token.isEmpty() && !relogin()) return "Accesso scaduto: esci e accedi di nuovo"
+        val path = "/api/collections/users/records/${prefs.userId}"
+        var (code, text) = call("DELETE", path, null, true)
+        if ((code == 401 || code == 404) && relogin()) call("DELETE", path, null, true).also { code = it.first; text = it.second }
+        return if (code in 200..299) null else errorText(code, text)
+    }
+
+    /**
      * "Password dimenticata": chiede a PocketBase di mandare all'email il link per sceglierne una nuova.
      * Serve un server di posta (SMTP) configurato in PocketBase. Ritorna null se la richiesta è partita, altrimenti il motivo.
      */

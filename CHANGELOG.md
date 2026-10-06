@@ -4,6 +4,30 @@ Versione app in `android/app/build.gradle.kts` (`versionName` e `versionCode`).
 Ad ogni rilascio: alzare `versionCode` di 1, aggiornare `versionName` e aggiungere una voce qui.
 La versione è mostrata in cima alla schermata dell'app.
 
+## 0.32.6 (build 83) - 2026-10-06
+- **Feedback aptico aumentato del 15%** rispetto alla 0.32.5: `HAPTIC_SCALE` da 0,595 a 0,684 (0,595 × 1,15; praticamente il valore della 0.32.4, 0,7). Sul motore acceso/spento di questo telefono: tocco 10 ms, conferma 20 ms, errore due impulsi da 23 ms.
+
+## 0.32.5 (build 82) - 2026-10-06
+- **Feedback aptico ridotto ancora del 15%:** `HAPTIC_SCALE` passa da 0,7 a 0,595 (0,7 × 0,85, cioè circa il 60% dei valori di base). Sul motore acceso/spento di questo telefono gli impulsi diventano: tocco 15 → 8 ms, conferma 30 → 17 ms, errore due impulsi da 35 → 20 ms. Sotto circa 10 ms il tocco può diventare poco percettibile su alcuni motori: se non lo senti, `HAPTIC_SCALE` si alza.
+
+## 0.32.4 (build 81) - 2026-10-06
+- **Feedback aptico più leggero (−30%):** impulsi propri al 70% (`HAPTIC_SCALE` in `MainActivity.kt`). Con un motore a ampiezza regolabile si usa il 70% dell'ampiezza massima; su un motore acceso/spento (il telefono di prova dichiara solo `ON_CALLBACK`) si accorcia la durata al 70%: tocco 15 → 10 ms, conferma 30 → 21 ms, errore due impulsi da 35 → 24 ms. Il feedback di sistema usato prima non aveva un controllo di intensità né una durata nota, quindi il "−30%" è sui valori di base scelti e non sul vecchio valore, che non è misurabile. Resta rispettata l'impostazione di Android *vibrazione al tocco*; senza motore si ripiega sul feedback di sistema. Nuovo permesso `VIBRATE`.
+
+## 0.32.3 (build 80) - 2026-10-06
+- **Tolto *Riscarica lo storico dal server*** (e la scheda *Dati* che lo conteneva): il telefono carica già ogni punto sul server e lo storico si scarica da solo al primo accesso, quindi il pulsante non serviva. Tolti anche `repullHistory` dal ponte nativo e `Native.repull`. Resta *Esporta i dati*.
+
+## 0.32.2 (build 79) - 2026-10-06
+- **Elimina account più difficile da toccare:** non è più un pulsante ma un piccolo testo sottolineato in fondo alle Impostazioni, lontano da *Esci dall'account*. Le conferme sono due: prima si scrive ELIMINA, poi una seconda finestra ("Ultima conferma… Sì, elimina per sempre").
+
+## 0.32.1 (build 78) - 2026-10-06
+- **Niente rotazione:** l'app resta sempre in verticale (`android:screenOrientation="portrait"` su `MainActivity`), anche se il telefono viene girato.
+
+## 0.32.0 (build 77) - 2026-10-06
+- **Indicatore della posizione sull'ultimo punto:** il pallino azzurro sta sempre sull'ultimo punto salvato (non più sulla posizione del GPS in questo momento) e si sposta da solo quando arrivano punti nuovi. *Dove sono* centra la mappa su quel punto, senza chiedere una posizione fresca (per quella resta *Registra la posizione adesso* nel Tracker).
+- **Filtro e pannello degli spostamenti (vista Percorsi):** il pannello in basso ora segue il filtro del periodo: elenca solo gli spostamenti che iniziano nel periodo scelto e i pulsanti ‹ › passano tra i giorni di quel periodo (prima mostrava sempre tutti i giorni). Le altre viste già seguivano il filtro.
+- **Impostazioni:** la sezione *Account* è in fondo; *Esci dall'account* è rosso (prima il fondo dei pulsanti secondari lo copriva); nuovo pulsante **Elimina account** (rosso, solo con un account sul server): chiede di scrivere ELIMINA e cancella dal server l'utente con tutti i suoi punti e le impostazioni (relazione a cascata), poi svuota i dati locali e torna alla schermata di accesso. Nuovo `Api.deleteAccount`, ponte `deleteAccount(id)`, `Native.deleteAccount` (anche nel sito).
+- **Statistiche:** tolta la scheda *Zone nuove per mese*.
+
 ## 0.31.0 (build 76) - 2026-10-05
 - **Nuovo layout del sito su schermi larghi (≥ 1000 px).** In qualsiasi browser (l'app Android non cambia): a sinistra una colonna con logo e versione, menu verticale (Mappa, Statistiche, Impostazioni) e i controlli della mappa (viste, periodo con scorciatoie, pannello dati, *Personalizza la vista* e *Dove sono* con la scritta); a destra la mappa a tutta altezza, con il livello di zoom in alto a sinistra e il pannello di personalizzazione che si apre a destra. Statistiche su tre colonne con i blocchetti in cima; Impostazioni su due colonne. Stesso stile (colori, chip, contorni). Sotto i 1000 px il sito resta com'era. Nuovi `web/web.css` e `web/web-layout.js` (sposta gli elementi senza cambiare gli id).
 - **Server locale per provare l'interfaccia:** `python tools/dev_server.py` (dati demo, con il layout del sito; `?layout=web` nasconde anche tracker e simili come online) oppure `--proxy http://IP:9090` per usare i dati veri dal PocketBase. `.claude/launch.json` lo avvia dal pannello.
