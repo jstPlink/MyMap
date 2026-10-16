@@ -13,8 +13,8 @@ android {
         applicationId = "com.mymap.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 88
-        versionName = "0.32.11"
+        versionCode = 94
+        versionName = "0.32.17"
         // indirizzo di partenza del server: vuoto nelle build pubbliche; per le tue metti mymap.serverUrl=https://... in android/local.properties
         val serverUrl = Properties().apply {
             rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }

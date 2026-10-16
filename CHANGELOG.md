@@ -4,6 +4,25 @@ Versione app in `android/app/build.gradle.kts` (`versionName` e `versionCode`).
 Ad ogni rilascio: alzare `versionCode` di 1, aggiornare `versionName` e aggiungere una voce qui.
 La versione è mostrata in cima alla schermata dell'app.
 
+## 0.32.17 (build 94) - 2026-10-16
+- **Il widget singolo si comporta come il blocco tracker del widget lungo:** il vecchio widget "ultimo punto" (2×1, ora *MyMap · tracker*) mostra la stessa cella (icona onde o impronte secondo il modo del tracker, tempo "m:ss" dall'ultimo punto, scritta *tracker*), è neutro e **diventa giallo oltre 6 minuti** senza punti, come il blocco del widget lungo, e **al tocco salva subito un punto** (`TodayWidget.fixPending` → `FixNowService`). Usa `TodayWidget.applyTracker`, si aggiorna ogni 20 secondi insieme al widget lungo (`LastPointWidget.updateTracker`). Tolto il testo "5 min fa" e la soglia dei 30 minuti.
+
+## 0.32.16 (build 93) - 2026-10-15
+- **Tocco sul tracker del widget funzionante:** Android non permette di avviare dal widget un servizio normale ("Background start not allowed"), quindi `FixNowService` è un servizio in primo piano (`PendingIntent.getForegroundService`, tipo `location`, notifica a bassa priorità "MyMap cerca la posizione" per la durata della ricerca).
+
+## 0.32.15 (build 92) - 2026-10-15
+- **Tocco sul blocco tracker del widget = punto subito:** non apre più le impostazioni; `FixNowService` (nuovo `FixNow.kt`) cerca la posizione adesso (GPS e rete in parallelo, fino a 20 s), la salva come punto, aggiorna i widget e mostra un avviso ("Punto salvato (±12 m)"). Serve il permesso di posizione (da background, "Consenti sempre"). La ricerca e il salvataggio sono condivisi con *Registra la posizione adesso* dell'app (`FixNow.request` e `FixNow.save`, tolti da `MainActivity`).
+- **Widget lungo più arioso:** i dati di oggi e dei 7 giorni sono più vicini tra loro (distanza fissa di 7 dp, centrati nel blocco) e più staccati dai bordi (18 dp a destra e a sinistra).
+
+## 0.32.14 (build 91) - 2026-10-15
+- **Widget nello stile dell'app:** il widget 4×1 ha un blocco dati a sinistra (oggi in alto con valore grande e unità piccola, 7 giorni sotto in grigio) e un blocco tracker a destra, su fondo di tema con filo sottile (scuro: #121212 / #1D1D1D / #343434; chiaro: i colori del tema chiaro dell'app). Via il teal, i riquadri bianchi trasparenti e il verde del movimento: il blocco tracker è neutro (icona onde/impronte e tempo) e **solo con l'avviso (nessun punto da più di 6 minuti) diventa giallo** (#FACC15, testi scuri). Anche il widget *ultimo punto* ha il nuovo stile scuro e il valore diventa giallo oltre 30 minuti. Drawable nuovi `widget_app_*`, `widget_panel_*`, `widget_tracker_*`, `widget_warn`; tolti `widget_bg`, `widget_cell`, `widget_flat_dark`, `widget_alert_amber`. Le righe dei dati non hanno più un tocco per colonna: ogni dato apre la sua vista (come prima) e il blocco apre l'app. Anteprime rigenerate.
+
+## 0.32.13 (build 90) - 2026-10-15
+- **Il widget usa lo stesso check di movimento dell'app:** l'icona (onde o impronte) e il verde seguono il modo del tracker (`Prefs.fastMode`, scritto da `LocationService.request`: in movimento dal primo fix sopra 1 m/s, da fermo dopo sei fix sotto 0,6 m/s) invece di ricalcolare dall'ultimo punto. Il widget si aggiorna appena il modo cambia.
+
+## 0.32.12 (build 89) - 2026-10-15
+- **Il cambio di vista o di filtro non cambia più lo zoom:** la mappa si centra ancora sulla tua posizione, ma resta allo zoom in cui si trova (`goHere(true)` in `app.js`; il tasto *Dove sono* inquadra come prima).
+
 ## 0.32.11 (build 88) - 2026-10-06
 - **Riquadri dei widget ancora meno contrastati (-20%):** l'opacità di `widget_cell` scende da 25/255 (`#19FFFFFF`) a 20/255 (`#14FFFFFF`), circa l'8%.
 

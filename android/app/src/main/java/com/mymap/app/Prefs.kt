@@ -68,6 +68,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("historyPulled", false)
         set(v) = sp.edit().putBoolean("historyPulled", v).apply()
     /** Ora dell'ultimo punto per cui è già partito l'avviso "nessun punto da 20 minuti" (0 = nessun avviso attivo). */
+    /** Modo di campionamento del servizio (true = in movimento): il widget lo mostra, così coincide con quello che decide il tracker. */
+    var fastMode: Boolean
+        get() = sp.getBoolean("fastMode", false)
+        set(v) = sp.edit().putBoolean("fastMode", v).apply()
+
     var staleAlertFor: Long
         get() = sp.getLong("staleAlertFor", 0L)
         set(v) = sp.edit().putLong("staleAlertFor", v).apply()

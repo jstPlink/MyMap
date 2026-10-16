@@ -42,7 +42,8 @@
             </intent-filter>
         </receiver>
 
-        <receiver android:name=".LastPointWidget" android:exported="false">
+        <service android:name=".FixNowService" android:exported="false" android:foregroundServiceType="location" />
+        <receiver android:name=".LastPointWidget" android:exported="false" android:label="MyMap · tracker">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.mymap.app.REFRESH_WIDGET" />

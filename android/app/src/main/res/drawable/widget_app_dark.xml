@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Sfondo dei widget chiari: il teal dell'app Bilancio -->
+<!-- Sfondo del widget: la tinta di fondo del tema dark dell'app -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="#0F766E" />
+    <solid android:color="#121212" />
     <corners android:radius="22dp" />
 </shape>

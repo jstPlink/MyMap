@@ -158,42 +158,6 @@ class MainActivity : Activity() {
         )
     }
 
-    /**
-     * Chiede al telefono la posizione adesso (GPS e rete in parallelo): si ferma al primo fix con precisione entro 100 m,
-     * altrimenti dopo 20 secondi usa il migliore ottenuto. `onDone(null)` se nessun provider risponde.
-     */
-    private fun fixNow(onDone: (Location?) -> Unit) {
-        val lm = getSystemService(LocationManager::class.java)
-        val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER).filter { lm.isProviderEnabled(it) }
-        if (providers.isEmpty() || Build.VERSION.SDK_INT < 30) { onDone(null); return }
-        val handler = Handler(Looper.getMainLooper())
-        val signals = mutableListOf<CancellationSignal>()
-        var best: Location? = null
-        var finished = false
-        var pending = providers.size
-        fun finish() {
-            if (finished) return
-            finished = true
-            handler.removeCallbacksAndMessages(null)
-            signals.forEach { it.cancel() }
-            onDone(best)
-        }
-        handler.postDelayed({ finish() }, 20_000)
-        for (p in providers) {
-            val cs = CancellationSignal().also { signals += it }
-            @Suppress("MissingPermission")
-            lm.getCurrentLocation(p, cs, mainExecutor) { loc ->
-                handler.post {
-                    pending--
-                    val b = best
-                    if (loc != null && (b == null || (loc.hasAccuracy() && loc.accuracy < b.accuracy))) best = loc
-                    val now = best
-                    if (pending <= 0 || (now != null && now.hasAccuracy() && now.accuracy <= 100f)) finish()
-                }
-            }
-        }
-    }
-
     /** API esposta all'interfaccia web come window.MyMapNative (vedi web/native.js). */
     private inner class Bridge {
         @JavascriptInterface
@@ -324,23 +288,12 @@ class MainActivity : Activity() {
                     reply(JSONObject().put("ok", false).put("error", "Manca il permesso di posizione"))
                     return@runOnUiThread
                 }
-                fixNow { loc ->
+                FixNow.request(this@MainActivity) { loc ->
                     if (loc == null) {
                         reply(JSONObject().put("ok", false).put("error", "Nessuna posizione: controlla che la posizione del telefono sia attiva e prova all'aperto"))
                     } else {
                         if (save) {
-                            val bm = getSystemService(android.os.BatteryManager::class.java)
-                            store.insert(
-                                TrackPoint(
-                                    clientId = java.util.UUID.randomUUID().toString(), ts = loc.time, lat = loc.latitude, lon = loc.longitude,
-                                    accuracy = if (loc.hasAccuracy()) loc.accuracy else null, speed = if (loc.hasSpeed()) loc.speed else null,
-                                    bearing = if (loc.hasBearing()) loc.bearing else null, altitude = if (loc.hasAltitude()) loc.altitude else null,
-                                    provider = loc.provider ?: "gps", battery = bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY),
-                                )
-                            )
-                            SyncWorker.enqueue(this@MainActivity)
-                            LastPointWidget.update(this@MainActivity)
-                            TodayWidget.update(this@MainActivity)
+                            FixNow.save(this@MainActivity, loc)
                         }
                         reply(
                             JSONObject().put("ok", true).put("lat", loc.latitude).put("lon", loc.longitude)

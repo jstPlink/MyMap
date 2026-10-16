@@ -8,7 +8,11 @@ import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
 
-/** Widget della schermata home: da quanto tempo è stato salvato l'ultimo punto. Si aggiorna a ogni punto (al massimo una volta al minuto) e ogni ~15 minuti dal cane da guardia; al tocco apre l'app. */
+/**
+ * Widget 2x1 "tracker": è il blocco tracker del widget lungo da solo (icona onde/passi, tempo dall'ultimo punto in m:ss, neutro; giallo se
+ * l'ultimo punto ha più di 6 minuti). Il tocco salva subito un punto. Si aggiorna come il blocco del widget lungo (ogni 20 secondi a
+ * schermo acceso, a ogni punto, ogni ~5 e ~15 minuti dal servizio e dal controllo).
+ */
 class LastPointWidget : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
@@ -30,30 +34,26 @@ class LastPointWidget : AppWidgetProvider() {
         }
 
         private fun render(context: Context, manager: AppWidgetManager, ids: IntArray) {
-            val ts = try { PointStore(context).lastOwnTs() } catch (_: Exception) { 0L }
-            val age = System.currentTimeMillis() - ts
-            val views = RemoteViews(context.packageName, R.layout.widget_last_point)
-            views.setTextViewText(R.id.w_value, if (ts == 0L) "—" else ago(age))
-            views.setTextViewText(R.id.w_label, if (ts == 0L) "nessun punto salvato" else "dall'ultimo punto")
-            views.setTextColor(R.id.w_value, if (ts != 0L && age > STALE_MS) 0xFFFBBF24.toInt() else 0xFFFFFFFF.toInt())
-            views.setOnClickPendingIntent(R.id.w_root, TodayWidget.openApp(context, null, null)) // il tocco apre l'app
-            manager.updateAppWidget(ids, views)
+            val fix = try { PointStore(context).lastFix() } catch (_: Exception) { null }
+            manager.updateAppWidget(ids, build(context, fix))
         }
 
-        // oltre mezz'ora senza punti il valore diventa ambra (da fermo il telefono ne salva uno ogni 10 minuti)
-        private const val STALE_MS = 30 * 60_000L
+        /** Solo il blocco (aggiornamento frequente, senza rifare il resto): usato da TodayWidget.updateTracker. */
+        fun updateTracker(context: Context, manager: AppWidgetManager, fix: PointStore.LastFix?) {
+            val ids = manager.getAppWidgetIds(ComponentName(context, LastPointWidget::class.java))
+            if (ids.isEmpty()) return
+            val views = RemoteViews(context.packageName, R.layout.widget_last_point)
+            TodayWidget.applyTracker(context, views, fix, true)
+            manager.partiallyUpdateAppWidget(ids, views)
+        }
 
-        fun ago(ms: Long): String {
-            val s = maxOf(0L, ms) / 1000
-            val m = s / 60
-            val h = m / 60
-            val d = h / 24
-            return when {
-                s < 60 -> "$s s fa"
-                m < 60 -> "$m min fa"
-                h < 24 -> "$h h ${m % 60} min fa"
-                else -> "$d g ${h % 24} h fa"
-            }
+        private fun build(context: Context, fix: PointStore.LastFix?): RemoteViews {
+            val views = RemoteViews(context.packageName, R.layout.widget_last_point)
+            TodayWidget.applyTracker(context, views, fix, true)
+            val tap = TodayWidget.fixPending(context)
+            views.setOnClickPendingIntent(R.id.w_root, tap)
+            views.setOnClickPendingIntent(R.id.w_col_pos, tap)
+            return views
         }
     }
 }

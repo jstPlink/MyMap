@@ -151,7 +151,10 @@ class LocationService : Service(), LocationListener {
 
     @Suppress("MissingPermission")
     private fun request(fast: Boolean) {
+        val changed = this.fast != fast || prefs.fastMode != fast
         this.fast = fast
+        prefs.fastMode = fast
+        if (changed) TodayWidget.updateTracker(this)
         lm.removeUpdates(this)
         val interval = if (fast) prefs.movingSec.coerceAtLeast(1) * 1000L else stillIntervalMs()
         try {

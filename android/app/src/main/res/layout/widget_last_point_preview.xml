@@ -1,29 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Widget "tracker" 2x1 (scuro): come il blocco tracker del widget lungo; giallo se manca un punto, il tocco salva un punto -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/w_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:gravity="center"
-    android:padding="12dp"
-    android:background="@drawable/widget_bg">
+    android:padding="8dp"
+    android:background="@drawable/widget_app_dark">
 
-    <TextView
-        android:id="@+id/w_value"
-        android:text="5 min fa"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textSize="26sp"
-        android:textStyle="bold"
-        android:textColor="#FFFFFF"
-        android:maxLines="1" />
-
-    <TextView
-        android:id="@+id/w_label"
-        android:text="dall'ultimo punto"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textSize="12sp"
-        android:textColor="#E6FFFFFF"
-        android:maxLines="1" />
+    <LinearLayout
+        android:id="@+id/w_col_pos"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:background="@drawable/widget_tracker_dark">
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:scaleType="fitCenter"
+                android:tint="#FFECECEC"
+                android:src="@drawable/ic_still_2" />
+            <TextView
+                android:id="@+id/w_ago"
+            android:text="0:42"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="4dp"
+                android:includeFontPadding="false"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="#ECECEC"
+                android:maxLines="1" />
+        </LinearLayout>
+        <TextView
+            android:id="@+id/w_lbl_pos"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:includeFontPadding="false"
+            android:text="tracker"
+            android:textSize="11sp"
+            android:textColor="#9B9B9B"
+            android:maxLines="1" />
+    </LinearLayout>
 </LinearLayout>

@@ -1022,11 +1022,11 @@ function drawPlaces(pts, cellPx = 14) {
 }
 
 // Inquadra la tua posizione (l'ultima nota se manca il GPS) con 20 km di raggio, cioè 40 km sulla larghezza della mappa
-// (zoom frazionario); se non c'è nessuna posizione non muove la mappa
-function goHere() {
+// (zoom frazionario); se non c'è nessuna posizione non muove la mappa. Con keepZoom si centra sulla posizione senza toccare lo zoom
+function goHere(keepZoom) {
   const c = here || (points.length ? points[points.length - 1] : null), w = map.getSize().x;
   if (!c || !w) return;
-  const z = Math.log2(156543.03 * Math.cos((c.lat * Math.PI) / 180) / (40000 / w));
+  const z = keepZoom ? map.getZoom() : Math.log2(156543.03 * Math.cos((c.lat * Math.PI) / 180) / (40000 / w));
   map.setView([c.lat, c.lon], Math.max(3, Math.min(17, z)), { animate: false });
 }
 
@@ -1047,7 +1047,7 @@ function render(fit) {
   if (firstRender && here) {
     map.setView([here.lat, here.lon], 15);
   } else if (fit) {
-    goHere(); // cambiando vista o filtro non si inquadra tutto lo storico: si resta dove sei, con 20 km di raggio
+    goHere(true); // cambiando vista o filtro non si inquadra tutto lo storico: si resta dove sei, senza cambiare lo zoom
   }
   firstRender = false;
   $("modeinfo").innerHTML = r.info || "";

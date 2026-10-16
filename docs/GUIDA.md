@@ -1,6 +1,6 @@
 # MyMap – Guida all'uso e ai parametri
 
-Guida per chi usa l'app (versione 0.32.11). Per come è fatta dentro, vedi [ARCHITETTURA.md](../ARCHITETTURA.md); per la cronologia
+Guida per chi usa l'app (versione 0.32.17). Per come è fatta dentro, vedi [ARCHITETTURA.md](../ARCHITETTURA.md); per la cronologia
 delle modifiche, [CHANGELOG.md](../CHANGELOG.md).
 
 ## 1. Cos'è
@@ -51,7 +51,7 @@ Sopra il tasto "dove sono" c'è il pulsante con i cursori, che apre il pannello 
 - **Filtro del periodo:** scorciatoie (Oggi, Ieri, Ultimi 7/30 giorni, Questo mese, Mese scorso, Quest'anno, Tutto), anno/mese/giorno,
   da data a data e **fascia oraria** (es. 07:00–09:00, anche a cavallo della mezzanotte).
 - **Dove sono:** il pallino azzurro sta sempre sull'**ultimo punto salvato** (si sposta da solo quando ne arrivano di nuovi) e il tasto centra la mappa lì; non chiede una posizione fresca (per quella c'è *Registra la posizione adesso* nel Tracker).
-- **Cambio vista o filtro:** la mappa si centra sulla tua posizione con **20 km di raggio** (circa 40 km di larghezza).
+- **Cambio vista o filtro:** la mappa si centra sulla tua posizione **senza cambiare lo zoom**.
 - **Toccare un posto o un pallino** apre i dettagli e permette di **dare o cambiare il nome**; un nome dato da te vale per tutti i punti
   entro 120 m e ha la precedenza su quello di OpenStreetMap. Da Posti puoi nominare in sequenza i posti nuovi.
 - **Filtri rapidi:** sotto la barra in alto, **Oggi**, **7 giorni** e **Sempre** (quello attivo è evidenziato); per i dettagli (anno, mese, date, fascia
@@ -129,21 +129,14 @@ della settimana. Toccando una riga con il segno › la mappa si apre su quel luo
 - **Posizione adesso:** *Registra la posizione adesso* chiede subito il fix (GPS e rete in parallelo, fino a 20 secondi) e lo salva
   come punto.
 
-- **Widget "ultimo punto":** tieni premuta la schermata home → Widget → MyMap. Mostra da quanto tempo è stato salvato l'ultimo punto
-  ("5 min fa"); diventa ambra oltre 30 minuti (segno che il tracking potrebbe essere fermo). Si aggiorna a ogni punto e ogni ~15 minuti;
-  toccandolo si apre l'app.
-- **Widget "oggi e 7 giorni" (4×1):** stesso menu dei widget, in due versioni: *MyMap · oggi e 7 giorni (chiaro)*, su una targhetta
-  teal con riquadri bianchi trasparenti, come i widget di Bilancio, e *(scuro)*, piatto e a tinta unita.
-  - **Cosa mostra:** a sinistra le etichette **oggi** (riga con i valori grandi) e **7g** (riga con i valori grigi); poi tre colonne con il titolo in alto,
-    **km** percorsi, **posti** visitati (soste di almeno 20 minuti) e tempo in **movimento**, con sotto il valore di oggi e il valore degli ultimi 7 giorni.
-  - **Cella tracker** (a destra): un'**icona animata** (**onde** che si allargano se sei fermo, **impronte di scarpe** che camminano se sei in movimento; verde
-    in movimento) e, accanto, da quanto tempo è stato registrato l'ultimo punto in **minuti e secondi** ("3:20"). Si aggiorna ogni 20 secondi a schermo
-    acceso, con il tracking attivo. La cella diventa **ambra** se l'ultimo punto ha più di 6 minuti: con la frequenza di partenza da fermo (un punto ogni 10
-    minuti) succede anche a telefono fermo, quindi per averla ambra solo quando c'è un problema conviene un punto ogni 5-6 minuti da fermo.
+- **Widget "tracker" (2×1):** tieni premuta la schermata home → Widget → MyMap → *tracker*. È il blocco tracker del widget lungo da solo: icona animata (onde se sei fermo, impronte se sei in movimento) e da quanto tempo è stato salvato l'ultimo punto ("3:20"). È neutro e **diventa giallo** se l'ultimo punto ha più di 6 minuti (segno che il tracking potrebbe essere fermo). **Toccandolo salva subito un punto** (cerca la posizione adesso, fino a 20 secondi; serve "Consenti sempre"). Si aggiorna ogni 20 secondi a schermo acceso.
+- **Widget "oggi e 7 giorni" (4×1):** stesso menu dei widget, nello stile dell'app e in due versioni: *MyMap · oggi e 7 giorni (chiaro)* e *(scuro)*; tutti e due hanno il fondo e il filo sottile dei temi dell'app.
+  - **Cosa mostra:** a sinistra un blocco con due righe: in alto **oggi** (**km** percorsi, **posti** visitati, soste di almeno 20 minuti, e tempo in **movimento**, con l'unità piccola e grigia), sotto gli **ultimi 7 giorni** ("7g · 743 km", posti, tempo) in grigio.
+  - **Blocco tracker** (a destra): un'**icona animata** (**onde** che si allargano se sei fermo, **impronte di scarpe** se sei in movimento: è lo stesso modo che usa il tracker, vedi *Frequenza dei punti*) e il tempo dall'ultimo punto in **minuti e secondi** ("3:20"); sotto, la scritta *tracker*. Si aggiorna ogni 20 secondi a schermo acceso, con il tracking attivo. Il blocco è **neutro** (solo un filo sottile, nessun colore) e **diventa giallo**, con testi scuri, solo se l'ultimo punto ha più di 6 minuti: con la frequenza di partenza da fermo (un punto ogni 10 minuti) succede anche a telefono fermo, quindi per averlo giallo solo quando c'è un problema conviene un punto ogni 5-6 minuti da fermo.
   - **Tocchi:** un dato apre la vista (**Percorsi** per i km, **Luoghi** per i posti, **Heatmap** per il tempo in movimento) con il filtro su oggi (riga grande) o
-    sugli ultimi 7 giorni (riga grigia); la cella tracker apre le **impostazioni sulla sezione Tracker**; altrove si apre l'app.
+    sugli ultimi 7 giorni (riga grigia); **toccando il blocco tracker** il telefono cerca la posizione adesso e la salva come punto (compare un avviso con la precisione; serve "Consenti sempre"); altrove si apre l'app.
   - **Anteprima:** nel selettore dei widget (tieni premuta la home → Widget → MyMap) i widget mostrano dati di esempio, non i tuoi; da Android 12.
-  - **Se un testo risulta tagliato:** una riga di celle ha poca altezza; i margini e i testi sono già al limite per molti launcher.
+  - **Se un testo risulta tagliato:** il widget è alto una sola riga di celle; con uno schermo stretto "7g · 743 km" può non starci.
 - **Avviso sonoro "nessun punto":** se il tracking è attivo ma l'ultimo punto ha più di 20 minuti, arriva una notifica con suono e vibrazione. Avvisa
   una sola volta per ogni buco e sparisce quando i punti riprendono; se fermi tu il tracking non parte. Può arrivare con qualche minuto di ritardo (il controllo
   è ogni ~5 minuti, e ogni ~15 se Android ha ucciso il servizio).
@@ -203,5 +196,5 @@ se non può, manda una notifica. Gli aggiornamenti installati dal PC chiudono l'
 - **Nomi dei luoghi:** via e città da OpenStreetMap (Nominatim, una richiesta al secondo); si spegne con l'interruttore "Mostra i nomi
   di OpenStreetMap": le coordinate dei soli luoghi mostrati vengono inviate a quel servizio.
 - Nessun servizio Google nell'app (niente Play Services). Il server è solo il tuo.
-- La password dell'account è salvata in chiaro nelle preferenze dell'app (serve per il nuovo accesso): vedi i punti aperti in
+- La password dell'account è cifrata con il Keystore di Android (serve per il nuovo accesso): vedi i punti aperti in
   ARCHITETTURA.md.

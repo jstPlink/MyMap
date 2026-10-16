@@ -1,27 +1,110 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Widget "tracker" 2x1 (scuro): come il blocco tracker del widget lungo; giallo se manca un punto, il tocco salva un punto -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/w_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:gravity="center"
-    android:padding="12dp"
-    android:background="@drawable/widget_bg">
+    android:padding="8dp"
+    android:background="@drawable/widget_app_dark">
 
-    <TextView
-        android:id="@+id/w_value"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textSize="26sp"
-        android:textStyle="bold"
-        android:textColor="#FFFFFF"
-        android:maxLines="1" />
-
-    <TextView
-        android:id="@+id/w_label"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textSize="12sp"
-        android:textColor="#E6FFFFFF"
-        android:maxLines="1" />
+    <LinearLayout
+        android:id="@+id/w_col_pos"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:background="@drawable/widget_tracker_dark">
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+            <ViewFlipper
+                android:id="@+id/w_flip_still"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:autoStart="true"
+                android:flipInterval="500"
+                android:inAnimation="@android:anim/fade_in"
+                android:outAnimation="@android:anim/fade_out">
+                <ImageView
+                    android:id="@+id/still_0"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_still_0" />
+                <ImageView
+                    android:id="@+id/still_1"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_still_1" />
+                <ImageView
+                    android:id="@+id/still_2"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_still_2" />
+                <ImageView
+                    android:id="@+id/still_3"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_still_3" />
+            </ViewFlipper>
+            <ViewFlipper
+                android:id="@+id/w_flip_steps"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:autoStart="true"
+                android:flipInterval="500"
+                android:inAnimation="@android:anim/fade_in"
+                android:outAnimation="@android:anim/fade_out">
+                <ImageView
+                    android:id="@+id/steps_0"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_steps_0" />
+                <ImageView
+                    android:id="@+id/steps_1"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_steps_1" />
+                <ImageView
+                    android:id="@+id/steps_2"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_steps_2" />
+                <ImageView
+                    android:id="@+id/steps_3"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_steps_3" />
+            </ViewFlipper>
+            <TextView
+                android:id="@+id/w_ago"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="4dp"
+                android:includeFontPadding="false"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="#ECECEC"
+                android:maxLines="1" />
+        </LinearLayout>
+        <TextView
+            android:id="@+id/w_lbl_pos"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:includeFontPadding="false"
+            android:text="tracker"
+            android:textSize="11sp"
+            android:textColor="#9B9B9B"
+            android:maxLines="1" />
+    </LinearLayout>
 </LinearLayout>

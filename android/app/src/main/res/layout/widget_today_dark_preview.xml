@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Widget 4x1 nello stile dell'app (dark): blocco dati a sinistra (oggi sopra, 7 giorni sotto) e blocco tracker a destra -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/w_root"
     android:layout_width="match_parent"
@@ -6,264 +7,124 @@
     android:orientation="horizontal"
     android:gravity="center_vertical"
     android:padding="8dp"
-    android:background="@drawable/widget_flat_dark">
+    android:background="@drawable/widget_app_dark">
 
     <LinearLayout
-        android:id="@+id/w_col_lbl"
-        android:layout_width="wrap_content"
-        android:layout_height="match_parent"
-        android:minWidth="34dp"
-        android:paddingLeft="4dp"
-        android:layout_marginRight="2dp"
-        android:orientation="vertical">
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="left"
-            android:gravity="center"
-            android:paddingTop="7dp"
-            android:paddingBottom="0dp"
-            android:text=" "
-            android:includeFontPadding="false"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:textColor="#E6FFFFFF"
-            android:maxLines="1" />
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:minHeight="21dp"
-            android:layout_gravity="left"
-            android:gravity="center_vertical"
-            android:text="oggi"
-            android:includeFontPadding="false"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:textColor="#E6FFFFFF"
-            android:maxLines="1" />
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="left"
-            android:gravity="center"
-            android:paddingTop="0dp"
-            android:paddingBottom="7dp"
-            android:text="7g"
-            android:includeFontPadding="false"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:textColor="#E6FFFFFF"
-            android:maxLines="1" />
-    </LinearLayout>
-    <LinearLayout
-        android:id="@+id/w_col_km"
-        android:background="@drawable/widget_cell"
+        android:id="@+id/w_panel"
         android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:layout_weight="1"
-        android:layout_marginLeft="6dp"
-        android:orientation="vertical">
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:gravity="center"
-            android:paddingTop="7dp"
-            android:paddingBottom="0dp"
-            android:text="km"
-            android:includeFontPadding="false"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:textColor="#E6FFFFFF"
-            android:maxLines="1" />
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
-        <TextView
-            android:id="@+id/w_km"
-            android:text="12"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="21dp"
-            android:gravity="center"
-            android:includeFontPadding="false"
-            android:textSize="16.5sp"
-            android:textStyle="bold"
-            android:textColor="#FFFFFF"
-            android:maxLines="1" />
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
-        <TextView
-            android:id="@+id/w_km_week"
-            android:text="63"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:gravity="center_horizontal"
-            android:paddingTop="0dp"
-            android:paddingBottom="7dp"
-            android:includeFontPadding="false"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:textColor="#E6FFFFFF"
-            android:maxLines="1" />
-    </LinearLayout>
-    <LinearLayout
-        android:id="@+id/w_col_places"
-        android:background="@drawable/widget_cell"
-        android:layout_width="0dp"
-        android:layout_height="match_parent"
-        android:layout_weight="1"
-        android:layout_marginLeft="6dp"
-        android:orientation="vertical">
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:gravity="center"
-            android:paddingTop="7dp"
-            android:paddingBottom="0dp"
-            android:text="posti"
-            android:includeFontPadding="false"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:textColor="#E6FFFFFF"
-            android:maxLines="1" />
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
-        <TextView
-            android:id="@+id/w_places"
-            android:text="5"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="21dp"
-            android:gravity="center"
-            android:includeFontPadding="false"
-            android:textSize="16.5sp"
-            android:textStyle="bold"
-            android:textColor="#FFFFFF"
-            android:maxLines="1" />
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
-        <TextView
-            android:id="@+id/w_places_week"
-            android:text="18"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:gravity="center_horizontal"
-            android:paddingTop="0dp"
-            android:paddingBottom="7dp"
-            android:includeFontPadding="false"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:textColor="#E6FFFFFF"
-            android:maxLines="1" />
-    </LinearLayout>
-    <LinearLayout
-        android:id="@+id/w_col_time"
-        android:background="@drawable/widget_cell"
-        android:layout_width="0dp"
-        android:layout_height="match_parent"
-        android:layout_weight="1"
-        android:layout_marginLeft="6dp"
-        android:orientation="vertical">
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:gravity="center"
-            android:paddingTop="7dp"
-            android:paddingBottom="0dp"
-            android:text="movimento"
-            android:includeFontPadding="false"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:textColor="#E6FFFFFF"
-            android:maxLines="1" />
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
-        <TextView
-            android:id="@+id/w_time"
-            android:text="2h 10m"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="21dp"
-            android:gravity="center"
-            android:includeFontPadding="false"
-            android:textSize="16.5sp"
-            android:textStyle="bold"
-            android:textColor="#FFFFFF"
-            android:maxLines="1" />
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
-        <TextView
-            android:id="@+id/w_time_week"
-            android:text="9h 45m"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:gravity="center_horizontal"
-            android:paddingTop="0dp"
-            android:paddingBottom="7dp"
-            android:includeFontPadding="false"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:textColor="#E6FFFFFF"
-            android:maxLines="1" />
-    </LinearLayout>
-    <LinearLayout
-        android:id="@+id/w_col_pos"
-        android:background="@drawable/widget_cell"
-        android:layout_width="wrap_content"
-        android:layout_height="match_parent"
-        android:minWidth="88dp"
-        android:paddingLeft="6dp"
-        android:paddingRight="6dp"
-        android:layout_marginLeft="6dp"
-        android:orientation="vertical">
-        <TextView
-            android:id="@+id/w_lbl_pos"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
-            android:gravity="center"
-            android:paddingTop="7dp"
-            android:paddingBottom="0dp"
-            android:text="tracker"
-            android:includeFontPadding="false"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:textColor="#E6FFFFFF"
-            android:maxLines="1" />
+        android:layout_weight="3"
+        android:orientation="vertical"
+        android:gravity="center_vertical"
+        android:paddingLeft="18dp"
+        android:paddingRight="18dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:background="@drawable/widget_panel_dark">
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <TextView
+                android:id="@+id/w_km"
+            android:text="12 km"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="start"
+                android:includeFontPadding="false"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="#ECECEC"
+                android:maxLines="1" />
+            <TextView
+                android:id="@+id/w_places"
+            android:text="5 posti"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:includeFontPadding="false"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="#ECECEC"
+                android:maxLines="1" />
+            <TextView
+                android:id="@+id/w_time"
+            android:text="2h 10m"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="end"
+                android:includeFontPadding="false"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="#ECECEC"
+                android:maxLines="1" />
+        </LinearLayout>
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="7dp" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <TextView
+                android:id="@+id/w_km_week"
+            android:text="7g · 63 km"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="start"
+                android:includeFontPadding="false"
+                android:textSize="11sp"
+                android:textStyle="normal"
+                android:textColor="#9B9B9B"
+                android:maxLines="1" />
+            <TextView
+                android:id="@+id/w_places_week"
+            android:text="18 posti"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:includeFontPadding="false"
+                android:textSize="11sp"
+                android:textStyle="normal"
+                android:textColor="#9B9B9B"
+                android:maxLines="1" />
+            <TextView
+                android:id="@+id/w_time_week"
+            android:text="9h 45m"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="end"
+                android:includeFontPadding="false"
+                android:textSize="11sp"
+                android:textStyle="normal"
+                android:textColor="#9B9B9B"
+                android:maxLines="1" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/w_col_pos"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1.1"
+        android:layout_marginLeft="8dp"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:background="@drawable/widget_tracker_dark">
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:gravity="center">
+            android:gravity="center_vertical">
             <ImageView
-                android:layout_width="23.1dp"
-                android:layout_height="23.1dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
                 android:scaleType="fitCenter"
                 android:tint="#FFFFFFFF"
                 android:src="@drawable/ic_still_2" />
@@ -272,13 +133,22 @@
             android:text="0:42"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginLeft="5dp"
-                android:gravity="center"
+                android:layout_marginLeft="4dp"
                 android:includeFontPadding="false"
-                android:textSize="16.5sp"
+                android:textSize="16sp"
                 android:textStyle="bold"
-                android:textColor="#FFFFFF"
+                android:textColor="#ECECEC"
                 android:maxLines="1" />
         </LinearLayout>
+        <TextView
+            android:id="@+id/w_lbl_pos"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:includeFontPadding="false"
+            android:text="tracker"
+            android:textSize="11sp"
+            android:textColor="#9B9B9B"
+            android:maxLines="1" />
     </LinearLayout>
 </LinearLayout>
