@@ -127,8 +127,12 @@ class LocationService : Service(), LocationListener {
 
     private fun startInForeground() {
         val nm = getSystemService(NotificationManager::class.java)
+        // Android obbliga un servizio in primo piano a mostrare una notifica: la si rende il meno visibile possibile (importanza minima:
+        // niente icona nella barra di stato, niente suono, riga ridotta nel pannello). L'importanza di un canale esistente non si può
+        // cambiare, quindi c'è un canale nuovo e quello vecchio si elimina.
+        nm.deleteNotificationChannel("tracking")
         nm.createNotificationChannel(
-            NotificationChannel(CHANNEL, "Tracking posizione", NotificationManager.IMPORTANCE_LOW)
+            NotificationChannel(CHANNEL, "Tracking posizione", NotificationManager.IMPORTANCE_MIN).apply { setShowBadge(false) }
         )
         val open = PendingIntent.getActivity(
             this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE
@@ -138,6 +142,7 @@ class LocationService : Service(), LocationListener {
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setContentIntent(open)
             .setOngoing(true)
+            .setShowWhen(false)
             .build()
         if (Build.VERSION.SDK_INT >= 29) {
             startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
@@ -263,7 +268,7 @@ class LocationService : Service(), LocationListener {
     companion object {
         const val ACTION_STOP = "com.mymap.app.STOP"
         const val ACTION_RELOAD = "com.mymap.app.RELOAD"
-        private const val CHANNEL = "tracking"
+        private const val CHANNEL = "tracking_min"
         private const val MAX_ACCURACY_M = 60f
         private const val SYNC_EVERY = 20
         private const val TICK_MS = 5 * 60_000L

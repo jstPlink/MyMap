@@ -28,9 +28,9 @@ SAMPLE = {
 }
 
 
-def preview(src, tint):
+def preview(src, tint, sample=SAMPLE):
     s = rd(src)
-    for i, t in SAMPLE.items():
+    for i, t in sample.items():
         a = f'android:id="@+id/{i}"'
         if a not in s:
             continue
@@ -51,6 +51,10 @@ wr(r"res/layout/widget_today_dark_preview.xml", preview(r"res/layout/widget_toda
 wr(r"res/layout/widget_last_point_preview.xml", preview(r"res/layout/widget_last_point.xml", "#FFECECEC"))
 
 
+# widget verticale "punto e km" (solo scuro): km di oggi e dei 7 giorni senza etichetta davanti
+wr(r"res/layout/widget_point_km_preview.xml", preview(r"res/layout/widget_point_km.xml", "#FFECECEC", {"w_km": "12 km", "w_km_week": "63 km", "w_ago": "0:42"}))
+
+
 def link(info, layout):
     s = rd(info)
     if "previewLayout" in s:
@@ -63,4 +67,5 @@ def link(info, layout):
 link(r"res/xml/today_widget_info.xml", "widget_today_preview")
 link(r"res/xml/today_widget_dark_info.xml", "widget_today_dark_preview")
 link(r"res/xml/last_point_widget_info.xml", "widget_last_point_preview")
+link(r"res/xml/point_km_widget_info.xml", "widget_point_km_preview")
 print("anteprime rigenerate")

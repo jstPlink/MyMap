@@ -64,5 +64,11 @@
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/today_widget_dark_info" />
         </receiver>
+        <receiver android:name=".PointKmWidget" android:exported="false" android:label="MyMap · punto e km (scuro)">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/point_km_widget_info" />
+        </receiver>
     </application>
 </manifest>

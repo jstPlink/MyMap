@@ -1,6 +1,6 @@
 # MyMap – Guida all'uso e ai parametri
 
-Guida per chi usa l'app (versione 0.32.17). Per come è fatta dentro, vedi [ARCHITETTURA.md](../ARCHITETTURA.md); per la cronologia
+Guida per chi usa l'app (versione 0.32.18). Per come è fatta dentro, vedi [ARCHITETTURA.md](../ARCHITETTURA.md); per la cronologia
 delle modifiche, [CHANGELOG.md](../CHANGELOG.md).
 
 ## 1. Cos'è
@@ -130,6 +130,7 @@ della settimana. Toccando una riga con il segno › la mappa si apre su quel luo
   come punto.
 
 - **Widget "tracker" (2×1):** tieni premuta la schermata home → Widget → MyMap → *tracker*. È il blocco tracker del widget lungo da solo: icona animata (onde se sei fermo, impronte se sei in movimento) e da quanto tempo è stato salvato l'ultimo punto ("3:20"). È neutro e **diventa giallo** se l'ultimo punto ha più di 6 minuti (segno che il tracking potrebbe essere fermo). **Toccandolo salva subito un punto** (cerca la posizione adesso, fino a 20 secondi; serve "Consenti sempre"). Si aggiorna ogni 20 secondi a schermo acceso.
+- **Widget "punto e km" (verticale 1×2, solo scuro):** stesso menu dei widget → *MyMap · punto e km (scuro)*. In alto il blocco tracker: icona animata (onde se sei fermo, impronte se ti muovi) e da quanto tempo hai registrato l'ultimo punto ("3:20"); diventa **giallo** se l'ultimo punto ha più di 6 minuti, e **toccandolo salva subito un punto**. Sotto, i **km di oggi** (grandi) e degli **ultimi 7 giorni**: toccandoli si apre la vista Percorsi con il filtro su oggi o su 7 giorni. Si può ridimensionare.
 - **Widget "oggi e 7 giorni" (4×1):** stesso menu dei widget, nello stile dell'app e in due versioni: *MyMap · oggi e 7 giorni (chiaro)* e *(scuro)*; tutti e due hanno il fondo e il filo sottile dei temi dell'app.
   - **Cosa mostra:** a sinistra un blocco con due righe: in alto **oggi** (**km** percorsi, **posti** visitati, soste di almeno 20 minuti, e tempo in **movimento**, con l'unità piccola e grigia), sotto gli **ultimi 7 giorni** ("7g · 743 km", posti, tempo) in grigio.
   - **Blocco tracker** (a destra): un'**icona animata** (**onde** che si allargano se sei fermo, **impronte di scarpe** se sei in movimento: è lo stesso modo che usa il tracker, vedi *Frequenza dei punti*) e il tempo dall'ultimo punto in **minuti e secondi** ("3:20"); sotto, la scritta *tracker*. Si aggiorna ogni 20 secondi a schermo acceso, con il tracking attivo. Il blocco è **neutro** (solo un filo sottile, nessun colore) e **diventa giallo**, con testi scuri, solo se l'ultimo punto ha più di 6 minuti: con la frequenza di partenza da fermo (un punto ogni 10 minuti) succede anche a telefono fermo, quindi per averlo giallo solo quando c'è un problema conviene un punto ogni 5-6 minuti da fermo.

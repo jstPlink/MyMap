@@ -53,6 +53,7 @@ open class TodayWidget : AppWidgetProvider() {
                 val ids = m.getAppWidgetIds(ComponentName(context, cls))
                 if (ids.isNotEmpty()) render(context, m, ids, isDark)
             }
+            PointKmWidget.update(context)
         }
 
         private fun render(context: Context, manager: AppWidgetManager, ids: IntArray, dark: Boolean) {
@@ -128,6 +129,7 @@ open class TodayWidget : AppWidgetProvider() {
                 m.partiallyUpdateAppWidget(ids, views)
             }
             LastPointWidget.updateTracker(context, m, fix)
+            PointKmWidget.updateTracker(context, m, fix)
         }
 
         /** Tempo trascorso: "0:45", "3:20" (minuti e secondi); oltre un'ora "1h 05m". */
@@ -150,17 +152,17 @@ open class TodayWidget : AppWidgetProvider() {
         }
 
         /** Mezzanotte di oggi, o di `daysBack` giorni fa. */
-        private fun startOfDay(daysBack: Int): Long = Calendar.getInstance().apply {
+        internal fun startOfDay(daysBack: Int): Long = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
             add(Calendar.DAY_OF_YEAR, -daysBack)
         }.timeInMillis
 
-        private fun km(v: Double): String = if (v < 10) String.format(Locale.ITALY, "%.1f", v) else Math.round(v).toString()
+        internal fun km(v: Double): String = if (v < 10) String.format(Locale.ITALY, "%.1f", v) else Math.round(v).toString()
 
         private fun places(n: Int): String = n.toString()
 
         /** Valore con l'unità accanto, più piccola e in grigio (le parti con stile passano nei RemoteViews). */
-        private fun withUnit(value: String, unit: String, color: Int): CharSequence = SpannableStringBuilder(value).apply {
+        internal fun withUnit(value: String, unit: String, color: Int): CharSequence = SpannableStringBuilder(value).apply {
             val s = length
             append(unit)
             setSpan(RelativeSizeSpan(0.7f), s, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
@@ -170,7 +172,7 @@ open class TodayWidget : AppWidgetProvider() {
 
         // colori dei temi dell'app (web/style.css)
         private val TEXT_DARK = 0xFFECECEC.toInt()
-        private val MUTED_DARK = 0xFF9B9B9B.toInt()
+        internal val MUTED_DARK = 0xFF9B9B9B.toInt()
         private val TEXT_LIGHT = 0xFF2B3548.toInt()
         private val MUTED_LIGHT = 0xFF7B879B.toInt()
 

@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget verticale 1x2 (scuro): in alto il blocco tracker che salva un punto al tocco, sotto i km di oggi e degli ultimi 7 giorni -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="6dp"
+    android:background="@drawable/widget_app_dark">
+
+    <LinearLayout
+        android:id="@+id/w_col_pos"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:background="@drawable/widget_tracker_dark">
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal">
+            <ViewFlipper
+                android:id="@+id/w_flip_still"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:autoStart="true"
+                android:flipInterval="500"
+                android:inAnimation="@android:anim/fade_in"
+                android:outAnimation="@android:anim/fade_out">
+                <ImageView
+                    android:id="@+id/still_0"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_still_0" />
+                <ImageView
+                    android:id="@+id/still_1"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_still_1" />
+                <ImageView
+                    android:id="@+id/still_2"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_still_2" />
+                <ImageView
+                    android:id="@+id/still_3"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_still_3" />
+            </ViewFlipper>
+            <ViewFlipper
+                android:id="@+id/w_flip_steps"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:autoStart="true"
+                android:flipInterval="500"
+                android:inAnimation="@android:anim/fade_in"
+                android:outAnimation="@android:anim/fade_out">
+                <ImageView
+                    android:id="@+id/steps_0"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_steps_0" />
+                <ImageView
+                    android:id="@+id/steps_1"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_steps_1" />
+                <ImageView
+                    android:id="@+id/steps_2"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_steps_2" />
+                <ImageView
+                    android:id="@+id/steps_3"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_steps_3" />
+            </ViewFlipper>
+            <TextView
+                android:id="@+id/w_ago"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:includeFontPadding="false"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="#ECECEC"
+                android:maxLines="1" />
+        </LinearLayout>
+        <TextView
+            android:id="@+id/w_lbl_pos"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:includeFontPadding="false"
+            android:text="salva"
+            android:textSize="10sp"
+            android:textColor="#9B9B9B"
+            android:maxLines="1" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/w_panel"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="6dp"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:background="@drawable/widget_panel_dark">
+        <LinearLayout
+            android:id="@+id/w_day_box"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:text="oggi"
+                android:textSize="10sp"
+                android:textColor="#9B9B9B"
+                android:maxLines="1" />
+            <TextView
+                android:id="@+id/w_km"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:includeFontPadding="false"
+                android:textSize="17sp"
+                android:textStyle="bold"
+                android:textColor="#ECECEC"
+                android:maxLines="1" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/w_week_box"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="vertical"
+            android:gravity="center_horizontal">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:text="7 giorni"
+                android:textSize="10sp"
+                android:textColor="#9B9B9B"
+                android:maxLines="1" />
+            <TextView
+                android:id="@+id/w_km_week"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:includeFontPadding="false"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#ECECEC"
+                android:maxLines="1" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>
