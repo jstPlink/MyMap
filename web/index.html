@@ -10,18 +10,21 @@
   // tema: scelta dell'utente (chiaro/scuro) o, se "come il telefono", quello del telefono (l'app lo passa come ?sys=0/1)
   (function () {
     var t = "dark";
-    var o = "auto";
-    try { var pr = JSON.parse(localStorage.getItem("mymap.prefs") || "{}"); t = pr.theme || "dark"; o = pr.outline === "thin" || pr.outline === "off" ? pr.outline : "auto"; } catch (e) {}
+    var o = "auto", st = "glass", pal = "grafite";
+    try { var pr = JSON.parse(localStorage.getItem("mymap.prefs") || "{}"); t = pr.theme || "dark"; o = pr.outline === "thin" || pr.outline === "off" ? pr.outline : "auto"; st = pr.style === "classic" ? "classic" : "glass"; pal = typeof pr.pal === "string" ? pr.pal : "grafite"; } catch (e) {}
     var m = /[?&]sys=(\d)/.exec(location.search);
     var sys = m ? m[1] === "1" : matchMedia("(prefers-color-scheme: dark)").matches;
     var dark = t === "dark" || (t === "system" && sys);
     document.documentElement.dataset.theme = dark ? "dark" : "light";
     document.documentElement.dataset.outline = o === "thin" ? "thin" : o === "off" ? "none" : "thin"; // contorno dei pannelli (Aspetto)
+    document.documentElement.dataset.style = st; // stile: glass (vetro) o classic (vecchio); glass.css agisce solo con glass
+    document.documentElement.dataset.pal = pal; // colore dello stile vetro
   })();
 </script>
 <link rel="icon" href="icon.svg">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="web.css">
+<link rel="stylesheet" href="glass.css">
 </head>
 <body>
 <div id="app">

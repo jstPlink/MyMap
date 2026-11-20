@@ -44,6 +44,11 @@ class Prefs(context: Context) {
         sp.edit().remove("email").remove("pw").remove("pwe").remove("token").remove("uid").putBoolean("oauth", false).putBoolean("historyPulled", false).apply()
     }
     /** Tema scelto nelle impostazioni: "system", "light" o "dark". Serve a colorare le barre di sistema prima che la pagina si carichi. */
+    /** Colore di fondo (#RRGGBB) dello stile in uso, per le barre di sistema; vuoto = colori dello stile classico. */
+    var barColor: String
+        get() = sp.getString("barColor", "") ?: ""
+        set(v) = sp.edit().putString("barColor", v).apply()
+
     var theme: String
         get() = sp.getString("theme", "system") ?: "system"
         set(v) = sp.edit().putString("theme", v).apply()

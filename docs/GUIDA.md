@@ -95,7 +95,7 @@ livello e l'altro il valore si interpola, fuori dal primo e dall'ultimo resta il
 | **Heatmap** | raggio (a tre zoom), sfocatura, quantità di calore (più bassa = più caldo), opacità minima, densità dei percorsi (un punto ogni N metri tra due fix; 0 = nessuno), gradiente a quattro colori con preset |
 | **Percorsi** | stile (*colore unico* oppure *per frequenza*); colore, spessore (a tre zoom) e opacità per il colore unico; per frequenza: sfocatura, quantità di calore (passaggi sovrapposti per il colore più caldo), opacità minima, gradiente; **dettaglio** (semplificazione dei tratti in px: più alto = più leggero) |
 | **Notti** (in Luoghi e Punti) | dalle/alle (default 23–09), punti minimi (default 2), raggio (default 300 m); di prova, 0 = disattivati: accuratezza massima, durata minima del gruppo (minuti), punti minimi nella fascia centrale (e le sue ore, default 01–05), unione dei luoghi (default 400 m) |
-| **Aspetto** | tema (come il telefono, chiaro, scuro in grigi), stile della mappa, **contorno dei pannelli** (automatico: sottile in entrambi i temi; sempre; nessuno), **ritocchi alla mappa** |
+| **Aspetto** | **stile** (*Vetro*, nuovo, o *Classico*, il vecchio) e **colore** del vetro (grafite, ghiaccio, salvia, turchese, smeraldo, lime, ambra, arancio), tema (come il telefono, chiaro, scuro), stile della mappa, **contorno dei pannelli** (automatico: sottile in entrambi i temi; sempre; nessuno), **ritocchi alla mappa** |
 | **Nomi dei posti** | nomi dati da te; interruttore per i nomi di OpenStreetMap |
 
 **Stili della mappa:** Colorata, Pastello, Seppia, OpenStreetMap, Topografica, National Geographic, Satellite, Semplice (grigia).

@@ -1,4 +1,4 @@
-# MyMap – Architettura (v0.32.18, build 95)
+# MyMap – Architettura (v0.33.0, build 96)
 
 Panoramica tecnica del progetto com'è oggi (per l'uso dell'app vedi [docs/GUIDA.md](docs/GUIDA.md)). La cronologia delle versioni è in [CHANGELOG.md](CHANGELOG.md): va aggiornata a ogni rilascio
 (alzare `versionCode` di 1 e `versionName` in `android/app/build.gradle.kts`, poi aggiungere la voce).
@@ -53,7 +53,7 @@ Google Play Services né librerie HTTP/JSON esterne.
 
 | File | Ruolo |
 |---|---|
-| `index.html`, `style.css` | Struttura e stile (tema chiaro, o scuro in scala di grigi). |
+| `index.html`, `style.css`, `glass.css` | Struttura e stile. `style.css` è lo stile *classico* (tema chiaro, o scuro in scala di grigi). `glass.css` (con `figtree.woff2`) è lo stile *vetro*, di partenza: agisce solo con `<html data-style="glass">`, rimappa le variabili di `style.css` (`--bg`, `--surface`, `--accent`…) su quelle della palette (`--g0..g2`, `--acc`, `--onacc`, `--ink`, `--mute`…) e ridisegna schede, testate `details.fold`, pulsanti, campi, chip, `nav` e fogli. Colore = `data-pal` (8 palette, chiare e scure), tema = `data-theme`. Lo script in `index.html` imposta `data-style`/`data-pal` prima del disegno; `Prefs.applyTheme()` li riapplica e manda alle barre di sistema il colore `--bg` (`Native.setBars`). Impostazioni `Prefs.v.style` (`glass`/`classic`) e `Prefs.v.pal`, nel gruppo preset `look`. |
 | `app.js` | Mappa Leaflet, viste (Scratch, Heatmap, Percorsi, Luoghi, Punti) scelte con targhette verticali a destra, pannello di personalizzazione della vista corrente, filtro del periodo, pannello dati, tracker. |
 | `stats.js` | Scheda Statistiche (sezioni comprimibili incluse). |
 | `geo.js`, `places.js` | Calcoli geografici (esagoni, notti, visite) e nomi dei luoghi (OpenStreetMap Nominatim + nomi dati dall'utente). |
@@ -82,7 +82,7 @@ Viste della mappa e dati mostrati nel pannello in basso:
 | Posizione | `getLocation` (ultima nota), `requestFix(id, save)` (posizione fresca, opzionalmente salvata come punto) |
 | Account | `getSession`, `loginEmail`, `loginGoogle`, `cancelGoogle`, `useLocal`, `logout`, `changePassword`, `resetPassword`, `deleteAccount(id)` (in `account.js` dopo due conferme: parola ELIMINA e finestra finale; DELETE sull'utente: PocketBase cancella a cascata i suoi punti; poi svuota punti e account locali) |
 | Profilo | `pullSettings(id)`, `pushSettings(id, json)` |
-| Interfaccia | `setTheme` (colora le barre di sistema), `haptic(kind)` (tap, ok, error; `Vibrator`: ampiezza o durata scalate con `HAPTIC_SCALE` = 0,684 secondo il motore; senza motore, feedback di sistema), `exportData(formato)` |
+| Interfaccia | `setTheme` (colora le barre di sistema), `setBars(#RRGGBB)` (colore di fondo dello stile in uso per barre e WebView, `Prefs.barColor`), `haptic(kind)` (tap, ok, error; `Vibrator`: ampiezza o durata scalate con `HAPTIC_SCALE` = 0,684 secondo il motore; senza motore, feedback di sistema), `exportData(formato)` |
 
 I risultati asincroni tornano con `window.__nativeResult(id, risposta)` (profilo, posizione) o `window.__authResult(...)` (accesso).
 

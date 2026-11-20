@@ -43,6 +43,8 @@ function prefDefaults() {
     route: { mode: "freq", color: "#00796b", zooms: [7, 11, 15], widths: [1.5, 2.5, 5], opacity: 0, blur: 1, max: 6, minOpacity: 30, detail: 1, preset: "fuoco", colors: [...HEAT_PRESETS.fuoco] },
     theme: "dark", // system | light | dark
     mapStyle: "topo", // una chiave di MAP_STYLES
+    style: "glass", // glass (vetro) | classic (vecchio stile)
+    pal: "grafite", // colore dello stile vetro (PALETTES)
     outline: "auto", // auto (sottile nel tema chiaro) | thin (sempre) | off (mai): linea attorno a pannelli e pulsanti
     // ritocchi alla mappa di base (cursori in Aspetto): filtri di colore e tinta sovrapposta
     mapFx: { hue: 0, sat: 150, bright: 100, contrast: 95, gray: 0, sepia: 0, invert: 0, blur: 0, tint: "#3b82f6", tintOpacity: 0, tintMode: "multiply" },
@@ -63,6 +65,9 @@ function hexAdopt(s, d) {
   return d;
 }
 
+// colori dello stile vetro (glass.css)
+const PALETTES = [["grafite", "Grafite"], ["ghiaccio", "Ghiaccio"], ["salvia", "Salvia"], ["turchese", "Turchese"], ["smeraldo", "Smeraldo"], ["lime", "Lime"], ["ambra", "Ambra"], ["arancio", "Arancio"]];
+
 const Prefs = {
   v: prefDefaults(),
   onChange: null, // (gruppo) => void, impostato da app.js
@@ -74,7 +79,7 @@ const Prefs = {
       if (["hex", "heat", "route", "theme", "mapStyle", "mapFx"].some((k) => saved[k] !== undefined)) this.migrated = true;
       saved = { ...saved, hex: undefined, heat: undefined, route: undefined, theme: undefined, mapStyle: undefined, mapFx: undefined };
     }
-    this.v = { dv: DEFAULTS_V, hex: hexAdopt(saved.hex, d.hex), heat: { ...d.heat, ...saved.heat }, sleep: saved.sleep && saved.sleep.v === d.sleep.v ? { ...d.sleep, ...saved.sleep } : d.sleep, route: { ...d.route, ...saved.route }, theme: saved.theme ?? d.theme, mapStyle: saved.mapStyle ?? d.mapStyle, outline: ["thin", "off", "auto"].includes(saved.outline) ? saved.outline : "auto", mapFx: { ...d.mapFx, ...saved.mapFx }, presets: saved.presets && typeof saved.presets === "object" ? saved.presets : {}, view: typeof saved.view === "string" ? saved.view : d.view, hidden: { places: Array.isArray(saved.hidden && saved.hidden.places) ? saved.hidden.places : [], nights: Array.isArray(saved.hidden && saved.hidden.nights) ? saved.hidden.nights : [] }, names: saved.names ?? d.names };
+    this.v = { dv: DEFAULTS_V, hex: hexAdopt(saved.hex, d.hex), heat: { ...d.heat, ...saved.heat }, sleep: saved.sleep && saved.sleep.v === d.sleep.v ? { ...d.sleep, ...saved.sleep } : d.sleep, route: { ...d.route, ...saved.route }, theme: saved.theme ?? d.theme, mapStyle: saved.mapStyle ?? d.mapStyle, outline: ["thin", "off", "auto"].includes(saved.outline) ? saved.outline : "auto", style: saved.style === "classic" ? "classic" : "glass", pal: PALETTES.some((p) => p[0] === saved.pal) ? saved.pal : d.pal, mapFx: { ...d.mapFx, ...saved.mapFx }, presets: saved.presets && typeof saved.presets === "object" ? saved.presets : {}, view: typeof saved.view === "string" ? saved.view : d.view, hidden: { places: Array.isArray(saved.hidden && saved.hidden.places) ? saved.hidden.places : [], nights: Array.isArray(saved.hidden && saved.hidden.nights) ? saved.hidden.nights : [] }, names: saved.names ?? d.names };
   },
   load() {
     try { this.adopt(JSON.parse(localStorage.getItem("mymap.prefs") || "{}")); } catch { this.v = prefDefaults(); }
@@ -101,7 +106,12 @@ const Prefs = {
   isDark() { return this.v.theme === "dark" || (this.v.theme === "system" && this.sysDark()); },
   // contorno effettivo dei pannelli: "auto" è sottile nel tema chiaro e assente nello scuro
   effOutline() { const o = this.v.outline; return o === "thin" ? "thin" : o === "off" ? "none" : "thin"; },
-  applyTheme() { document.documentElement.dataset.theme = this.isDark() ? "dark" : "light"; document.documentElement.dataset.outline = this.effOutline(); },
+  applyTheme() {
+    const r = document.documentElement;
+    r.dataset.theme = this.isDark() ? "dark" : "light"; r.dataset.outline = this.effOutline(); r.dataset.style = this.v.style; r.dataset.pal = this.v.pal;
+    // le barre di sistema dell'app prendono il colore di fondo dello stile in uso
+    try { if (window.Native && Native.setBars) Native.setBars(getComputedStyle(r).getPropertyValue("--bg").trim()); } catch {}
+  },
   // Spessore in px allo zoom `z` per "heat" (raggio) o "route" (linea): tre livelli di zoom, ciascuno col suo valore; tra un livello
   // e l'altro si interpola, fuori dal primo e dall'ultimo resta il valore più vicino.
   widthAt(g, z) {
@@ -113,10 +123,10 @@ const Prefs = {
     return pts[pts.length - 1][1];
   },
   // Preset: copia dei valori di un gruppo di impostazioni ("look" = tema + stile mappa)
-  groupGet(g) { return g === "look" ? { theme: this.v.theme, mapStyle: this.v.mapStyle, outline: this.v.outline, mapFx: { ...this.v.mapFx } } : JSON.parse(JSON.stringify(this.v[g])); },
+  groupGet(g) { return g === "look" ? { theme: this.v.theme, style: this.v.style, pal: this.v.pal, mapStyle: this.v.mapStyle, outline: this.v.outline, mapFx: { ...this.v.mapFx } } : JSON.parse(JSON.stringify(this.v[g])); },
   groupSet(g, data) {
     const d = prefDefaults();
-    if (g === "look") { this.v.theme = data.theme ?? d.theme; this.v.mapStyle = data.mapStyle ?? d.mapStyle; this.v.outline = data.outline ?? d.outline; this.v.mapFx = { ...d.mapFx, ...data.mapFx }; }
+    if (g === "look") { this.v.theme = data.theme ?? d.theme; this.v.mapStyle = data.mapStyle ?? d.mapStyle; this.v.outline = data.outline ?? d.outline; this.v.style = data.style === "classic" ? "classic" : "glass"; this.v.pal = PALETTES.some((p) => p[0] === data.pal) ? data.pal : d.pal; this.v.mapFx = { ...d.mapFx, ...data.mapFx }; }
     else if (g === "hex") this.v.hex = hexAdopt(data, d.hex);
     else this.v[g] = { ...d[g], ...JSON.parse(JSON.stringify(data)) };
   },
@@ -177,7 +187,7 @@ function presetBar(g) {
     <button class="secondary" data-pdel="${g}" ${cur ? "" : "disabled"}>Elimina</button>
   </div>`;
 }
-const presetGroupOf = (k) => { const g = k.split(".")[0]; return g === "theme" || g === "mapStyle" || g === "mapFx" || g === "outline" ? "look" : ["hex", "heat", "route", "sleep"].includes(g) ? g : null; };
+const presetGroupOf = (k) => { const g = k.split(".")[0]; return g === "theme" || g === "style" || g === "pal" || g === "mapStyle" || g === "mapFx" || g === "outline" ? "look" : ["hex", "heat", "route", "sleep"].includes(g) ? g : null; };
 function clearPresetSel(k) { // modificando un valore a mano il gruppo non corrisponde più al preset scelto
   const g = presetGroupOf(k);
   if (!g || !presetSel[g]) return;
@@ -232,6 +242,9 @@ function buildPrefsUI() {
     `<option value="custom" ${v.route.preset === "custom" ? "selected" : ""}>Personalizzato</option>`;
   const tintModes = [["multiply", "Moltiplica (scurisce)"], ["screen", "Schermo (schiarisce)"], ["overlay", "Sovrapponi"], ["color", "Colore (ricolora)"], ["normal", "Normale"]]
     .map(([k, t]) => `<option value="${k}" ${v.mapFx.tintMode === k ? "selected" : ""}>${t}</option>`).join("");
+  const styles = [["glass", "Vetro"], ["classic", "Classico (vecchio)"]]
+    .map(([k, t]) => `<option value="${k}" ${v.style === k ? "selected" : ""}>${t}</option>`).join("");
+  const pals = PALETTES.map(([k, t]) => `<option value="${k}" ${v.pal === k ? "selected" : ""}>${t}</option>`).join("");
   const outlines = [["auto", "Automatico"], ["thin", "Sempre"], ["off", "Nessuno"]]
     .map(([k, t]) => `<option value="${k}" ${v.outline === k ? "selected" : ""}>${t}</option>`).join("");
   const mapStyles = Object.entries(MAP_STYLES)
@@ -240,6 +253,10 @@ function buildPrefsUI() {
   root.innerHTML =
     fold("theme", "Aspetto", `
       ${presetBar("look")}
+      <label class="field"><span>Stile<small>vetro (nuovo) o il vecchio stile</small></span>
+        <select data-k="style">${styles}</select></label>
+      <label class="field"><span>Colore<small>accento dello stile vetro</small></span>
+        <select data-k="pal">${pals}</select></label>
       <label class="field"><span>Tema<small>chiaro, scuro o quello impostato nel telefono</small></span>
         <select data-k="theme">${themes}</select></label>
       <label class="field"><span>Mappa<small>stile della mappa di base</small></span>
@@ -369,7 +386,7 @@ function bindPrefsUI() {
     paintGradbar();
     paintRoutePreview();
     if (k.startsWith("mapFx.")) { fxLabels(root); if (window.applyMapFx) applyMapFx(); if (window.paintFxPreview) paintFxPreview(); }
-    if (k === "outline") Prefs.applyTheme();
+    if (k === "outline" || k === "style" || k === "pal") Prefs.applyTheme();
     if (k === "theme") { Prefs.applyTheme(); Native.setTheme(val); if (window.setBase) setBase(); if (window.paintFxPreview) paintFxPreview(); }
     if (k === "mapStyle" && window.setBase) { setBase(); if (window.paintFxPreview) paintFxPreview(); }
     Prefs.save();
